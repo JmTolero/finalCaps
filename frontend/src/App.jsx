@@ -1,14 +1,21 @@
-    // import logo from './logo.svg'
+    import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
     import './App.css';
     import { LandingPage } from './pages/landingpage';
-    import Nav from '../src/components/nav';
+    import { Login } from "./pages/login.jsx";
+    // import Nav from '../src/components/nav';
 
     function App() {
   return (
     <>
-      <Nav />
-      <LandingPage />
+    <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />        
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </Router>
     </>
+      
+   
       
   );
 }
