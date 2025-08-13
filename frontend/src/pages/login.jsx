@@ -1,7 +1,12 @@
+// import { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {NavWithLogo} from '../components/nav.jsx';
 
 
 export const Login = () => {
+
+    
+
     return (
       <>
       <NavWithLogo />
@@ -9,31 +14,38 @@ export const Login = () => {
           <div class="rounded-xl shadow-lg px-6 py-6 w-full max-w-md text-black" style={{backgroundColor: "#D4F6FF"}}>
             <h2 class="text-4xl font-bold text-center mb-8">Welcome</h2>
 
+            
             {/* <!-- Username --> */}
-            <label class="block text-xl font-semibold mb-2 mt-4" for="username">Username</label>
-            <input
-              id="username"
-              type="text"
-              placeholder="Enter username"
-              class="w-full mb-4 px-4 py-2 rounded border border-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 text-lg text-black"
-            />
+            <form>
+                  <label class="block text-xl font-semibold mb-2 mt-4" for="username">Username</label>
+                  <input
+                    id="username"
+                    type="text"
+                    placeholder="Enter username"
+                    class="w-full mb-4 px-4 py-2 rounded border border-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 text-lg text-black"
+                    required
+                    autoComplete='off'
+                  />
 
-            {/* <!-- Password --> */}
-            <label class="block text-xl font-semibold mb-2 mt-2" for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter password"
-              class="w-full mb-6 px-4 py-2 rounded border border-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 text-lg text-black"
-            />
+                  {/* <!-- Password --> */}
+                  <label class="block text-xl font-semibold mb-2 mt-2" for="password">Password</label>
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Enter password"
+                    class="w-full mb-6 px-4 py-2 rounded border border-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 text-lg text-black"
+                    required
+                  />
 
-            {/* <!-- Login Button --> */}
-            <a
-              href=""
-              class="block text-center w-1/2 mx-auto bg-[#33D0D8] hover:bg-[#2bbac1] text-white font-bold py-2 rounded shadow-md text-base transition"
-            >
-              LOGIN
-            </a>
+                  {/* <!-- Login Button --> */}
+                  <button 
+                    type="submit"
+                    class="block text-center w-1/2 mx-auto bg-[#33D0D8] hover:bg-[#2bbac1] text-white font-bold py-2 rounded shadow-md text-base transition transition-transform transform hover:scale-105"
+                  >
+                    LOGIN
+                  </button>
+            </form>
+            
 
             {/* <!-- Google Sign-In Button --> */}
             <div class="text-center mt-4">
@@ -46,8 +58,11 @@ export const Login = () => {
             </div>
 
             {/* <!-- Registration Link --> */}
+            
             <div class="text-center mt-6">
-              <a href="customer-registration.html" class="text-indigo-800 font-bold hover:underline transition">No Account? Register</a>
+              <Link to="/register"  className="text-indigo-800 font-bold hover:underline transition">
+                No Account? Register
+              </Link>
             </div>
           </div>
         </main>

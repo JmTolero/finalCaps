@@ -18,7 +18,7 @@ export const LandingPage = () => {
             <h2 class="text-xl md:text-3xl font-semibold italic text-white drop-shadow">Chill. Order. Enjoy!</h2>
             <p class="text-sm md:text-md text-sky-100 italic font-medium">The easiest way to order and sell dirty ice cream online!</p>
             <div class="flex flex-col sm:flex-row items-center sm:space-x-6 space-y-3 sm:space-y-0 mt-4 w-full sm:w-auto">
-                <Link to="/login" className="bg-[#ffddae] font-semibold px-8 py-3 rounded-full border border-gray-400 shadow flex items-center justify-center transition hover:bg-[#ffe7c4] w-full sm:w-auto bookNow">
+                <Link to="/login" className="bg-[#ffddae] font-semibold px-8 py-3 rounded-full border border-gray-400 shadow flex items-center justify-center transition hover:bg-[#ffe7c4] w-full sm:w-auto transition transition-transform transform hover:scale-105 bookNow">
                 Book now
                 <img src="/images/arrow.png" alt="toArrow" class="GoArrow" />
                 </Link>
