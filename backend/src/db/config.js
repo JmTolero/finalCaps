@@ -1,19 +1,14 @@
-const { createPool } = require('mysql2');
-require('dotenv').config(); // if using .env file
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
- const pool = createPool({
+const pool = mysql.createPool({
     host: process.env.host,
     user: process.env.user,
     password: process.env.password,
-    database: process.env.db_name
+    database: process.env.db_name,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-pool.query('SELECT * FROM users', (err, result, fields) => {
-    if (err) {
-        console.error(err);
-        return;
-    }
-    console.log(result); // your data
-});
-
-module.exports = pool
+module.exports = pool;

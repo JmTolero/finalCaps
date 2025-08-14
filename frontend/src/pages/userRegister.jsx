@@ -1,10 +1,50 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { NavWithLogo } from "../components/nav"
-import styleRegister from '../styles/userRegister.css';
+import '../styles/userRegister.css';
 
 export const UserRegister = () => {
+  const [form, setForm] = useState({
+    firstname: "",
+    lastname: "",
+    username: "",
+    password: "",
+    confirm: "",
+    contact: "",
+    email: ""
+  });
+  const [status, setStatus] = useState({ type: null, message: "" });
 
-    
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setForm((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus({ type: null, message: "" });
+    if (form.password !== form.confirm) {
+      setStatus({ type: "error", message: "Passwords do not match" });
+      return;
+    }
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const res = await fetch(`${apiBase}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
+      if (!res.ok) {
+        throw new Error(data?.error || "Registration failed");
+      }
+      setStatus({ type: "success", message: "Registered successfully" });
+      setForm({ firstname: "", lastname: "", username: "", password: "", confirm: "", contact: "", email: "" });
+    } catch (err) {
+      setStatus({ type: "error", message: err.message || "Something went wrong" });
+    }
+  };
 
   return (
     <>
@@ -18,9 +58,7 @@ export const UserRegister = () => {
 
                 <form   
                 className="space-y-2"
-                action="#"
-                method="POST"
-                encType="multipart/form-data"
+                onSubmit={handleSubmit}
                 >
                 {/* First Name */}
                     <div>
@@ -36,6 +74,8 @@ export const UserRegister = () => {
                         placeholder="Enter First Name"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.firstname}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -53,6 +93,8 @@ export const UserRegister = () => {
                         placeholder="Enter Last name"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.lastname}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -71,6 +113,8 @@ export const UserRegister = () => {
                         placeholder="Enter username"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.username}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -88,6 +132,8 @@ export const UserRegister = () => {
                         placeholder="Enter password"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.password}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -105,6 +151,8 @@ export const UserRegister = () => {
                         placeholder="Re-enter password"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.confirm}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -123,6 +171,8 @@ export const UserRegister = () => {
                         autoComplete="off"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.contact}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -140,6 +190,8 @@ export const UserRegister = () => {
                         placeholder="Enter email"
                         required
                         className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+                        value={form.email}
+                        onChange={handleChange}
                         />
                     </div>
 
@@ -152,6 +204,12 @@ export const UserRegister = () => {
                         REGISTER NOW
                         </button>
                     </div>
+
+                    {status.type && (
+                      <div className={`text-center mt-3 ${status.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                        {status.message}
+                      </div>
+                    )}
 
                 <div className="text-center mt-4">
                     <span className="text-gray-600 text-sm font-medium">or</span>
