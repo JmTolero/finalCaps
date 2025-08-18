@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import axios from "axios";
+// import { Link } from "react-router-dom";
 import { NavWithLogo } from "../components/nav"
 import '../styles/userRegister.css';
 
@@ -23,26 +24,37 @@ export const UserRegister = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ type: null, message: "" });
+  
     if (form.password !== form.confirm) {
       setStatus({ type: "error", message: "Passwords do not match" });
       return;
     }
+
+    if(form.firstname === "" || form.lastname === "" || form.username === "" || form.password === "" || form.confirm === "" || form.contact === "" || form.email === ""){
+      setStatus({ type: "error", message: "Please fill in all fields" });
+      return;
+    }
+  
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const res = await fetch(`${apiBase}/register`, {
-        method: "POST",
+      const res = await axios.post(`${apiBase}/register`, form, {
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
       });
-      const contentType = res.headers.get('content-type') || '';
-      const data = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
-      if (!res.ok) {
-        throw new Error(data?.error || "Registration failed");
-      }
+  
       setStatus({ type: "success", message: "Registered successfully" });
-      setForm({ firstname: "", lastname: "", username: "", password: "", confirm: "", contact: "", email: "" });
+      setForm({
+        firstname: "",
+        lastname: "",
+        username: "",
+        password: "",
+        confirm: "",
+        contact: "",
+        email: "",
+      });
     } catch (err) {
-      setStatus({ type: "error", message: err.message || "Something went wrong" });
+      const errorMessage =
+        err.response?.data?.error || err.message || "Something went wrong";
+      setStatus({ type: "error", message: errorMessage });
     }
   };
 
