@@ -4,7 +4,7 @@
     import { Login } from "./pages/login.jsx";
     import { UserRegister } from "./pages/userRegister.jsx";
     import { Home } from "./pages/home.jsx";
-    import { Admin } from "./pages/admin.jsx";
+    import { Admin } from "./pages/admin/admin.jsx";
     import { Vendor } from "./pages/vendor.jsx";
     // import Nav from '../src/components/nav';
 
