@@ -25,7 +25,7 @@
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<UserRegister />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/admin" element={requireRole('admin', <Admin />)} />
+          <Route path="/admin/*" element={requireRole('admin', <Admin />)} />
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />
         </Routes>
       </Router>

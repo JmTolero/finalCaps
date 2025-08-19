@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from 'react-router-dom';
 import menu from '../../assets/images/menu.png';
 import adminIcon from '../../assets/images/administrator.png'
 import usermanagement from '../../assets/images/usermanagement.png'
@@ -33,22 +34,22 @@ export const Sidebar = () => {
 
         <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
           <img src = {adminIcon}  alt="admin" className="w-7 ml-2"/>
-          {isOpen && <span>Dashboard</span>}
+          {isOpen && <Link to="/admin/dashboard">Dashboard</Link>}
         </li>
 
         <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
           <img src = {vendorApproval}  alt="vendorApproval" className="w-6 ml-2"/>
-          {isOpen && <span>Vendor Approval</span>}
+          {isOpen && <Link to="/admin/vendor-approval">Vendor Approval</Link>}
         </li>
 
         <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
           <img src = {usermanagement}  alt="usermanagement" className="w-7 ml-2"/>
-          {isOpen && <span>User Management</span>}
+          {isOpen && <Link to="/admin/user-management">User Management</Link>}
         </li>
 
         <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
           <img src = {feedback}  alt="feedback" className="w-7 ml-2"/>
-          {isOpen && <span>Feedback </span>}
+          {isOpen && <Link to="/admin/feedback">Feedback</Link>}
         </li>
 
       </ul>
