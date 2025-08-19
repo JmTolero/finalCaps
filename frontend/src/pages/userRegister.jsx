@@ -37,7 +37,7 @@ export const UserRegister = () => {
   
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const res = await axios.post(`${apiBase}/register`, form, {
+      await axios.post(`${apiBase}/register`, form, {
         headers: { "Content-Type": "application/json" },
       });
   
