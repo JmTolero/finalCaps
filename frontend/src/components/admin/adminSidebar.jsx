@@ -13,7 +13,7 @@ export const Sidebar = () => {
 
   return (
     <div
-      className={`bg-blue-500 h-screen transition-all duration-300 ${
+      className={`bg-[#BBDEF8] h-screen transition-all duration-300 ${
         isOpen ? "w-64" : "w-16"
       }`}
     >

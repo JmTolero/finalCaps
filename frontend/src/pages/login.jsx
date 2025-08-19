@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {NavWithLogo} from '../components/nav.jsx';
+import axios from 'axios';
 
 
 export const Login = () => {
@@ -16,31 +17,38 @@ export const Login = () => {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
-      setStatus({ type: null, message: '' });
+      setStatus({ type: null, message: "" });
+
       try {
-        const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        const res = await fetch(`${apiBase}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form)
-        });
-        const contentType = res.headers.get('content-type') || '';
-        const data = contentType.includes('application/json') ? await res.json() : { error: await res.text() };
-        if (!res.ok) {
-          throw new Error(data?.error || 'Login failed');
+        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+        // axios automatically stringifies objects and sets headers
+        const res = await axios.post(`${apiBase}/login`, form);
+
+        // Response data is already JSON
+        const data = res.data;
+
+        // If backend sends error, you can throw
+        if (!data.user) {
+          throw new Error(data?.error || "Login failed");
         }
-        // For now, just stash minimal user info in session and route by role
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-        const role = (data.user?.role || 'customer').toLowerCase();
-        if (role === 'admin') {
-          navigate('/admin');
-        } else if (role === 'vendor') {
-          navigate('/vendor');
+
+        // Save user info in sessionStorage
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+
+        const role = (data.user?.role || "customer").toLowerCase();
+        if (role === "admin") {
+          navigate("/admin");
+        } else if (role === "vendor") {
+          navigate("/vendor");
         } else {
-          navigate('/home');
+          navigate("/home");
         }
       } catch (err) {
-        setStatus({ type: 'error', message: err.message || 'Something went wrong' });
+        setStatus({
+          type: "error",
+          message: err.response?.data?.error || err.message || "Something went wrong",
+        });
       }
     };
 

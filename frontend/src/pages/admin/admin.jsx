@@ -7,7 +7,7 @@ export const Admin = () => {
     <>
       <NavWithLogo />
       <div className="flex h-screen">
-        <Sidebar className="w-64 bg-gray-800 text-white" />
+        <Sidebar className="w-64" />
 
         <main className="flex-1 max-w-4xl mx-10 py-10 h-screen">
           <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
