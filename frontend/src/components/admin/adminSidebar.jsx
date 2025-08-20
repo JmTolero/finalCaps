@@ -32,25 +32,34 @@ export const Sidebar = () => {
       {/* Menu items */}
       <ul className="flex flex-col mt-10 cursor-pointer font-sans adminMenu">
 
-        <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
-          <img src = {adminIcon}  alt="admin" className="w-7 ml-2"/>
-          {isOpen && <Link to="/admin/dashboard">Dashboard</Link>}
-        </li>
+        <Link to="/admin/dashboard">
+          <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
+            <img src = {adminIcon}  alt="admin" className="w-7 ml-2"/>
+            {isOpen && <Link to="/admin/dashboard">Dashboard</Link>}
+          </li>
+        </Link>
+        
+        <Link to="/admin/vendor-approval">
+          <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
+            <img src = {vendorApproval}  alt="vendorApproval" className="w-6 ml-2"/>
+            {isOpen && <Link to="/admin/vendor-approval">Vendor Approval</Link>}
+          </li>
+        </Link>
+        
+        <Link to="/admin/user-management">
+          <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
+            <img src = {usermanagement}  alt="usermanagement" className="w-7 ml-2"/>
+            {isOpen && <Link to="/admin/user-management">User Management</Link>}
+          </li>
+        </Link>
+        
 
-        <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
-          <img src = {vendorApproval}  alt="vendorApproval" className="w-6 ml-2"/>
-          {isOpen && <Link to="/admin/vendor-approval">Vendor Approval</Link>}
-        </li>
-
-        <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
-          <img src = {usermanagement}  alt="usermanagement" className="w-7 ml-2"/>
-          {isOpen && <Link to="/admin/user-management">User Management</Link>}
-        </li>
-
+        <Link to="/admin/feedback">
         <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
           <img src = {feedback}  alt="feedback" className="w-7 ml-2"/>
           {isOpen && <Link to="/admin/feedback">Feedback</Link>}
         </li>
+        </Link>
 
       </ul>
     </div>
