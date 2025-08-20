@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require('./db/config');
-// const loginRoutes =  
+const loginRoutes = require('./routes/loginRoutes');
 
 const app = express();
 
@@ -22,6 +22,9 @@ if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
 app.get("/", (req, res) => {
     res.send("Hello from backend");
 });
+
+// Routes
+app.use(loginRoutes);
 
 app.get('/users', async (req, res) => {
     try {

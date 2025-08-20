@@ -1,8 +1,6 @@
+const pool = require('../db/config');
 
-
-
-
-export const userLogin = async (req, res) => {
+const userLogin = async (req, res) => {
     try {
         const { username, password } = req.body || {};
         if (!username || !password) {
@@ -63,4 +61,6 @@ export const userLogin = async (req, res) => {
         });
     }
 }
+
+module.exports = { userLogin };
 
