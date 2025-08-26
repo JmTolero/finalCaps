@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require('./db/config');
-const loginRoutes = require('./routes/loginRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -24,21 +24,21 @@ app.get("/", (req, res) => {
 });
 
 // Routes
-app.use(loginRoutes);
+app.use(userRoutes);
 
-app.get('/users', async (req, res) => {
-    try {
-        const [rows] = await pool.query('SELECT * FROM users');
-        res.json(rows);
-    } catch (err) {
-        console.error('GET /users failed:', err.code, err.message);
-        res.status(500).json({
-            error: 'Database error',
-            code: err.code,
-            message: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
-    }
-});
+// app.get('/users', async (req, res) => {
+//     try {
+//         const [rows] = await pool.query('SELECT * FROM users');
+//         res.json(rows);
+//     } catch (err) {
+//         console.error('GET /users failed:', err.code, err.message);
+//         res.status(500).json({
+//             error: 'Database error',
+//             code: err.code,
+//             message: process.env.NODE_ENV === 'development' ? err.message : undefined
+//         });
+//     }
+// });
 
 app.post('/register', async (req, res) => {
     try {

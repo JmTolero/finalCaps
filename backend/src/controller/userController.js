@@ -1,4 +1,5 @@
 const pool = require('../db/config');
+const { User } = require('../model/userModel');
 
 const userLogin = async (req, res) => {
     try {
@@ -28,10 +29,8 @@ const userLogin = async (req, res) => {
         }
 
         // Query user from DB; select * to allow optional role column
-        const [rows] = await pool.query(
-            'SELECT * FROM users WHERE username = ? LIMIT 1',
-            [username]
-        );
+        const [rows] = await pool.query('SELECT * FROM users WHERE username = ? LIMIT 1',[username]);
+
         if (!rows || rows.length === 0) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -62,5 +61,18 @@ const userLogin = async (req, res) => {
     }
 }
 
-module.exports = { userLogin };
+const countTotal = async (req, res) => {
+    try{
+        const rows = await User.getAll();
+        res.json(rows[0]);
+    }
+    catch(err){
+        console.log(err)
+        res.status(500).json({error: "Total Users error"});
+    }
+}
+
+
+
+module.exports = {userLogin, countTotal};
 

@@ -14,7 +14,7 @@ export const Admin = () => {
       <div className="flex h-screen">
         <Sidebar className="w-64" />
 
-        <main className="flex-1 max-w-4xl mx-10 py-10 h-screen">
+        <main className="flex-1 w-4xl mx-10">
           <Routes>
             <Route path="/" element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
