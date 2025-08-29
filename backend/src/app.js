@@ -2,10 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const pool = require('./db/config');
 const userRoutes = require('./routes/userRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
-// pool();
 
 // Middleware
 app.use(cors());
@@ -25,6 +25,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use(userRoutes);
+app.use(orderRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

@@ -12,6 +12,8 @@ export const AdminDashboard = () => {
 
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalVendors, setTotalVendor] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0)
+  const [orders, setOrders] = useState([])
 
   useEffect(()=>{
     const fetchTotal = async () => {
@@ -20,13 +22,26 @@ export const AdminDashboard = () => {
         const res = await axios.get('http://localhost:3001/api/total');
         setTotalUsers(res.data.totalUsers);
         setTotalVendor(res.data.totalVendors);
+        setTotalOrders(res.data.totalOrders);
       }catch(err){
         console.log(err);
       }
       
     }
     fetchTotal();
+
+    const fetchOrderRecords = async () => {
+
+      try{
+        const res = await axios.get('http://localhost:3001/api/admin/orderRecords');
+        setOrders(res.data);
+      }catch(err){
+        console.log(err, {error:"error table fetch"});
+      }
+    }
+    fetchOrderRecords();
   },[])
+
 
   return (
     <>
@@ -44,7 +59,7 @@ export const AdminDashboard = () => {
 
 
           <div className="bg-[#D4F6FF] h-35 rounded-xl flex flex-col justify-center px-6">
-            <h3 className="text-2xl font-semibold text-left">Total Vendors:</h3>
+            <h3 className="text-2xl font-semibold text-left">Total Vendors:</h3>    
               <div className="flex justify-evenly items-center gap-4 mt-2">
                 <img src={imgTotalVendor} alt="Total Vendors" className="w-16" />
                 <div className="text-2xl font-bold text-[#26A0FE]">{totalVendors}</div>
@@ -55,7 +70,7 @@ export const AdminDashboard = () => {
             <h3 className="text-2xl font-semibold text-left">Total Orders :</h3>
               <div className="flex justify-evenly items-center gap-4 mt-2">
                 <img src={imgTotalOrder} alt="Total Users" className="w-16" />
-                <div className="text-2xl font-bold text-[#26A0FE]">12312</div>
+                <div className="text-2xl font-bold text-[#26A0FE]">{totalOrders}</div>
               </div>
           </div>
 
@@ -77,15 +92,22 @@ export const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="bg-white">
-              <tr className="hover:bg-blue-100">
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-                <td className="px-4 py-2 border">onn</td>
-              </tr>
+              {
+                orders.map((order) => {
+                  return (
+                    <tr className="hover:bg-blue-100" key={order.order_id}>
+                    <td className="px-4 py-2 border">{order.order_id}</td>
+                    <td className="px-4 py-2 border">{order.fname}</td>
+                    <td className="px-4 py-2 border">{order.store_name}</td>
+                    <td className="px-4 py-2 border">{order.size}</td>
+                    <td className="px-4 py-2 border">{order.status}</td>
+                    <td className="px-4 py-2 border">{order.payment_status}</td>
+                    <td className="px-4 py-2 border">{order.status_name}</td>
+                  </tr>
+                  )
+                })
+              }
+              
             </tbody>
           </table>
         </div>
