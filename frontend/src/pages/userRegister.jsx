@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-// import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { NavWithLogo } from "../components/nav"
 import '../styles/userRegister.css';
 
@@ -242,6 +242,13 @@ export const UserRegister = () => {
                         Sign in with Google
                     </span>
                     </button>
+                </div>
+
+                {/* Vendor Registration Link */}
+                <div className="text-center mt-6">
+                    <Link to="/vendor-register" className="text-indigo-800 font-bold hover:underline transition">
+                        Register as a Vendor
+                    </Link>
                 </div>
                 </form>
             </div>

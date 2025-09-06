@@ -36,6 +36,9 @@ export const Login = () => {
         // Save user info in sessionStorage
         sessionStorage.setItem("user", JSON.stringify(data.user));
 
+        // Dispatch custom event to notify App component of user change
+        window.dispatchEvent(new Event('userChanged'));
+
         const role = (data.user?.role || "customer").toLowerCase();
         if (role === "admin") {
           navigate("/admin");

@@ -10,7 +10,7 @@ import '../../assets/fonts/fonts.css';
 
 
 export const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true); // sidebar starts open
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div
@@ -53,12 +53,11 @@ export const Sidebar = () => {
           </li>
         </Link>
         
-
         <Link to="/admin/feedback">
-        <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
-          <img src = {feedback}  alt="feedback" className="w-7 ml-2"/>
-          {isOpen && <span>Feedback</span>}
-        </li>
+          <li className="hover:bg-blue-300 p-3 flex items-center gap-3" >
+            <img src = {feedback}  alt="feedback" className="w-7 ml-2"/>
+            {isOpen && <span>Feedback</span>}
+          </li>
         </Link>
 
       </ul>

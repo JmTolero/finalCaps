@@ -12,6 +12,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
 // Dev aid: confirm admin env presence on startup (won't print password)
 if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
     console.log(`[auth] Admin credentials loaded for username: '${String(process.env.ADMIN_USERNAME).trim()}'`);

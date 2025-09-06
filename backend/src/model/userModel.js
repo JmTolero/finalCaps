@@ -13,7 +13,7 @@ const User = {
         (SELECT COUNT(*) FROM orders) AS totalOrders
         `);
         return rows;
-    }
+    },
 
 
     // countTotalUsers: async () => {
@@ -25,8 +25,13 @@ const User = {
     //     const [rows] = await pool.query("Select COUNT(*) AS totalVendors from vendors");
     //     return rows;
     // }
+    gerAllVendors: async () => {
+        const [rows] = await pool.query("SELECT * FROM vendors");
+        return rows;
+    }
 }
 // -----------------------------------------------------------------------------
+
 
 
 
