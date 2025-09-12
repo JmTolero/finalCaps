@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     contact_no VARCHAR(45),
     email VARCHAR(100),
     role VARCHAR(50),
+    status ENUM('active', 'inactive', 'suspended') DEFAULT 'active' COMMENT 'User account status',
     created_at TIMESTAMP
 );
 
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 -- Indexes for better performance
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_status ON users(status);
 CREATE INDEX idx_vendors_user_id ON vendors(user_id);
 CREATE INDEX idx_vendors_status ON vendors(status);
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);

@@ -1,0 +1,344 @@
+const pool = require('../../db/config');
+const { User } = require('../../model/shared/userModel');
+
+const countTotal = async (req, res) => {
+    try{
+        const rows = await User.getAll();
+        res.json(rows[0]);
+    }
+    catch(err){
+        console.log(err)
+        res.status(500).json({error: "Total Users error"});
+    }
+}
+
+const getAllVendors = async (req, res) => {
+    try {
+        console.log('Fetching all vendors...');
+        
+        // Query to get all vendors with their user information
+        const [vendors] = await pool.query(`
+            SELECT 
+                v.vendor_id,
+                v.store_name,
+                v.primary_address_id as location,
+                v.business_permit_url,
+                v.valid_id_url,
+                COALESCE(v.status, 'pending') as status,
+                v.user_id,
+                v.created_at,
+                u.fname,
+                u.lname,
+                u.email,
+                u.contact_no
+            FROM vendors v
+            LEFT JOIN users u ON v.user_id = u.user_id
+            ORDER BY v.created_at DESC
+        `);
+        
+        console.log('Vendors fetched successfully:', vendors.length);
+        
+        res.json({
+            success: true,
+            vendors: vendors
+        });
+        
+    } catch (err) {
+        console.error('Failed to fetch vendors:', err);
+        res.status(500).json({
+            error: 'Failed to fetch vendors',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const getVendorById = async (req, res) => {
+    try {
+        const { vendor_id } = req.params;
+        
+        console.log('Fetching vendor details for ID:', vendor_id);
+        
+        // Query to get specific vendor with user information
+        const [vendors] = await pool.query(`
+            SELECT 
+                v.vendor_id,
+                v.store_name,
+                v.primary_address_id as location,
+                v.business_permit_url,
+                v.valid_id_url,
+                COALESCE(v.status, 'pending') as status,
+                v.user_id,
+                v.created_at,
+                u.fname,
+                u.lname,
+                u.username,
+                u.email,
+                u.contact_no,
+                u.date_of_birth,
+                u.gender
+            FROM vendors v
+            LEFT JOIN users u ON v.user_id = u.user_id
+            WHERE v.vendor_id = ?
+        `, [vendor_id]);
+        
+        if (vendors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Vendor not found'
+            });
+        }
+        
+        console.log('Vendor details fetched successfully');
+        
+        res.json({
+            success: true,
+            vendor: vendors[0]
+        });
+        
+    } catch (err) {
+        console.error('Failed to fetch vendor details:', err);
+        res.status(500).json({
+            error: 'Failed to fetch vendor details',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const updateVendorStatus = async (req, res) => {
+    try {
+        const { vendor_id } = req.params;
+        const { status } = req.body;
+        
+        console.log('Updating vendor status:', vendor_id, status);
+        
+        // Validate status
+        if (!['pending', 'approved', 'rejected'].includes(status.toLowerCase())) {
+            return res.status(400).json({ error: 'Invalid status. Must be pending, approved, or rejected' });
+        }
+        
+        // Update vendor status
+        const [result] = await pool.query(
+            'UPDATE vendors SET status = ? WHERE vendor_id = ?',
+            [status, vendor_id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        console.log('Vendor status updated successfully');
+        
+        res.json({
+            success: true,
+            message: 'Vendor status updated successfully'
+        });
+        
+    } catch (err) {
+        console.error('Failed to update vendor status:', err);
+        res.status(500).json({
+            error: 'Failed to update vendor status',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const getAllUsers = async (req, res) => {
+    try {
+        console.log('Fetching all users...');
+        
+        // Query to get all users with their basic information
+        const [users] = await pool.query(`
+            SELECT 
+                u.user_id,
+                u.fname,
+                u.lname,
+                u.username,
+                u.email,
+                u.contact_no,
+                u.role,
+                COALESCE(u.status, 'active') as status,
+                u.created_at,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.store_name
+                    ELSE NULL
+                END as store_name,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.status
+                    ELSE NULL
+                END as vendor_status
+            FROM users u
+            LEFT JOIN vendors v ON u.user_id = v.user_id
+            ORDER BY u.created_at DESC
+        `);
+        
+        console.log('Users fetched successfully:', users.length);
+        
+        res.json({
+            success: true,
+            users: users
+        });
+        
+    } catch (err) {
+        console.error('Failed to fetch users:', err);
+        res.status(500).json({
+            error: 'Failed to fetch users',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const getUserById = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        
+        console.log('Fetching user details for ID:', user_id);
+        
+        // Query to get specific user with detailed information
+        const [users] = await pool.query(`
+            SELECT 
+                u.user_id,
+                u.fname,
+                u.lname,
+                u.username,
+                u.email,
+                u.contact_no,
+                u.role,
+                COALESCE(u.status, 'active') as status,
+                u.created_at,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.store_name
+                    ELSE NULL
+                END as store_name,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.status
+                    ELSE NULL
+                END as vendor_status,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.vendor_id
+                    ELSE NULL
+                END as vendor_id
+            FROM users u
+            LEFT JOIN vendors v ON u.user_id = v.user_id
+            WHERE u.user_id = ?
+        `, [user_id]);
+        
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        console.log('User details fetched successfully');
+        
+        res.json({
+            success: true,
+            user: users[0]
+        });
+        
+    } catch (err) {
+        console.error('Failed to fetch user details:', err);
+        res.status(500).json({
+            error: 'Failed to fetch user details',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const updateUser = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const { fname, lname, username, email, contact_no, role } = req.body;
+        
+        console.log('Updating user:', user_id, req.body);
+        
+        // Validate required fields
+        if (!fname || !email || !role) {
+            return res.status(400).json({ error: 'First name, email, and role are required' });
+        }
+        
+        // Check if email already exists for other users
+        const [existingEmail] = await pool.query(
+            'SELECT user_id FROM users WHERE email = ? AND user_id != ?', 
+            [email, user_id]
+        );
+        if (existingEmail.length > 0) {
+            return res.status(400).json({ error: 'Email already exists' });
+        }
+        
+        // Check if username already exists for other users (if username provided)
+        if (username) {
+            const [existingUsername] = await pool.query(
+                'SELECT user_id FROM users WHERE username = ? AND user_id != ?', 
+                [username, user_id]
+            );
+            if (existingUsername.length > 0) {
+                return res.status(400).json({ error: 'Username already exists' });
+            }
+        }
+        
+        // Update user information
+        const [result] = await pool.query(
+            'UPDATE users SET fname = ?, lname = ?, username = ?, email = ?, contact_no = ?, role = ? WHERE user_id = ?',
+            [fname, lname || '', username || '', email, contact_no || '', role, user_id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('User updated successfully');
+        
+        res.json({
+            success: true,
+            message: 'User updated successfully'
+        });
+        
+    } catch (err) {
+        console.error('Failed to update user:', err);
+        res.status(500).json({
+            error: 'Failed to update user',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const updateUserStatus = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        const { status } = req.body;
+        
+        console.log('Updating user status:', user_id, status);
+        
+        // Validate status
+        if (!['active', 'inactive', 'suspended'].includes(status.toLowerCase())) {
+            return res.status(400).json({ error: 'Invalid status. Must be active, inactive, or suspended' });
+        }
+        
+        // Update user status
+        const [result] = await pool.query(
+            'UPDATE users SET status = ? WHERE user_id = ?',
+            [status, user_id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log('User status updated successfully');
+        
+        res.json({
+            success: true,
+            message: 'User status updated successfully'
+        });
+        
+    } catch (err) {
+        console.error('Failed to update user status:', err);
+        res.status(500).json({
+            error: 'Failed to update user status',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { countTotal, getAllVendors, getVendorById, updateVendorStatus, getAllUsers, getUserById, updateUser, updateUserStatus };

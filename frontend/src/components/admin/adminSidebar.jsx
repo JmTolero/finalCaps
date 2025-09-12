@@ -4,6 +4,7 @@ import menu from '../../assets/images/menu.png';
 import adminIcon from '../../assets/images/administrator.png'
 import usermanagement from '../../assets/images/usermanagement.png'
 import vendorApproval from '../../assets/images/approval.png'
+import vendorLocationManagerIcon from '../../assets/images/vendorLocationManagerIcon.png'
 import feedback from '../../assets/images/feedback.png'
 import '../../assets/fonts/fonts.css';  
 
@@ -43,6 +44,13 @@ export const Sidebar = () => {
           <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
             <img src = {vendorApproval}  alt="vendorApproval" className="w-6 ml-2"/>
             {isOpen && <span>Vendor Approval</span>}
+          </li>
+        </Link>
+        
+        <Link to="/admin/vendor-locations">
+          <li className="hover:bg-blue-300 p-3 flex items-center gap-3">
+            <img src={vendorLocationManagerIcon} alt="vendor locations" className="w-7 ml-2"/>
+            {isOpen && <span>Vendor Locations</span>}
           </li>
         </Link>
         

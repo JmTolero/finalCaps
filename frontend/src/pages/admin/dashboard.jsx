@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-// import { NavWithLogo } from "../../components/nav";
+// import { NavWithLogo } from "../../components/shared/nav";
 
 //images import
 
@@ -21,7 +21,7 @@ export const AdminDashboard = () => {
     const fetchTotal = async () => {
 
       try{
-        const res = await axios.get('http://localhost:3001/api/total');
+        const res = await axios.get('http://localhost:3001/api/admin/total');
         setTotalUsers(res.data.totalUsers);
         setTotalVendor(res.data.totalVendors);
         setTotalOrders(res.data.totalOrders);
@@ -55,31 +55,30 @@ export const AdminDashboard = () => {
     <>
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-screen">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
-          <div className="bg-[#D4F6FF] h-32 sm:h-35 rounded-xl flex flex-col justify-center px-4 sm:px-6">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-left">Total Users:</h3>
-              <div className="flex justify-evenly items-center gap-2 sm:gap-4 mt-2">
-                <img src={imgTotalUser} alt="Total Users" className="w-12 sm:w-14 lg:w-16" />
-                <div className="text-xl sm:text-2xl font-bold text-[#26A0FE]">{totalUsers}</div>
-              </div>
+          <div className="bg-[#D4F6FF] h-32 md:h-36 rounded-xl flex flex-col justify-center px-4 md:px-6">
+            <h3 className="text-lg md:text-xl font-semibold text-left mb-2">Total Users</h3>
+            <div className="flex justify-between items-center">
+              <img src={imgTotalUser} alt="Total Users" className="w-12 md:w-16" />
+              <div className="text-2xl md:text-3xl font-bold text-[#26A0FE]">{totalUsers.toLocaleString()}</div>
+            </div>
           </div>
 
-
-          <div className="bg-[#D4F6FF] h-32 sm:h-35 rounded-xl flex flex-col justify-center px-4 sm:px-6">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-left">Total Vendors:</h3>    
-              <div className="flex justify-evenly items-center gap-2 sm:gap-4 mt-2">
-                <img src={imgTotalVendor} alt="Total Vendors" className="w-12 sm:w-14 lg:w-16" />
-                <div className="text-xl sm:text-2xl font-bold text-[#26A0FE]">{totalVendors}</div>
-              </div>
+          <div className="bg-[#D4F6FF] h-32 md:h-36 rounded-xl flex flex-col justify-center px-4 md:px-6">
+            <h3 className="text-lg md:text-xl font-semibold text-left mb-2">Total Vendors</h3>
+            <div className="flex justify-between items-center">
+              <img src={imgTotalVendor} alt="Total Vendors" className="w-12 md:w-16" />
+              <div className="text-2xl md:text-3xl font-bold text-[#26A0FE]">{totalVendors.toLocaleString()}</div>
+            </div>
           </div>
 
-          <div className="bg-[#D4F6FF] h-32 sm:h-35 rounded-xl flex flex-col justify-center px-4 sm:px-6 sm:col-span-2 lg:col-span-1">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-left">Total Orders :</h3>
-              <div className="flex justify-evenly items-center gap-2 sm:gap-4 mt-2">
-                <img src={imgTotalOrder} alt="Total Users" className="w-12 sm:w-14 lg:w-16" />
-                <div className="text-xl sm:text-2xl font-bold text-[#26A0FE]">{totalOrders}</div>
-              </div>
+          <div className="bg-[#D4F6FF] h-32 md:h-36 rounded-xl flex flex-col justify-center px-4 md:px-6">
+            <h3 className="text-lg md:text-xl font-semibold text-left mb-2">Total Orders</h3>
+            <div className="flex justify-between items-center">
+              <img src={imgTotalOrder} alt="Total Orders" className="w-12 md:w-16" />
+              <div className="text-2xl md:text-3xl font-bold text-[#26A0FE]">{totalOrders.toLocaleString()}</div>
+            </div>
           </div>
 
         </div>
@@ -130,7 +129,7 @@ export const AdminDashboard = () => {
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Order ID</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Customer ID</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Vendor ID</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Date/Time</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Delivery Date/Time</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Container Size</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Status</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Payment Status</th>
@@ -153,7 +152,10 @@ export const AdminDashboard = () => {
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
                           <div className="text-xs md:text-sm text-gray-500">
-                            {new Date().toLocaleDateString()}
+                            {order.delivery_datetime 
+                              ? new Date(order.delivery_datetime).toLocaleString()
+                              : 'Not scheduled'
+                            }
                           </div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
@@ -229,6 +231,17 @@ export const AdminDashboard = () => {
                   <div className="space-y-1">
                     <span className="text-gray-600 text-sm font-medium">Store:</span>
                     <p className="font-semibold text-gray-900">{order.store_name || 'N/A'}</p>
+                  </div>
+                  
+                  {/* Delivery Date/Time */}
+                  <div className="space-y-1">
+                    <span className="text-gray-600 text-sm font-medium">Delivery Date/Time:</span>
+                    <p className="font-semibold text-gray-900">
+                      {order.delivery_datetime 
+                        ? new Date(order.delivery_datetime).toLocaleString()
+                        : 'Not scheduled'
+                      }
+                    </p>
                   </div>
                   
                   {/* Order Status */}

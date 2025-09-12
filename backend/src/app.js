@@ -1,8 +1,14 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require('./db/config');
-const userRoutes = require('./routes/userRoutes');
-const orderRoutes = require('./routes/orderRoutes');
+// Import new organized routes
+const authRoutes = require('./routes/shared/authRoutes');
+const orderRoutes = require('./routes/shared/orderRoutes');
+const addressRoutes = require('./routes/shared/addressRoutes');
+const adminRoutes = require('./routes/admin/adminRoutes');
+const adminLocationRoutes = require('./routes/admin/locationRoutes');
+const vendorRoutes = require('./routes/vendor/vendorRoutes');
+const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
 
@@ -27,8 +33,12 @@ app.get("/", (req, res) => {
 });
 
 // Routes
-app.use(userRoutes);
-app.use(orderRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api', orderRoutes);
+app.use('/api', addressRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminLocationRoutes);
+app.use('/api/vendor', vendorRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {
@@ -46,10 +56,23 @@ app.use(orderRoutes);
 
 app.post('/register', async (req, res) => {
     try {
-        const { firstname, lastname, username, password, confirm, contact, email } = req.body || {};
+        // Trim all string values
+        const trimmedBody = trimObjectStrings(req.body || {});
+        const { firstname, lastname, username, password, confirm, contact, email } = trimmedBody;
 
-        if (!firstname || !lastname || !username || !password || !contact || !email) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        // Validate required fields for empty/whitespace values
+        const requiredFields = [
+            { key: 'firstname', name: 'First name' },
+            { key: 'lastname', name: 'Last name' },
+            { key: 'username', name: 'Username' },
+            { key: 'password', name: 'Password' },
+            { key: 'contact', name: 'Contact number' },
+            { key: 'email', name: 'Email' }
+        ];
+
+        const validation = validateRequiredFields(trimmedBody, requiredFields);
+        if (!validation.isValid) {
+            return res.status(400).json({ error: validation.message });
         }
 
         if (confirm !== undefined && confirm !== password) {

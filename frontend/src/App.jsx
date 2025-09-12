@@ -1,14 +1,18 @@
     import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
     import { useState, useEffect } from 'react';
     import './App.css';
-    import { LandingPage } from './pages/landingpage';
-    import { Login } from "./pages/login.jsx";
-    import { UserRegister } from "./pages/userRegister.jsx";
-    import { VendorRegister } from "./pages/vendorRegister.jsx";
-    import { Home } from "./pages/home.jsx";
+    import { LandingPage } from './pages/shared/landingpage';
+    import { Login } from "./pages/shared/login.jsx";
+    import { UserRegister } from "./pages/shared/userRegister.jsx";
+    import { VendorRegister } from "./pages/vendor/vendorRegister.jsx";
+    import { BecomeVendor } from "./pages/vendor/BecomeVendor.jsx";
+    import { VendorSetup } from "./pages/vendor/VendorSetup.jsx";
+    import { VendorPending } from "./pages/vendor/VendorPending.jsx";
+    import { VendorRedirect } from "./components/shared/VendorRedirect.jsx";
+    import { Home } from "./pages/shared/home.jsx";
     import { Admin } from "./pages/admin/admin.jsx";
-    import { Vendor } from "./pages/vendor.jsx";
-    import { Customer } from "./pages/customer.jsx";
+    import { Vendor } from "./pages/vendor/vendor.jsx";
+    import { Customer } from "./pages/customer/customer.jsx";
     // import Nav from '../src/components/nav';
 
     function App() {
@@ -71,7 +75,7 @@
     if (user) {
       const role = (user?.role || 'customer').toLowerCase();
       if (role === 'admin') return <Navigate to="/admin" replace />;
-      if (role === 'vendor') return <Navigate to="/vendor" replace />;
+      if (role === 'vendor') return <VendorRedirect />;
       if (role === 'customer') return <Navigate to="/customer" replace />;
       return <Navigate to="/home" replace />;
     }
@@ -86,9 +90,13 @@
           <Route path="/login" element={<LoginRoute />} />
           <Route path="/user-register" element={<UserRegister />} />
           <Route path="/vendor-register" element={<VendorRegister />} />
+          <Route path="/become-vendor" element={requireRole('customer', <BecomeVendor />)} />
+          <Route path="/vendor-setup" element={<VendorSetup />} />
+          <Route path="/vendor-pending" element={<VendorPending />} />
           <Route path="/home" element={<Home />} />
           <Route path="/admin/*" element={requireRole('admin', <Admin />)} />
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />
+          <Route path="/vendor-redirect" element={<VendorRedirect />} />
           <Route path="/customer" element={requireRole('customer', <Customer />)} />
         </Routes>
       </Router>
