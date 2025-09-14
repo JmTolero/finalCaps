@@ -193,7 +193,7 @@ export const AdminDashboard = () => {
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 whitespace-nowrap">
                           <div className="text-xs md:text-sm font-medium text-gray-900">{order.status_name || 'N/A'}</div>
-                        </td>
+                        </td>   
                       </tr>
                     )
                   })

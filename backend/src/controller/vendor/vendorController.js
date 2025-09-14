@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 20 * 1024 * 1024 // 20MB limit
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|pdf/;
@@ -46,14 +46,16 @@ const registerVendor = async (req, res) => {
         
         // Handle both JSON and form-data requests and trim strings
         const trimmedBody = trimObjectStrings(req.body);
-        const { fname, lname, username, password, contact_no, email, role } = trimmedBody;
+        const { fname, lname, username, password, contact_no, email, birth_date, gender, role } = trimmedBody;
         
         // Validate required fields (address is optional during registration)
         const requiredFields = [
             { key: 'fname', name: 'First name' },
             { key: 'lname', name: 'Last name' },
             { key: 'email', name: 'Email' },
-            { key: 'password', name: 'Password' }
+            { key: 'password', name: 'Password' },
+            { key: 'birth_date', name: 'Birth date' },
+            { key: 'gender', name: 'Gender' }
         ];
         
         const validation = validateRequiredFields(trimmedBody, requiredFields);
@@ -75,8 +77,8 @@ const registerVendor = async (req, res) => {
 
         // Insert user
         const [userResult] = await pool.query(
-            'INSERT INTO users (fname, lname, username, password, contact_no, email, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-            [fname, lname || '', username, password, contact_no || '', email, 'vendor']
+            'INSERT INTO users (fname, lname, username, password, contact_no, email, birth_date, gender, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [fname, lname || '', username, password, contact_no || '', email, birth_date, gender, 'vendor']
         );
 
         const userId = userResult.insertId;
@@ -85,15 +87,15 @@ const registerVendor = async (req, res) => {
         // Get file paths
         const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].filename : null;
         const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].filename : null;
-        const iceCreamPhotoUrl = req.files?.ice_cream_photo ? req.files.ice_cream_photo[0].filename : null;
+        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].filename : null;
 
         // No location data collected during registration - address will be required in vendor setup
         let primaryAddressId = null;
 
-        // Insert vendor with placeholder store name (will be set during setup)
+        // Insert vendor without store name (will be set during setup)
         const [vendorResult] = await pool.query(
-            'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-            ['Store Name Pending Setup', businessPermitUrl, validIdUrl, 'pending', userId, primaryAddressId]
+            'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, proof_image_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+            [null, businessPermitUrl, validIdUrl, proofImageUrl, 'pending', userId, primaryAddressId]
         );
 
         console.log('Vendor created with ID:', vendorResult.insertId);
@@ -103,7 +105,7 @@ const registerVendor = async (req, res) => {
             message: 'Vendor registration successful. Your account is pending approval.',
             vendor: {
                 vendor_id: vendorResult.insertId,
-                store_name: 'Store Name Pending Setup',
+                store_name: null,
                 status: 'pending',
                 user_id: userId
             },
@@ -143,6 +145,7 @@ const getCurrentVendor = async (req, res) => {
                 v.status,
                 v.user_id,
                 v.profile_image_url,
+                v.proof_image_url,
                 u.fname,
                 u.lname,
                 u.username,
@@ -184,7 +187,7 @@ const getVendorForSetup = async (req, res) => {
                 v.store_name,
                 v.status,
                 v.user_id,
-                v.profile_image_url,
+                v.proof_image_url,
                 u.fname,
                 u.lname,
                 u.username,
@@ -242,13 +245,24 @@ const updateVendorProfile = async (req, res) => {
             profileImageUrl = req.files.profile_image[0].filename;
         }
         
-        // Update vendor information (store_name and profile image)
+        // Handle proof image upload
+        let proofImageUrl = null;
+        if (req.files?.proof_image) {
+            proofImageUrl = req.files.proof_image[0].filename;
+        }
+        
+        // Update vendor information (store_name, profile image, and proof image)
         const vendorUpdateData = [store_name];
         let vendorQuery = 'UPDATE vendors SET store_name = ?';
         
         if (profileImageUrl) {
             vendorQuery += ', profile_image_url = ?';
             vendorUpdateData.push(profileImageUrl);
+        }
+        
+        if (proofImageUrl) {
+            vendorQuery += ', proof_image_url = ?';
+            vendorUpdateData.push(proofImageUrl);
         }
         
         vendorQuery += ' WHERE vendor_id = ?';
@@ -258,7 +272,7 @@ const updateVendorProfile = async (req, res) => {
         
         // Get updated vendor data to return profile image URL
         const [updatedVendor] = await pool.query(
-            'SELECT profile_image_url FROM vendors WHERE vendor_id = ?',
+            'SELECT profile_image_url, proof_image_url FROM vendors WHERE vendor_id = ?',
             [vendor_id]
         );
         
@@ -296,7 +310,8 @@ const updateVendorProfile = async (req, res) => {
         res.json({
             success: true,
             message: 'Vendor profile updated successfully',
-            profile_image_url: updatedVendor[0]?.profile_image_url
+            profile_image_url: updatedVendor[0]?.profile_image_url,
+            proof_image_url: updatedVendor[0]?.proof_image_url
         });
         
     } catch (err) {
@@ -316,7 +331,7 @@ const checkVendorSetupComplete = async (req, res) => {
         const [vendors] = await pool.query(`
             SELECT 
                 v.vendor_id, v.store_name, v.status, v.primary_address_id,
-                v.business_permit_url, v.valid_id_url, v.profile_image_url,
+                v.business_permit_url, v.valid_id_url, v.proof_image_url,
                 u.fname, u.lname, u.username, u.email, u.contact_no
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
@@ -334,12 +349,11 @@ const checkVendorSetupComplete = async (req, res) => {
         const vendor = vendors[0];
         
         // Check if setup is complete (has all required fields)
-        // Setup is complete only if vendor has a proper store name (not the default "Store Name Pending Setup")
+        // Setup is complete only if vendor has a proper store name
         const isSetupComplete = !!(
             vendor.business_permit_url &&
             vendor.valid_id_url &&
-            vendor.store_name &&
-            vendor.store_name !== 'Store Name Pending Setup'
+            vendor.store_name
         );
 
         res.json({
@@ -475,7 +489,7 @@ const registerExistingUserAsVendor = async (req, res) => {
         
         // Handle both JSON and form-data requests and trim strings
         const trimmedBody = trimObjectStrings(req.body);
-        const { fname, lname, username, password, contact_no, email, store_name, city, province, role } = trimmedBody;
+        const { fname, lname, username, password, contact_no, email, birth_date, gender, store_name, city, province, role } = trimmedBody;
         
         // Validate required fields
         const requiredFields = [
@@ -483,6 +497,8 @@ const registerExistingUserAsVendor = async (req, res) => {
             { key: 'lname', name: 'Last name' },
             { key: 'email', name: 'Email' },
             { key: 'password', name: 'Password' },
+            { key: 'birth_date', name: 'Birth date' },
+            { key: 'gender', name: 'Gender' },
             { key: 'store_name', name: 'Store name' }
         ];
         
@@ -518,16 +534,16 @@ const registerExistingUserAsVendor = async (req, res) => {
             return res.status(400).json({ error: 'Vendor application already exists for this user' });
         }
 
-        // Update user role to vendor
+        // Update user role to vendor and add birth_date and gender
         await pool.query(
-            'UPDATE users SET role = ? WHERE user_id = ?',
-            ['vendor', user.user_id]
+            'UPDATE users SET role = ?, birth_date = ?, gender = ? WHERE user_id = ?',
+            ['vendor', birth_date, gender, user.user_id]
         );
 
         // Get file paths
         const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].filename : null;
         const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].filename : null;
-        const iceCreamPhotoUrl = req.files?.ice_cream_photo ? req.files.ice_cream_photo[0].filename : null;
+        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].filename : null;
 
         let primaryAddressId = null;
 
@@ -549,8 +565,8 @@ const registerExistingUserAsVendor = async (req, res) => {
 
         // Insert vendor record
         const [vendorResult] = await pool.query(
-            'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-            [store_name, businessPermitUrl, validIdUrl, 'pending', user.user_id, primaryAddressId]
+            'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, proof_image_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+            [store_name, businessPermitUrl, validIdUrl, proofImageUrl, 'pending', user.user_id, primaryAddressId]
         );
 
         console.log('Vendor created with ID:', vendorResult.insertId);

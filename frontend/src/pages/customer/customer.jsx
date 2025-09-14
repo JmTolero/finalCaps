@@ -133,8 +133,17 @@ export const Customer = () => {
   const fetchAddresses = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      // TODO: Replace with actual user ID from authentication context
-      const userId = 1; // This should come from your auth system
+      
+      // Get user ID from sessionStorage
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        console.error('No user session found');
+        setAddresses([]);
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      const userId = user.id;
+      
       const response = await axios.get(`${apiBase}/api/user/${userId}/addresses`);
       setAddresses(response.data || []);
     } catch (error) {
@@ -150,7 +159,15 @@ export const Customer = () => {
   const saveAddress = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const userId = 1; // TODO: Replace with actual user ID from authentication context
+      
+      // Get user ID from sessionStorage
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        setStatus({ type: 'error', message: 'No user session found. Please log in again.' });
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      const userId = user.id;
       
       const addressPayload = {
         ...newAddress,
@@ -218,7 +235,16 @@ export const Customer = () => {
   const setDefaultAddress = async (addressId) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const userId = 1; // TODO: Replace with actual user ID from authentication context
+      
+      // Get user ID from sessionStorage
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        setStatus({ type: 'error', message: 'No user session found. Please log in again.' });
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      const userId = user.id;
+      
       await axios.put(`${apiBase}/api/user/${userId}/address/${addressId}/default`);
       setStatus({ type: 'success', message: 'Default address updated!' });
       fetchAddresses();

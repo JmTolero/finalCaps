@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(45),
     contact_no VARCHAR(45),
     email VARCHAR(100),
+    birth_date DATE,
+    gender ENUM('male', 'female', 'other', 'prefer_not_to_say'),
     role VARCHAR(50),
     status ENUM('active', 'inactive', 'suspended') DEFAULT 'active' COMMENT 'User account status',
     created_at TIMESTAMP
@@ -26,6 +28,8 @@ CREATE TABLE IF NOT EXISTS vendors (
     store_name VARCHAR(50),
     valid_id_url VARCHAR(100),
     business_permit_url VARCHAR(100),
+    profile_image_url VARCHAR(100),
+    proof_image_url VARCHAR(100),
     status VARCHAR(45),
     address_id INT(11),
     created_at TIMESTAMP,
@@ -111,8 +115,11 @@ CREATE TABLE IF NOT EXISTS addresses (
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_users_birth_date ON users(birth_date);
+CREATE INDEX idx_users_gender ON users(gender);
 CREATE INDEX idx_vendors_user_id ON vendors(user_id);
 CREATE INDEX idx_vendors_status ON vendors(status);
+CREATE INDEX idx_vendors_proof_image ON vendors(proof_image_url);
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 CREATE INDEX idx_orders_vendor_id ON orders(vendor_id);
 CREATE INDEX idx_orders_status ON orders(status);

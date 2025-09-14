@@ -3,34 +3,51 @@ const router = express.Router();
 const addressModel = require('../../model/shared/addressModel');
 const pool = require('../../db/config');
 
-// Get current vendor user info (for demo purposes)
+// Get current vendor user info based on logged-in user
 router.get('/vendor/current', async (req, res) => {
   try {
-    // In a real app, you'd get this from authentication token/session
-    // For now, get the first vendor user from the database
+    console.log('Fetching current vendor...');
+    
+    // Get user ID from request headers (sent by frontend)
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'User ID not provided. Please log in again.' 
+      });
+    }
+    
+    console.log('Fetching vendor data for user ID:', userId);
+    
+    // Get the specific vendor user from the database
     const [vendors] = await pool.query(`
       SELECT 
         u.user_id as user_id, 
         u.fname as fname, 
-        u.email, 
+        u.lname as lname,
+        u.email,
+        u.contact_no,
         v.vendor_id as vendor_id,
         v.store_name as store_name,
         v.status as status,
-        v.profile_image_url as profile_image_url
+        v.profile_image_url as profile_image_url,
+        v.proof_image_url as proof_image_url
       FROM users u
       INNER JOIN vendors v ON u.user_id = v.user_id
-      WHERE u.role = 'vendor'
-      ORDER BY v.created_at DESC
-      LIMIT 1
-    `);
+      WHERE u.user_id = ? AND u.role = 'vendor'
+    `, [userId]);
+    
+    console.log('Vendors found for user', userId, ':', vendors.length);
     
     if (vendors.length === 0) {
       return res.status(404).json({ 
         success: false,
-        error: 'No vendor users found. Please register as a vendor first.' 
+        error: 'No vendor account found for this user. Please register as a vendor first.' 
       });
     }
     
+    console.log('Returning vendor data:', vendors[0]);
     res.json({
       success: true,
       vendor: vendors[0]

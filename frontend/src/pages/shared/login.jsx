@@ -137,7 +137,7 @@ export const Login = () => {
       <>
         <NavWithLogo />
         
-        <main className="flex items-center justify-center min-h-screen px-4 py-8">
+        <main className="flex items-center justify-center min-h-screen px-4 py-8 pt-20">
           <div 
             className="rounded-2xl shadow-2xl w-full max-w-4xl text-black"
             style={{backgroundColor: "#D4F6FF"}}

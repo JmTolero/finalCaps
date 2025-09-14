@@ -16,6 +16,8 @@ export const AdminUserManagement = () => {
     username: '',
     email: '',
     contact_no: '',
+    birth_date: '',
+    gender: '',
     role: 'customer'
   });
 
@@ -115,6 +117,8 @@ export const AdminUserManagement = () => {
           username: user.username || '',
           email: user.email || '',
           contact_no: user.contact_no || '',
+          birth_date: user.birth_date || '',
+          gender: user.gender || '',
           role: user.role || 'customer'
         });
         setShowEditModal(true);
@@ -142,8 +146,33 @@ export const AdminUserManagement = () => {
       username: '',
       email: '',
       contact_no: '',
+      birth_date: '',
+      gender: '',
       role: 'customer'
     });
+  };
+
+  const viewDocument = (documentUrl, title) => {
+    if (documentUrl) {
+      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+      window.open(imageUrl, '_blank');
+    } else {
+      alert('No document available');
+    }
+  };
+
+  const downloadDocument = (documentUrl, documentType) => {
+    if (documentUrl) {
+      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `${documentType}_${Date.now()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('No document available for download');
+    }
   };
 
   // Filter users based on search term and role filter
@@ -237,6 +266,11 @@ export const AdminUserManagement = () => {
     });
   };
 
+  const formatGender = (gender) => {
+    if (!gender) return 'Not provided';
+    return gender.charAt(0).toUpperCase() + gender.slice(1).replace('_', ' ');
+  };
+
   return (
     <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-screen">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">User Management</h1>
@@ -275,7 +309,7 @@ export const AdminUserManagement = () => {
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-gray-50 rounded-lg shadow-lg overflow-hidden">
         {/* Loading State */}
         {loading && (
           <div className="text-center py-8">
@@ -322,9 +356,9 @@ export const AdminUserManagement = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-gray-50 divide-y divide-gray-200">
                     {filteredUsers.map((user) => (
-                      <tr key={user.user_id} className="hover:bg-gray-50">
+                      <tr key={user.user_id} className="hover:bg-gray-100 transition-colors duration-200">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {user.user_id}
                         </td>
@@ -383,7 +417,7 @@ export const AdminUserManagement = () => {
             {/* Mobile Card View */}
             <div className="md:hidden max-h-96 overflow-y-auto space-y-4 p-4">
               {filteredUsers.map((user) => (
-                <div key={user.user_id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div key={user.user_id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900">ID: {user.user_id}</h3>
@@ -435,8 +469,8 @@ export const AdminUserManagement = () => {
 
       {/* View User Modal */}
       {showViewModal && selectedUser && (
-        <div className="fixed inset-0 bg-gradient-to-br from-[#0693FF] to-[#C0E2FB] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="bg-[#FFDDAE] px-6 py-4 rounded-t-2xl">
               <div className="flex items-center justify-between">
@@ -459,15 +493,15 @@ export const AdminUserManagement = () => {
                 {/* Left Section - User Information */}
                 <div className="flex-1 md:w-1/2">
                   {/* Profile Section */}
-                  <div className="flex items-start space-x-4 mb-8">
-                    <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
+                  <div className="flex flex-col items-center mb-8">
+                    <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mb-4">
                       <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                       </svg>
                     </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 mb-1">Name</h2>
-                      <p className="text-gray-700">{(selectedUser.fname || '') + ' ' + (selectedUser.lname || '') || 'No name provided'}</p>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 mb-2">{(selectedUser.fname || '') + ' ' + (selectedUser.lname || '') || 'No name provided'}</h2>
+                      <p className="text-sm text-gray-600">User ID: #{selectedUser.user_id}</p>
                     </div>
                   </div>
 
@@ -487,6 +521,23 @@ export const AdminUserManagement = () => {
                       <span className="text-gray-900 font-medium">Contact No.: </span>
                       <span className="text-gray-700">{selectedUser.contact_no || 'Not provided'}</span>
                     </div>
+
+                    <div>
+                      <span className="text-gray-900 font-medium">Birth Date: </span>
+                      <span className="text-gray-700">{selectedUser.birth_date ? formatDate(selectedUser.birth_date) : 'Not provided'}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-gray-900 font-medium">Gender: </span>
+                      <span className="text-gray-700">{formatGender(selectedUser.gender)}</span>
+                    </div>
+
+                    {selectedUser.location && (
+                      <div>
+                        <span className="text-gray-900 font-medium">Location: </span>
+                        <span className="text-gray-700">{selectedUser.location}</span>
+                      </div>
+                    )}
                     
                     <div>
                       <span className="text-gray-900 font-medium">User Role: </span>
@@ -522,20 +573,6 @@ export const AdminUserManagement = () => {
                       </div>
                     </div>
 
-                    {/* User ID */}
-                    <div className="bg-white rounded-lg p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center">
-                          <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">User ID</p>
-                          <p className="text-sm text-gray-600">#{selectedUser.user_id}</p>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Additional Info */}
                     <div className="mt-6 space-y-4">
@@ -544,10 +581,117 @@ export const AdminUserManagement = () => {
                         <span className="text-gray-700 ml-2">{formatDate(selectedUser.created_at) || 'N/A'}</span>
                       </div>
                       
+                      {selectedUser.vendor_id && (
+                        <div>
+                          <span className="text-gray-900 font-medium">Vendor ID:</span>
+                          <span className="text-gray-700 ml-2">#{selectedUser.vendor_id}</span>
+                        </div>
+                      )}
+                      
                       {selectedUser.vendor_status && (
                         <div>
                           <span className="text-gray-900 font-medium">Vendor Status:</span>
                           <span className="text-gray-700 ml-2">{selectedUser.vendor_status}</span>
+                        </div>
+                      )}
+
+                      {/* Vendor Documents - Only show for vendors */}
+                      {selectedUser.role === 'vendor' && (selectedUser.business_permit_url || selectedUser.valid_id_url || selectedUser.proof_image_url) && (
+                        <div className="mt-6">
+                          <h4 className="text-md font-semibold text-gray-900 mb-4">Document Verification</h4>
+                          <div className="space-y-3">
+                            
+                            {/* Valid ID */}
+                            {selectedUser.valid_id_url && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"/>
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900 text-sm">Valid ID</p>
+                                    <div className="flex space-x-3 mt-1">
+                                      <button
+                                        onClick={() => viewDocument(selectedUser.valid_id_url, 'Valid ID')}
+                                        className="text-xs text-green-600 hover:text-green-800 underline"
+                                      >
+                                        👁️ View
+                                      </button>
+                                      <button
+                                        onClick={() => downloadDocument(selectedUser.valid_id_url, 'valid_id')}
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                      >
+                                        📥 Download
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Business Permit */}
+                            {selectedUser.business_permit_url && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900 text-sm">Business Permit</p>
+                                    <div className="flex space-x-3 mt-1">
+                                      <button
+                                        onClick={() => viewDocument(selectedUser.business_permit_url, 'Business Permit')}
+                                        className="text-xs text-green-600 hover:text-green-800 underline"
+                                      >
+                                        👁️ View
+                                      </button>
+                                      <button
+                                        onClick={() => downloadDocument(selectedUser.business_permit_url, 'business_permit')}
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                      >
+                                        📥 Download
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Ice Cream Making Proof */}
+                            {selectedUser.proof_image_url && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                                      <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"/>
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900 text-sm">Ice Cream Making Proof</p>
+                                    <div className="flex space-x-3 mt-1">
+                                      <button
+                                        onClick={() => viewDocument(selectedUser.proof_image_url, 'Ice Cream Making Proof')}
+                                        className="text-xs text-green-600 hover:text-green-800 underline"
+                                      >
+                                        👁️ View
+                                      </button>
+                                      <button
+                                        onClick={() => downloadDocument(selectedUser.proof_image_url, 'ice_cream_proof')}
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                      >
+                                        📥 Download
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
                         </div>
                       )}
                     </div>
@@ -610,8 +754,8 @@ export const AdminUserManagement = () => {
 
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-gradient-to-br from-[#0693FF] to-[#C0E2FB] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="bg-[#FFDDAE] px-6 py-4 rounded-t-2xl">
               <div className="flex items-center justify-between">
@@ -655,7 +799,7 @@ export const AdminUserManagement = () => {
                           placeholder="First name"
                           value={editForm.fname}
                           onChange={(e) => setEditForm({...editForm, fname: e.target.value})}
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                           required
                         />
                       </div>
@@ -666,7 +810,7 @@ export const AdminUserManagement = () => {
                           placeholder="Last name"
                           value={editForm.lname}
                           onChange={(e) => setEditForm({...editForm, lname: e.target.value})}
-                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
                         />
                       </div>
                     </div>
@@ -692,6 +836,32 @@ export const AdminUserManagement = () => {
                         onChange={(e) => setEditForm({...editForm, contact_no: e.target.value})}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Birth Date:</label>
+                        <input
+                          type="date"
+                          value={editForm.birth_date}
+                          onChange={(e) => setEditForm({...editForm, birth_date: e.target.value})}
+                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Gender:</label>
+                        <select
+                          value={editForm.gender}
+                          onChange={(e) => setEditForm({...editForm, gender: e.target.value})}
+                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                        >
+                          <option value="">Select gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                          <option value="prefer_not_to_say">Prefer not to say</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div>

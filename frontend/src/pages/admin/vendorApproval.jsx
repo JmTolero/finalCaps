@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import VendorDetailView from '../../components/admin/VendorDetailView';
 
@@ -17,20 +17,7 @@ export const AdminVendorApproval = () => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [previousVendorCount, setPreviousVendorCount] = useState(0);
 
-  // Fetch vendors from API
-  useEffect(() => {
-    fetchVendors();
-    
-    // Set up auto-refresh every 30 seconds (without showing loading)
-    const interval = setInterval(() => {
-      fetchVendors(false);
-    }, 30000); // 30 seconds
-    
-    // Cleanup interval on component unmount
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchVendors = async (showLoading = true) => {
+  const fetchVendors = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const response = await axios.get('http://localhost:3001/api/admin/vendors');
@@ -58,7 +45,20 @@ export const AdminVendorApproval = () => {
     } finally {
       if (showLoading) setLoading(false);
     }
-  };
+  }, [previousVendorCount]);
+
+  // Fetch vendors from API
+  useEffect(() => {
+    fetchVendors();
+    
+    // Set up auto-refresh every 30 seconds (without showing loading)
+    const interval = setInterval(() => {
+      fetchVendors(false);
+    }, 30000); // 30 seconds
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, [fetchVendors]);
 
   const updateVendorStatus = async (vendorId, newStatus) => {
     try {
@@ -171,8 +171,9 @@ export const AdminVendorApproval = () => {
   }
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-screen">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Vendor Approval</h1>
+    <main className="w-full py-6 sm:py-10 min-h-screen">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Vendor Approval</h1>
       
       {/* Tabs */}
       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1 mb-6">
@@ -285,44 +286,44 @@ export const AdminVendorApproval = () => {
         {!loading && !error && activeTab === 'allVendors' && (
           <>
             {/* Desktop/Tablet Table View - Shows on screens 768px+ */}
-            <div className="hidden md:block shadow-lg rounded-lg overflow-hidden">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="min-w-full border-collapse bg-white">
+            <div className="hidden md:block shadow-lg rounded-lg overflow-hidden w-full">
+              <div className="max-h-96 overflow-y-auto w-full">
+                <table className="w-full border-collapse bg-white">
                   <thead className="bg-[#FFDDAE] sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-orange-200">Vendor Name</th>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-orange-200">Shop Name</th>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-orange-200">Email</th>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-orange-200">Status</th>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-orange-200">Registration Date</th>
-                    <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-48">Vendor Name</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-48">Shop Name</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-64">Email</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-32">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-40">Registration Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 w-48">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVendors.map((vendor) => (
                     <tr key={vendor.vendor_id} className="border-b hover:bg-gray-50">
-                      <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                        <div className="text-xs md:text-sm font-medium text-gray-900">
+                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-48">
+                        <div className="text-sm font-medium text-gray-900 truncate">
                           {(vendor.fname || '') + ' ' + (vendor.lname || '')}
                         </div>
                       </td>
-                      <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                        <div className="text-xs md:text-sm font-medium text-gray-900">{vendor.store_name || 'N/A'}</div>
+                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-48">
+                        <div className="text-sm font-medium text-gray-900 truncate">{vendor.store_name || 'N/A'}</div>
                       </td>
-                      <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                        <div className="text-xs md:text-sm text-gray-600">{vendor.email || 'N/A'}</div>
+                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-64">
+                        <div className="text-sm text-gray-600 truncate">{vendor.email || 'N/A'}</div>
                       </td>
-                      <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(vendor.status)}`}>
+                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-32">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(vendor.status)}`}>
                           {getStatusDisplayName(vendor.status)}
                         </span>
                       </td>
-                      <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                        <div className="text-xs md:text-sm text-gray-500">
+                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-40">
+                        <div className="text-sm text-gray-500">
                           {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
                         </div>
                       </td>
-                      <td className="px-3 md:px-4 py-3 md:py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap w-48">
                         <div className="flex flex-col md:flex-row space-y-1 md:space-y-0 md:space-x-2">
                           {(!vendor.status || vendor.status.toLowerCase() !== 'approved') && (
                             <button
@@ -490,6 +491,7 @@ export const AdminVendorApproval = () => {
           </div>
         </div>
       )}
+      </div>
     </main>
   );
 };  

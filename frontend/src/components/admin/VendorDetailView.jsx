@@ -15,6 +15,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
       setLoading(true);
       const response = await axios.get(`http://localhost:3001/api/admin/vendors/${vendorId}`);
       if (response.data.success) {
+        console.log('Vendor data received:', response.data.vendor);
         setVendor(response.data.vendor);
         
         // Fetch vendor's addresses if we have user_id
@@ -98,10 +99,16 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   };
 
   const viewImage = (documentUrl, title) => {
+    console.log('viewImage called with:', { documentUrl, title });
     if (documentUrl) {
-      setSelectedImage(`http://localhost:3001/uploads/vendor-documents/${documentUrl}`);
+      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+      console.log('Setting image URL:', imageUrl);
+      setSelectedImage(imageUrl);
       setSelectedImageTitle(title);
       setShowImageModal(true);
+    } else {
+      console.log('No document URL provided for:', title);
+      alert('No image available for this document');
     }
   };
 
@@ -241,12 +248,12 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
               
               <div>
                 <span className="text-gray-900 font-medium">Date of Birth:</span>
-                <span className="text-gray-700 ml-2">{vendor.date_of_birth ? formatDate(vendor.date_of_birth) : ''}</span>
+                <span className="text-gray-700 ml-2">{vendor.birth_date ? formatDate(vendor.birth_date) : 'Not provided'}</span>
               </div>
               
               <div>
                 <span className="text-gray-900 font-medium">Gender: </span>
-                <span className="text-gray-700">{vendor.gender || 'Female'}</span>
+                <span className="text-gray-700">{vendor.gender ? vendor.gender.charAt(0).toUpperCase() + vendor.gender.slice(1).replace('_', ' ') : 'Not provided'}</span>
               </div>
             </div>
           </div>
@@ -303,6 +310,37 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                       </button>
                       <button
                         onClick={() => downloadDocument(vendor.business_permit_url, 'business_permit')}
+                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      >
+                        📥 Download file
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ice Cream Making Proof */}
+              <div className="bg-white rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Ice Cream Making Proof</p>
+                    <div className="flex space-x-3 mt-1">
+                      <button
+                        onClick={() => {
+                          console.log('Ice Cream Making Proof button clicked, proof_image_url:', vendor.proof_image_url);
+                          viewImage(vendor.proof_image_url, 'Ice Cream Making Proof');
+                        }}
+                        className="text-sm text-green-600 hover:text-green-800 underline"
+                      >
+                        👁️ View Image
+                      </button>
+                      <button
+                        onClick={() => downloadDocument(vendor.proof_image_url, 'ice_cream_proof')}
                         className="text-sm text-blue-600 hover:text-blue-800 underline"
                       >
                         📥 Download file
@@ -389,6 +427,8 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                     downloadDocument(vendor.valid_id_url, 'valid_id');
                   } else if (selectedImageTitle === 'Business Permit') {
                     downloadDocument(vendor.business_permit_url, 'business_permit');
+                  } else if (selectedImageTitle === 'Ice Cream Making Proof') {
+                    downloadDocument(vendor.proof_image_url, 'ice_cream_proof');
                   }
                 }}
                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-medium"

@@ -1,4 +1,4 @@
-const pool = require('../../db/config');
+    const pool = require('../../db/config');
 
 // Middleware to verify admin access
 const verifyAdmin = async (req, res) => {

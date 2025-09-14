@@ -54,57 +54,6 @@ app.use('/api/vendor', vendorRoutes);
 //     }
 // });
 
-app.post('/register', async (req, res) => {
-    try {
-        // Trim all string values
-        const trimmedBody = trimObjectStrings(req.body || {});
-        const { firstname, lastname, username, password, confirm, contact, email } = trimmedBody;
-
-        // Validate required fields for empty/whitespace values
-        const requiredFields = [
-            { key: 'firstname', name: 'First name' },
-            { key: 'lastname', name: 'Last name' },
-            { key: 'username', name: 'Username' },
-            { key: 'password', name: 'Password' },
-            { key: 'contact', name: 'Contact number' },
-            { key: 'email', name: 'Email' }
-        ];
-
-        const validation = validateRequiredFields(trimmedBody, requiredFields);
-        if (!validation.isValid) {
-            return res.status(400).json({ error: validation.message });
-        }
-
-        if (confirm !== undefined && confirm !== password) {
-            return res.status(400).json({ error: 'Passwords do not match' });
-        }
-
-        // Check for existing user by username or email
-        const [existing] = await pool.query(
-            'SELECT user_id FROM users WHERE username = ? OR email = ? LIMIT 1',
-            [username, email]
-        );
-        if (existing && existing.length > 0) {
-            return res.status(409).json({ error: 'Username or email already exists' });
-        }
-
-        // NOTE: For production, hash the password with bcrypt.
-        // In this starter, we store as plain text to avoid extra deps. Replace when ready.
-        const [result] = await pool.query(
-            'INSERT INTO users (fname, lname, username, password, contact_no, email) VALUES (?, ?, ?, ?, ?, ?)',
-            [firstname, lastname, username, password, contact, email]
-        );
-
-        return res.status(201).json({ id: result.insertId, message: 'User registered successfully' });
-    } catch (err) {
-        console.error('POST /register failed:', err.code, err.message);
-        return res.status(500).json({
-            error: 'Database error',
-            code: err.code,
-            message: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
-    }
-});
 
 app.get('/db/health', async (req, res) => {
     try {

@@ -14,9 +14,11 @@ export const VendorRegister = () => {
     confirmPassword: '',
     contact_no: '',
     email: '',
+    birth_date: '',
+    gender: '',
     valid_id: null,
     business_permit: null,
-    ice_cream_photo: null
+    proof_image: null
   });
   const [status, setStatus] = useState({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export const VendorRegister = () => {
     console.log('Form data:', form); // Debug log
     
     // Validate required text fields for empty/whitespace values
-    const requiredTextFields = ['fname', 'lname', 'username', 'password', 'contact_no', 'email'];
+    const requiredTextFields = ['fname', 'lname', 'username', 'password', 'contact_no', 'email', 'birth_date', 'gender'];
     const validation = validateFormData(form, requiredTextFields);
     if (!validation.isValid) {
       setStatus({ type: 'error', message: validation.message });
@@ -56,7 +58,7 @@ export const VendorRegister = () => {
       return false;
     }
 
-    if (!form.valid_id || !form.business_permit || !form.ice_cream_photo) {
+    if (!form.valid_id || !form.business_permit || !form.proof_image) {
       setStatus({ type: 'error', message: 'Please upload all required documents' });
       return false;
     }
@@ -90,10 +92,12 @@ export const VendorRegister = () => {
       formData.append('password', trimmedForm.password);
       formData.append('contact_no', trimmedForm.contact_no);
       formData.append('email', trimmedForm.email);
+      formData.append('birth_date', trimmedForm.birth_date);
+      formData.append('gender', trimmedForm.gender);
       formData.append('role', 'vendor');
       formData.append('valid_id', form.valid_id);
       formData.append('business_permit', form.business_permit);
-      formData.append('ice_cream_photo', form.ice_cream_photo);
+      formData.append('proof_image', form.proof_image);
 
       console.log('Sending registration request to:', `${apiBase}/api/vendor/register`);
       const res = await axios.post(`${apiBase}/api/vendor/register`, formData, {
@@ -166,7 +170,7 @@ export const VendorRegister = () => {
   return (
     <>
       <NavWithLogo />
-      <main className="flex items-center justify-center min-h-[90vh] px-4 py-8">
+      <main className="flex items-center justify-center min-h-[90vh] px-4 py-8 pt-20">
         <div 
           className="rounded-2xl shadow-2xl w-full max-w-6xl text-black overflow-hidden"
           style={{backgroundColor: "#D4F6FF"}}
@@ -309,6 +313,41 @@ export const VendorRegister = () => {
                   </div>
                 </div>
 
+                {/* Birth Date and Gender */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="block text-lg font-semibold mb-2 text-gray-700" htmlFor="birth_date">
+                      Birth Date *
+                    </label>
+                    <input
+                      id="birth_date"
+                      type="date"
+                      className="w-full px-4 py-4 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.birth_date}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-lg font-semibold mb-2 text-gray-700" htmlFor="gender">
+                      Gender *
+                    </label>
+                    <select
+                      id="gender"
+                      className="w-full px-4 py-4 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.gender}
+                      onChange={handleChange}
+                    >
+                      <option value="">Select your gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
 
               </div>
 
@@ -328,7 +367,7 @@ export const VendorRegister = () => {
                   </h3>
                   <ul className="text-sm text-amber-700 space-y-1">
                     <li>• All documents must be clear and readable</li>
-                    <li>• Accepted formats: JPG, PNG, PDF (Max 5MB each)</li>
+                    <li>• Accepted formats: JPG, PNG, PDF (Max 20MB each)</li>
                     <li>• Ice cream photo should show your actual product</li>
                   </ul>
                 </div>
@@ -371,17 +410,17 @@ export const VendorRegister = () => {
                   </div>
                 </div>
 
-                {/* Upload Ice Cream Photo */}
+                {/* Upload Proof Image */}
                 <div className="form-group">
-                  <label className="block text-lg font-semibold mb-3 text-gray-700" htmlFor="ice_cream_photo">
-                    Ice Cream Product Photo *
+                  <label className="block text-lg font-semibold mb-3 text-gray-700" htmlFor="proof_image">
+                    Ice Cream Making Proof *
                     <span className="text-sm font-normal text-gray-500 block">
-                      Photo of your ice cream drums or products (proof of business)
+                      Photo of you making ice cream or with your ice cream products (proof of business)
                     </span>
                   </label>
                   <div className="relative">
                     <input
-                      id="ice_cream_photo"
+                      id="proof_image"
                       type="file"
                       accept="image/*"
                       className="w-full px-4 py-4 rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -389,6 +428,7 @@ export const VendorRegister = () => {
                     />
                   </div>
                 </div>
+
 
                 {/* Registration Process Info */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-200 shadow-sm">

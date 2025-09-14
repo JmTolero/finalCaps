@@ -35,9 +35,7 @@ export const LandingPage = () => {
             <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center w-full max-w-sm hover:shadow-xl transition-shadow duration-300">
             <div className="bg-gradient-to-br from-amber-100 to-orange-200 w-full h-64 rounded-lg mb-6 flex items-center justify-center border-2 border-dashed border-amber-300">
                 <div className="text-center">
-                    <div className="text-6xl mb-2">🥤</div>
-                    <p className="text-amber-600 font-medium">Medium Drum Image</p>
-                    <p className="text-amber-500 text-sm">Template Placeholder</p>
+                    <div className="text-6xl mb-2"></div>
                 </div>
             </div>
             <h3 className="text-2xl font-bold mb-4 text-gray-800">Medium Drum</h3>
@@ -47,9 +45,7 @@ export const LandingPage = () => {
             <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center w-full max-w-sm hover:shadow-xl transition-shadow duration-300">
             <div className="bg-gradient-to-br from-amber-100 to-orange-200 w-full h-64 rounded-lg mb-6 flex items-center justify-center border-2 border-dashed border-amber-300">
                 <div className="text-center">
-                    <div className="text-6xl mb-2">🍦</div>
-                    <p className="text-amber-600 font-medium">Large Drum Image</p>
-                    <p className="text-amber-500 text-sm">Template Placeholder</p>
+                    <div className="text-6xl mb-2"></div>
                 </div>
             </div>
             <h3 className="text-2xl font-bold mb-4 text-gray-800">Large Drum</h3>
@@ -59,9 +55,7 @@ export const LandingPage = () => {
             <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center w-full max-w-sm hover:shadow-xl transition-shadow duration-300">
             <div className="bg-gradient-to-br from-amber-100 to-orange-200 w-full h-64 rounded-lg mb-6 flex items-center justify-center border-2 border-dashed border-amber-300">
                 <div className="text-center">
-                    <div className="text-6xl mb-2">🧊</div>
-                    <p className="text-amber-600 font-medium">Small Drum Image</p>
-                    <p className="text-amber-500 text-sm">Template Placeholder</p>
+                    <div className="text-6xl mb-2"></div>
                 </div>
             </div>
             <h3 className="text-2xl font-bold mb-4 text-gray-800">Small Drum</h3>
@@ -101,7 +95,7 @@ export const LandingPage = () => {
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div className="bg-gradient-to-br from-pink-100 to-purple-200 h-56 flex items-center justify-center relative">
                             <div className="text-center">
-                                <div className="text-6xl mb-3">🍓</div>
+                                <div className="text-6xl mb-3"></div>
                                 <div className="bg-white bg-opacity-80 rounded-lg p-3">
                                     <p className="text-pink-600 font-bold text-lg">Strawberry</p>
                                     <p className="text-pink-500 text-sm">Dirty Ice Cream</p>
@@ -139,7 +133,7 @@ export const LandingPage = () => {
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div className="bg-gradient-to-br from-yellow-100 to-orange-200 h-56 flex items-center justify-center relative">
                             <div className="text-center">
-                                <div className="text-6xl mb-3">🍫</div>
+                                <div className="text-6xl mb-3"></div>
                                 <div className="bg-white bg-opacity-80 rounded-lg p-3">
                                     <p className="text-orange-600 font-bold text-lg">Chocolate</p>
                                     <p className="text-orange-500 text-sm">Dirty Ice Cream</p>
@@ -176,7 +170,7 @@ export const LandingPage = () => {
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div className="bg-gradient-to-br from-purple-100 to-indigo-200 h-56 flex items-center justify-center relative">
                             <div className="text-center">
-                                <div className="text-6xl mb-3">🍇</div>
+                                <div className="text-6xl mb-3"></div>
                                 <div className="bg-white bg-opacity-80 rounded-lg p-3">
                                     <p className="text-purple-600 font-bold text-lg">Ube</p>
                                     <p className="text-purple-500 text-sm">Dirty Ice Cream</p>
@@ -213,7 +207,7 @@ export const LandingPage = () => {
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
                         <div className="bg-gradient-to-br from-green-100 to-teal-200 h-56 flex items-center justify-center relative">
                             <div className="text-center">
-                                <div className="text-6xl mb-3">🥥</div>
+                                <div className="text-6xl mb-3"></div>
                                 <div className="bg-white bg-opacity-80 rounded-lg p-3">
                                     <p className="text-teal-600 font-bold text-lg">Coconut</p>
                                     <p className="text-teal-500 text-sm">Dirty Ice Cream</p>

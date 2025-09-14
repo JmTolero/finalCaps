@@ -12,7 +12,9 @@ export const UserRegister = () => {
     password: "",
     confirm: "",
     contact: "",
-    email: ""
+    email: "",
+    birth_date: "",
+    gender: ""
   });
   const [status, setStatus] = useState({ type: null, message: "" });
 
@@ -27,7 +29,7 @@ export const UserRegister = () => {
     setStatus({ type: null, message: "" });
 
     // Validate form data for empty/whitespace values
-    const requiredFields = ['firstname', 'lastname', 'username', 'password', 'confirm', 'contact', 'email'];
+    const requiredFields = ['firstname', 'lastname', 'username', 'password', 'confirm', 'contact', 'email', 'birth_date', 'gender'];
     const validation = validateFormData(form, requiredFields);
     if (!validation.isValid) {
       setStatus({ type: "error", message: validation.message });
@@ -58,6 +60,8 @@ export const UserRegister = () => {
         confirm: "",
         contact: "",
         email: "",
+        birth_date: "",
+        gender: ""
       });
     } catch (err) {
       const errorMessage =
@@ -70,7 +74,7 @@ export const UserRegister = () => {
     <>
       <NavWithLogo />
 
-      <main className="flex items-center justify-center min-h-screen px-4 py-8">
+      <main className="flex items-center justify-center min-h-screen px-4 py-8 pt-20">
         <div 
           className="rounded-2xl shadow-2xl w-full max-w-5xl text-black"
           style={{backgroundColor: "#D4F6FF"}}
@@ -146,6 +150,43 @@ export const UserRegister = () => {
                     value={form.username}
                     onChange={handleChange}
                   />
+                </div>
+
+                {/* Birth Date and Gender */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label className="block text-lg font-semibold mb-2 text-gray-700" htmlFor="birth_date">
+                      Birth Date *
+                    </label>
+                    <input
+                      id="birth_date"
+                      type="date"
+                      placeholder="Select your birth date"
+                      className="w-full px-4 py-4 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.birth_date}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block text-lg font-semibold mb-2 text-gray-700" htmlFor="gender">
+                      Gender *
+                    </label>
+                    <select
+                      id="gender"
+                      className="w-full px-4 py-4 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.gender}
+                      onChange={handleChange}
+                    >
+                      <option value="">Select your gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Password Fields */}

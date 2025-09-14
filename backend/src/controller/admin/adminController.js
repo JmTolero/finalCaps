@@ -24,6 +24,7 @@ const getAllVendors = async (req, res) => {
                 v.primary_address_id as location,
                 v.business_permit_url,
                 v.valid_id_url,
+                v.proof_image_url,
                 COALESCE(v.status, 'pending') as status,
                 v.user_id,
                 v.created_at,
@@ -66,6 +67,7 @@ const getVendorById = async (req, res) => {
                 v.primary_address_id as location,
                 v.business_permit_url,
                 v.valid_id_url,
+                v.proof_image_url,
                 COALESCE(v.status, 'pending') as status,
                 v.user_id,
                 v.created_at,
@@ -74,7 +76,7 @@ const getVendorById = async (req, res) => {
                 u.username,
                 u.email,
                 u.contact_no,
-                u.date_of_birth,
+                u.birth_date,
                 u.gender
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
@@ -193,7 +195,7 @@ const getUserById = async (req, res) => {
         
         console.log('Fetching user details for ID:', user_id);
         
-        // Query to get specific user with detailed information
+        // Query to get specific user with detailed information including birth_date, gender, and location
         const [users] = await pool.query(`
             SELECT 
                 u.user_id,
@@ -202,6 +204,8 @@ const getUserById = async (req, res) => {
                 u.username,
                 u.email,
                 u.contact_no,
+                u.birth_date,
+                u.gender,
                 u.role,
                 COALESCE(u.status, 'active') as status,
                 u.created_at,
@@ -216,9 +220,35 @@ const getUserById = async (req, res) => {
                 CASE 
                     WHEN v.vendor_id IS NOT NULL THEN v.vendor_id
                     ELSE NULL
-                END as vendor_id
+                END as vendor_id,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.business_permit_url
+                    ELSE NULL
+                END as business_permit_url,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.valid_id_url
+                    ELSE NULL
+                END as valid_id_url,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.proof_image_url
+                    ELSE NULL
+                END as proof_image_url,
+                CASE 
+                    WHEN v.vendor_id IS NOT NULL AND v.primary_address_id IS NOT NULL THEN 
+                        CONCAT_WS(', ', 
+                            COALESCE(a.unit_number, ''), 
+                            a.street_name, 
+                            a.barangay, 
+                            a.cityVillage, 
+                            a.province, 
+                            a.region,
+                            COALESCE(a.postal_code, '')
+                        )
+                    ELSE NULL
+                END as location
             FROM users u
             LEFT JOIN vendors v ON u.user_id = v.user_id
+            LEFT JOIN addresses a ON v.primary_address_id = a.address_id
             WHERE u.user_id = ?
         `, [user_id]);
         
@@ -248,7 +278,7 @@ const getUserById = async (req, res) => {
 const updateUser = async (req, res) => {
     try {
         const { user_id } = req.params;
-        const { fname, lname, username, email, contact_no, role } = req.body;
+        const { fname, lname, username, email, contact_no, birth_date, gender, role } = req.body;
         
         console.log('Updating user:', user_id, req.body);
         
@@ -279,8 +309,8 @@ const updateUser = async (req, res) => {
         
         // Update user information
         const [result] = await pool.query(
-            'UPDATE users SET fname = ?, lname = ?, username = ?, email = ?, contact_no = ?, role = ? WHERE user_id = ?',
-            [fname, lname || '', username || '', email, contact_no || '', role, user_id]
+            'UPDATE users SET fname = ?, lname = ?, username = ?, email = ?, contact_no = ?, birth_date = ?, gender = ?, role = ? WHERE user_id = ?',
+            [fname, lname || '', username || '', email, contact_no || '', birth_date || null, gender || null, role, user_id]
         );
         
         if (result.affectedRows === 0) {
