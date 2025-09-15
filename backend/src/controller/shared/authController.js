@@ -1,6 +1,74 @@
 const pool = require('../../db/config');
 const { validateRequiredFields, trimObjectStrings } = require('../../utils/validation');
 
+// Register new customer
+const registerCustomer = async (req, res) => {
+    try {
+        // Trim input values
+        const trimmedBody = trimObjectStrings(req.body || {});
+        const { firstname, lastname, username, password, contact, email, birth_date, gender } = trimmedBody;
+        
+        // Validate required fields
+        const requiredFields = [
+            { key: 'firstname', name: 'First name' },
+            { key: 'lastname', name: 'Last name' },
+            { key: 'username', name: 'Username' },
+            { key: 'password', name: 'Password' },
+            { key: 'contact', name: 'Contact number' },
+            { key: 'email', name: 'Email' },
+            { key: 'birth_date', name: 'Birth date' },
+            { key: 'gender', name: 'Gender' }
+        ];
+        
+        const validation = validateRequiredFields(trimmedBody, requiredFields);
+        if (!validation.isValid) {
+            return res.status(400).json({ error: validation.message });
+        }
+
+        // Check if email already exists
+        const [existingEmail] = await pool.query('SELECT user_id FROM users WHERE email = ?', [email]);
+        if (existingEmail.length > 0) {
+            return res.status(400).json({ error: 'Email already exists' });
+        }
+
+        // Check if username already exists
+        const [existingUsername] = await pool.query('SELECT user_id FROM users WHERE username = ?', [username]);
+        if (existingUsername.length > 0) {
+            return res.status(400).json({ error: 'Username already exists' });
+        }
+
+        // Insert new customer user
+        const [userResult] = await pool.query(
+            'INSERT INTO users (fname, lname, username, password, contact_no, email, birth_date, gender, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+            [firstname, lastname, username, password, contact, email, birth_date, gender, 'customer']
+        );
+
+        const userId = userResult.insertId;
+
+        console.log('Customer registration successful:', userId);
+
+        return res.json({
+            message: 'Registration successful',
+            user: {
+                id: userId,
+                username: username,
+                firstName: firstname,
+                lastName: lastname,
+                email: email,
+                contact_no: contact,
+                role: 'customer'
+            }
+        });
+    } catch (err) {
+        console.error('POST /register failed:', err.code, err.message);
+        return res.status(500).json({
+            error: 'Database error',
+            code: err.code,
+            message: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+    }
+};
+
 const userLogin = async (req, res) => {
     try {
         // Trim input values
@@ -82,4 +150,4 @@ const userLogin = async (req, res) => {
     }
 }
 
-module.exports = { userLogin };
+module.exports = { userLogin, registerCustomer };

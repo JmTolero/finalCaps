@@ -47,7 +47,7 @@ export const UserRegister = () => {
       // Trim form data before sending
       const trimmedForm = trimFormData(form);
       
-      await axios.post(`${apiBase}/register`, trimmedForm, {
+      await axios.post(`${apiBase}/api/auth/register`, trimmedForm, {
         headers: { "Content-Type": "application/json" },
       });
   

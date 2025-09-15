@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
 import axios from 'axios';
 
+// Import customer icons
+import cartIcon from '../../assets/images/customerIcon/cart.png';
+import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
+import notifIcon from '../../assets/images/customerIcon/notifbell.png';
+import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
+import shopsIcon from '../../assets/images/customerIcon/shops.png';
+
 export const Customer = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeView, setActiveView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('profile');
+  const [settingsKey, setSettingsKey] = useState(0);
   const [customerData, setCustomerData] = useState({
     fname: '',
     lname: '',
@@ -33,20 +43,50 @@ export const Customer = () => {
   const [status, setStatus] = useState({ type: null, message: '' });
   
   // Marketplace data
-  const [allProducts, setAllProducts] = useState([]);
+  const [allFlavors, setAllFlavors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Profile dropdown state
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const profileDropdownRef = useRef(null);
+  // Check URL parameters for view
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'settings') {
+      setActiveView('settings');
+    }
+  }, [searchParams]);
+
+  // Force data refresh when settings view becomes active
+  useEffect(() => {
+    if (activeView === 'settings') {
+      // Ensure customer data is loaded
+      const userRaw = sessionStorage.getItem('user');
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        const mappedData = {
+          fname: user.firstName || user.fname || '',
+          lname: user.lastName || user.lname || '',
+          email: user.email || '',
+          contact_no: user.contact_no || '',
+          role: user.role || 'customer'
+        };
+        console.log('Mapping user data for settings:', user, '->', mappedData);
+        setCustomerData(mappedData);
+        setSettingsKey(prev => prev + 1); // Force re-render
+      }
+    }
+  }, [activeView]);
 
   useEffect(() => {
     // Load user data from session
     const userRaw = sessionStorage.getItem('user');
     if (userRaw) {
       const user = JSON.parse(userRaw);
-      setCustomerData(user);
+      setCustomerData({
+        fname: user.firstName || user.fname || '',
+        lname: user.lastName || user.lname || '',
+        email: user.email || '',
+        contact_no: user.contact_no || '',
+        role: user.role || 'customer'
+      });
       
       // Check vendor status if user is a vendor
       if (user.role === 'vendor') {
@@ -56,7 +96,7 @@ export const Customer = () => {
     
     // Load marketplace data
     if (activeView === 'dashboard') {
-      fetchAllProducts();
+      fetchAllFlavors();
     }
     
     if (activeView === 'settings') {
@@ -65,26 +105,22 @@ export const Customer = () => {
     }
   }, [activeView]);
 
-  // Close profile dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
-        setIsProfileDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   const fetchCustomerData = async () => {
     try {
-      // This would need to be implemented in your backend
-      // const response = await axios.get('/api/customer/profile');
-      // setCustomerData(response.data);
-      console.log('Fetching customer data...');
+      // Load user data from session storage
+      const userRaw = sessionStorage.getItem('user');
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        console.log('Loading customer data:', user);
+        setCustomerData({
+        fname: user.firstName || user.fname || '',
+        lname: user.lastName || user.lname || '',
+        email: user.email || '',
+        contact_no: user.contact_no || '',
+        role: user.role || 'customer'
+      });
+      }
     } catch (error) {
       console.error('Error fetching customer data:', error);
     }
@@ -108,23 +144,18 @@ export const Customer = () => {
     }
   };
 
-  const fetchAllProducts = async () => {
+  const fetchAllFlavors = async () => {
     try {
       setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // Use the new efficient endpoint that gets all products in one call
-      const response = await axios.get(`${apiBase}/api/vendor/all-products`);
+      // Fetch all published flavors from all vendors
+      const response = await axios.get(`${apiBase}/api/flavors/all-published`);
       if (response.data.success) {
-        const products = response.data.products.map(product => ({
-          ...product,
-          vendor_name: product.store_name,
-          vendor_location: product.location || 'Location not specified'
-        }));
-        setAllProducts(products);
+        setAllFlavors(response.data.flavors);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching flavors:', error);
     } finally {
       setLoading(false);
     }
@@ -256,47 +287,77 @@ export const Customer = () => {
     }
   };
 
-  const handleVendorButtonClick = () => {
-    if (customerData.role === 'vendor') {
-      // User is a vendor, check their status
-      if (vendorStatus?.status === 'pending') {
-        window.location.href = '/vendor-pending';
-      } else if (vendorStatus?.status === 'rejected') {
-        alert('Your vendor application was rejected. Please contact support or re-apply.');
-        window.location.href = '/become-vendor';
-      } else if (vendorStatus?.status === 'approved') {
-        // Check if setup is complete
-        window.location.href = '/vendor';
-      } else {
-        // Default to vendor dashboard
-        window.location.href = '/vendor';
-      }
-    } else {
-      // User is a customer, redirect to become vendor page
-      window.location.href = '/become-vendor';
-    }
-  };
 
-  const filteredProducts = allProducts.filter(product => 
-    product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.vendor_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredFlavors = allFlavors.filter(flavor => 
+    flavor.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    flavor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (flavor.location && flavor.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const settingsTabs = [
-    { id: 'profile', label: '👤 Profile', icon: '👤' },
-    { id: 'addresses', label: '📍 Delivery Addresses', icon: '📍' },
-    { id: 'orders', label: '📦 Order History', icon: '📦' },
-    { id: 'preferences', label: '⚙️ Preferences', icon: '⚙️' }
+    { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'addresses', label: 'Delivery Addresses', icon: '📍' },
+    { id: 'orders', label: 'Order History', icon: '📦' },
+    { id: 'preferences', label: 'Preferences', icon: '⚙️' }
   ];
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
 
+  // Save customer profile
+  const saveProfile = async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        alert('User not found. Please log in again.');
+        return;
+      }
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      console.log('Saving profile for user:', user);
+      
+      const response = await axios.put(`${apiBase}/api/customer/profile/${user.id}`, {
+        fname: customerData.fname,
+        lname: customerData.lname,
+        email: customerData.email,
+        contact_no: customerData.contact_no
+      });
+
+      if (response.data.success) {
+        // Update sessionStorage with new data, mapping database fields to session fields
+        const updatedUser = { 
+          ...user, 
+          firstName: response.data.user.fname,
+          lastName: response.data.user.lname,
+          email: response.data.user.email,
+          contact_no: response.data.user.contact_no
+        };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event('userChanged'));
+        
+        alert('Profile updated successfully!');
+      } else {
+        alert('Failed to update profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Failed to update profile. Please try again.');
+      }
+    }
+  };
+
   if (activeView === 'settings') {
+    
     return (
       <>
         <NavWithLogo />
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16" key={`settings-${settingsKey}`}>
           <div className="max-w-6xl mx-auto px-4">
             {/* Header */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -306,10 +367,15 @@ export const Customer = () => {
                   <p className="text-gray-600 mt-2">Manage your profile and delivery preferences</p>
                 </div>
                 <button
-                  onClick={() => setActiveView('dashboard')}
+                  onClick={() => {
+                    setActiveView('dashboard');
+                    setSettingsKey(0); // Reset settings key
+                    // Navigate to clean URL
+                    navigate('/customer');
+                  }}
                   className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                 >
-                  ← Back to Dashboard
+                  ← Back to Home
                 </button>
               </div>
             </div>
@@ -363,7 +429,8 @@ export const Customer = () => {
                             </label>
                             <input
                               type="text"
-                              value={customerData.fname}
+                              value={customerData.fname || ''}
+                              onChange={(e) => setCustomerData({...customerData, fname: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="Your first name"
                             />
@@ -374,7 +441,8 @@ export const Customer = () => {
                             </label>
                             <input
                               type="text"
-                              value={customerData.lname}
+                              value={customerData.lname || ''}
+                              onChange={(e) => setCustomerData({...customerData, lname: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="Your last name"
                             />
@@ -387,7 +455,8 @@ export const Customer = () => {
                             </label>
                             <input
                               type="email"
-                              value={customerData.email}
+                              value={customerData.email || ''}
+                              onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="your@email.com"
                             />
@@ -398,14 +467,18 @@ export const Customer = () => {
                             </label>
                             <input
                               type="text"
-                              value={customerData.contact_no}
+                              value={customerData.contact_no || ''}
+                              onChange={(e) => setCustomerData({...customerData, contact_no: e.target.value})}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               placeholder="09123456789"
                             />
                           </div>
                         </div>
                         <div className="flex justify-end">
-                          <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                          <button 
+                            onClick={saveProfile}
+                            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                          >
                             Save Profile
                           </button>
                         </div>
@@ -591,7 +664,7 @@ export const Customer = () => {
       <NavWithLogo />
       
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1 max-w-md">
@@ -616,62 +689,33 @@ export const Customer = () => {
                 Find nearby Vendors
               </Link>
               
-              {/* Profile Dropdown */}
-              <div className="relative" ref={profileDropdownRef}>
-                <button
-                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                >
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <span className="font-medium">{customerData.firstName || customerData.fname || 'User'}</span>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+                {/* Products/Flavors Icon - Active on main customer page */}
+                <button className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
+                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
                 </button>
                 
-                {isProfileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                    <button
-                      onClick={() => {
-                        setActiveView('settings');
-                        setIsProfileDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Account Settings
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleVendorButtonClick();
-                        setIsProfileDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      {customerData.role === 'vendor' 
-                        ? (vendorStatus?.status === 'pending' 
-                            ? 'Vendor (Pending)' 
-                            : vendorStatus?.status === 'rejected' 
-                              ? 'Vendor (Rejected)' 
-                              : 'Vendor Dashboard')
-                        : 'Become a Vendor'
-                      }
-                    </button>
-                    <button
-                      onClick={() => {
-                        sessionStorage.removeItem('user');
-                        window.location.href = '/login';
-                        setIsProfileDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
+                {/* Shops Icon */}
+                <Link to="/find-vendors" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                </Link>
+                
+                {/* Notification Bell */}
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
+                  <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                </button>
+                
+                {/* Cart Icon */}
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                </button>
+                
+                {/* Feedback Icon */}
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                </button>
               </div>
             </div>
           </div>
@@ -688,53 +732,97 @@ export const Customer = () => {
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading products...</span>
+            <span className="ml-3 text-gray-600">Loading flavors...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div key={`${product.vendor_id}-${product.product_id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                  {product.image_url ? (
-                    <img 
-                      src={product.image_url} 
-                      alt={product.product_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-4xl">🍦</div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">{product.product_name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{product.flavor_name}</p>
-                  <p className="text-lg font-bold text-blue-600 mb-2">₱{product.price}</p>
-                  <p className="text-sm text-gray-500 mb-2">{product.vendor_location}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex text-yellow-400">
-                        {[...Array(5)].map((_, i) => (
-                          <svg key={i} className="w-4 h-4" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                          </svg>
-                        ))}
+            {filteredFlavors.map((flavor) => {
+              // Parse image URLs (stored as JSON array)
+              let imageUrls = [];
+              try {
+                imageUrls = JSON.parse(flavor.image_url || '[]');
+              } catch (e) {
+                if (flavor.image_url) {
+                  imageUrls = [flavor.image_url];
+                }
+              }
+              
+              return (
+                <div key={`${flavor.vendor_id}-${flavor.flavor_id}`} className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+                  {/* Flavor Image */}
+                  <div className="mb-4">
+                    {imageUrls.length > 0 ? (
+                      <img
+                        src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
+                        alt={flavor.flavor_name}
+                        className="w-full h-48 object-cover rounded-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-white rounded-xl flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-4xl mb-2">🍦</div>
+                          <div className="text-sm text-gray-600">No Image</div>
+                        </div>
                       </div>
-                      <span className="ml-1 text-sm text-gray-500">10 sold</span>
+                    )}
+                  </div>
+
+                  {/* Flavor Info */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-gray-900 text-left">
+                      {flavor.flavor_name}
+                    </h3>
+
+                    <p className="text-gray-700 text-left text-sm line-clamp-2">
+                      {flavor.flavor_description}
+                    </p>
+
+                    {/* Price Range */}
+                    <div className="text-left">
+                      <span className="text-lg font-bold text-gray-900">
+                        {flavor.small_price && flavor.large_price 
+                          ? `₱${parseInt(flavor.small_price)} - ₱${parseInt(flavor.large_price)}`
+                          : flavor.small_price 
+                            ? `₱${parseInt(flavor.small_price)}`
+                            : 'Price not available'
+                        }
+                      </span>
                     </div>
-                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
-                      Add to Cart
-                    </button>
+
+                    {/* Location */}
+                    <div className="text-left">
+                      <span className="text-sm text-gray-600">
+                        {flavor.location || 'Location not specified'}
+                      </span>
+                    </div>
+
+                    {/* Rating and Sold Count */}
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="flex text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <svg key={i} className="w-4 h-4" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="text-sm text-gray-600 font-medium">
+                        {flavor.sold_count || 0} sold
+                      </span>
+                    </div>
+
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {filteredProducts.length === 0 && !loading && (
+        {filteredFlavors.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="text-4xl mb-4">🍦</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No flavors found</h3>
             <p className="text-gray-600">Try adjusting your search or check back later for new flavors!</p>
           </div>
         )}

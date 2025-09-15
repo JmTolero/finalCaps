@@ -642,4 +642,58 @@ const getAllProducts = async (req, res) => {
     }
 };
 
-module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts };
+// Get vendors with their locations for map display
+const getVendorsWithLocations = async (req, res) => {
+    try {
+        const [vendors] = await pool.query(`
+            SELECT 
+                v.vendor_id,
+                v.store_name,
+                v.profile_image_url,
+                v.status as vendor_status,
+                u.fname,
+                u.lname,
+                u.email,
+                u.contact_no,
+                CONCAT_WS(', ', 
+                    COALESCE(a.unit_number, ''), 
+                    a.street_name, 
+                    a.barangay, 
+                    a.cityVillage, 
+                    a.province, 
+                    a.region,
+                    COALESCE(a.postal_code, '')
+                ) as location,
+                a.latitude,
+                a.longitude,
+                GROUP_CONCAT(DISTINCT f.flavor_name) as flavors
+            FROM vendors v
+            LEFT JOIN users u ON v.user_id = u.user_id
+            LEFT JOIN addresses a ON v.primary_address_id = a.address_id
+            LEFT JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
+            WHERE v.status = 'approved'
+            GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude
+            ORDER BY v.store_name
+        `);
+
+        // Process flavors data
+        const processedVendors = vendors.map(vendor => ({
+            ...vendor,
+            flavors: vendor.flavors ? vendor.flavors.split(',').map(flavor => ({ flavor_name: flavor.trim() })) : []
+        }));
+
+        res.json({
+            success: true,
+            vendors: processedVendors
+        });
+    } catch (error) {
+        console.error('Error fetching vendors with locations:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch vendors',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations };

@@ -4,6 +4,7 @@ const authController = require('../../controller/shared/authController');
 const securityController = require('../../controller/auth/authController');
 
 router.post('/login', authController.userLogin);
+router.post('/register', authController.registerCustomer);
 
 // Security verification endpoints
 router.get('/verify-admin', securityController.verifyAdmin);

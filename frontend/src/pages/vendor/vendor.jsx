@@ -11,7 +11,9 @@ import ordersIcon from "../../assets/images/vendordashboardicon/vendorOrderIcon.
 import addCustomerIcon from "../../assets/images/vendordashboardicon/addcustomericon.png";
 import paymentsIcon from "../../assets/images/vendordashboardicon/paymentsvendoricon.png";
 import profileIcon from "../../assets/images/vendordashboardicon/profileVendorIcon.png";
-import storeIcon from "../../assets/images/vendordashboardicon/inventoryProductVendorIcon.png"; // Using inventory icon as store icon
+import storeIcon from "../../assets/images/vendordashboardicon/shop.png";
+import bellNotificationIcon from "../../assets/images/bellNotification.png";
+import feedbackIcon from "../../assets/images/feedback.png";
 
 export const Vendor = () => {
   const navigate = useNavigate();
@@ -66,8 +68,8 @@ export const Vendor = () => {
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
   // My Store data state
-  const [storeProducts, setStoreProducts] = useState([]);
-  const [storeLoading, setStoreLoading] = useState(false);
+  const [publishedFlavors, setPublishedFlavors] = useState([]);
+  const [publishedFlavorsLoading, setPublishedFlavorsLoading] = useState(false);    
 
   // Drum management state
   const [availableDrums, setAvailableDrums] = useState({
@@ -113,11 +115,25 @@ export const Vendor = () => {
   const [flavorForm, setFlavorForm] = useState({
     name: "",
     description: "",
-    drumSize: "small",
-    drumsUsed: "",
   });
   const [flavorImages, setFlavorImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  
+  // Saved flavors state
+  const [savedFlavors, setSavedFlavors] = useState([]);
+  const [flavorsLoading, setFlavorsLoading] = useState(false);
+  
+  // Image modal state
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedFlavorImages, setSelectedFlavorImages] = useState([]);
+  const [selectedFlavorName, setSelectedFlavorName] = useState("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Flavor editing state
+  const [editingFlavor, setEditingFlavor] = useState(null);
+  const [isEditingFlavor, setIsEditingFlavor] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [flavorToDelete, setFlavorToDelete] = useState(null);
   
   // Profile dropdown state
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -249,45 +265,64 @@ export const Vendor = () => {
     }
   }, [fetchAddresses, navigate, currentVendor]);
 
-  const fetchStoreProducts = useCallback(async () => {
+  const fetchPublishedFlavors = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
     try {
-      setStoreLoading(true);
-
-      if (!currentVendor?.vendor_id) {
-        console.log("No vendor ID available yet");
-        return;
+      setPublishedFlavorsLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`);
+      
+      if (response.data.success) {
+        // Filter only published flavors
+        const published = response.data.flavors.filter(flavor => flavor.store_status === 'published');
+        setPublishedFlavors(published);
       }
-
-      // TODO: Implement real API call to fetch vendor products
-      // For now, set empty array to show no products
-      setStoreProducts([]);
     } catch (error) {
-      console.error("Error fetching store products:", error);
-      setStoreProducts([]);
+      console.error("Error fetching published flavors:", error);
+      setPublishedFlavors([]);
     } finally {
-      setStoreLoading(false);
+      setPublishedFlavorsLoading(false);
     }
-  }, [currentVendor?.vendor_id]);
+  };
 
   const handleDrumsEdit = () => {
     setIsEditingDrums(true);
     setTempDrums({ ...availableDrums });
   };
 
-  const handleDrumsSave = () => {
-    setAvailableDrums({ ...tempDrums });
-    setIsEditingDrums(false);
-    const totalDrums = tempDrums.small + tempDrums.medium + tempDrums.large;
-    updateStatus(
-      "success",
-      `Available inventory updated: ${tempDrums.small} small drums (${
-        tempDrums.small * drumCapacity.small
-      } gal), ${tempDrums.medium} medium drums (${
-        tempDrums.medium * drumCapacity.medium
-      } gal), ${tempDrums.large} large drums (${
-        tempDrums.large * drumCapacity.large
-      } gal) - Total: ${totalDrums} drums`
-    );
+  const handleDrumsSave = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/vendor/drums/${currentVendor.vendor_id}/stock`, {
+        small: tempDrums.small,
+        medium: tempDrums.medium,
+        large: tempDrums.large
+      });
+
+      if (response.data.success) {
+        setAvailableDrums({ ...tempDrums });
+        setIsEditingDrums(false);
+        const totalDrums = tempDrums.small + tempDrums.medium + tempDrums.large;
+        updateStatus(
+          "success",
+          `Available inventory updated: ${tempDrums.small} small drums (${
+            tempDrums.small * drumCapacity.small
+          } gal), ${tempDrums.medium} medium drums (${
+            tempDrums.medium * drumCapacity.medium
+          } gal), ${tempDrums.large} large drums (${
+            tempDrums.large * drumCapacity.large
+          } gal) - Total: ${totalDrums} drums`
+        );
+      } else {
+        updateStatus("error", response.data.error || "Failed to update drum inventory");
+      }
+    } catch (error) {
+      console.error("Error updating drum stock:", error);
+      updateStatus("error", "Failed to update drum inventory. Please try again.");
+    }
   };
 
   const handleDrumsCancel = () => {
@@ -300,13 +335,31 @@ export const Vendor = () => {
     setTempCapacity({ ...drumCapacity });
   };
 
-  const handleCapacitySave = () => {
-    setDrumCapacity({ ...tempCapacity });
-    setIsEditingCapacity(false);
-    updateStatus(
-      "success",
-      `Drum capacity updated: Small ${tempCapacity.small} gal, Medium ${tempCapacity.medium} gal, Large ${tempCapacity.large} gal`
-    );
+  const handleCapacitySave = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/vendor/drums/${currentVendor.vendor_id}/capacity`, {
+        small: tempCapacity.small,
+        medium: tempCapacity.medium,
+        large: tempCapacity.large
+      });
+
+      if (response.data.success) {
+        setDrumCapacity({ ...tempCapacity });
+        setIsEditingCapacity(false);
+        updateStatus(
+          "success",
+          `Drum capacity updated: Small ${tempCapacity.small} gal, Medium ${tempCapacity.medium} gal, Large ${tempCapacity.large} gal`
+        );
+      } else {
+        updateStatus("error", response.data.error || "Failed to update drum capacity");
+      }
+    } catch (error) {
+      console.error("Error updating drum capacity:", error);
+      updateStatus("error", "Failed to update drum capacity. Please try again.");
+    }
   };
 
   const handleCapacityCancel = () => {
@@ -327,13 +380,31 @@ export const Vendor = () => {
     setTempPrices({ ...drumPrices });
   };
 
-  const handlePricesSave = () => {
-    setDrumPrices({ ...tempPrices });
-    setIsEditingPrices(false);
-    updateStatus(
-      "success",
-      `Drum prices updated: Small ₱${tempPrices.small}, Medium ₱${tempPrices.medium}, Large ₱${tempPrices.large}`
-    );
+  const handlePricesSave = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/vendor/drums/${currentVendor.vendor_id}/pricing`, {
+        small: tempPrices.small,
+        medium: tempPrices.medium,
+        large: tempPrices.large
+      });
+
+      if (response.data.success) {
+        setDrumPrices({ ...tempPrices });
+        setIsEditingPrices(false);
+        updateStatus(
+          "success",
+          `Drum prices updated: Small ₱${tempPrices.small}, Medium ₱${tempPrices.medium}, Large ₱${tempPrices.large}`
+        );
+      } else {
+        updateStatus("error", response.data.error || "Failed to update drum prices");
+      }
+    } catch (error) {
+      console.error("Error updating drum prices:", error);
+      updateStatus("error", "Failed to update drum prices. Please try again.");
+    }
   };
 
   const handlePricesCancel = () => {
@@ -387,32 +458,288 @@ export const Vendor = () => {
     }));
   };
 
-  const handleSaveFlavor = () => {
+  const fetchSavedFlavors = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      setFlavorsLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(
+        `${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`
+      );
+      
+      if (response.data.success) {
+        setSavedFlavors(response.data.flavors);
+      }
+    } catch (error) {
+      console.error("Error fetching flavors:", error);
+    } finally {
+      setFlavorsLoading(false);
+    }
+  };
+
+  // Fetch drum pricing and availability from database
+  const fetchDrumData = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/vendor/drums/${currentVendor.vendor_id}/pricing`);
+      
+      if (response.data.success) {
+        const drums = response.data.drums;
+        
+        // Update drum prices for display
+        setDrumPrices({
+          small: drums.small.price,
+          medium: drums.medium.price,
+          large: drums.large.price
+        });
+        
+        // Update available drums
+        setAvailableDrums({
+          small: drums.small.stock,
+          medium: drums.medium.stock,
+          large: drums.large.stock
+        });
+        
+        // Update drum capacity
+        setDrumCapacity({
+          small: drums.small.gallons,
+          medium: drums.medium.gallons,
+          large: drums.large.gallons
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching drum data:", error);
+    }
+  };
+
+  const openImageModal = (imageUrls, flavorName) => {
+    setSelectedFlavorImages(imageUrls);
+    setSelectedFlavorName(flavorName);
+    setCurrentImageIndex(0);
+    setImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedFlavorImages([]);
+    setSelectedFlavorName("");
+    setCurrentImageIndex(0);
+  };
+
+  const startEditFlavor = (flavor) => {
+    setEditingFlavor(flavor);
+    setIsEditingFlavor(true);
+    
+    // Parse existing images
+    let existingImages = [];
+    try {
+      existingImages = JSON.parse(flavor.image_url || '[]');
+    } catch (e) {
+      if (flavor.image_url) {
+        existingImages = [flavor.image_url];
+      }
+    }
+    
+    // Pre-fill the form
+    setFlavorForm({
+      name: flavor.flavor_name,
+      description: flavor.flavor_description,
+    });
+    
+    // Set existing images as previews
+    setImagePreviews(existingImages.map((img, index) => ({
+      id: `existing-${index}`,
+      url: `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${img}`,
+      isExisting: true,
+      filename: img
+    })));
+    setFlavorImages([]); // Clear new images
+    
+    // Scroll to the form
+    document.getElementById('flavor-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const cancelEditFlavor = () => {
+    setEditingFlavor(null);
+    setIsEditingFlavor(false);
+    setFlavorForm({ name: "", description: "" });
+    setFlavorImages([]);
+    setImagePreviews([]);
+  };
+
+  const confirmDeleteFlavor = (flavor) => {
+    setFlavorToDelete(flavor);
+    setDeleteConfirmOpen(true);
+  };
+
+  const cancelDeleteFlavor = () => {
+    setDeleteConfirmOpen(false);
+    setFlavorToDelete(null);
+  };
+
+  const deleteFlavor = async () => {
+    if (!flavorToDelete) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.delete(
+        `${apiBase}/api/vendor/flavors/${flavorToDelete.flavor_id}`
+      );
+      
+      if (response.data.success) {
+        updateStatus("success", `Flavor "${flavorToDelete.flavor_name}" deleted successfully!`);
+        await fetchSavedFlavors(); // Refresh the list
+        setDeleteConfirmOpen(false);
+        setFlavorToDelete(null);
+      } else {
+        updateStatus("error", response.data.error || "Failed to delete flavor");
+      }
+    } catch (error) {
+      console.error("Error deleting flavor:", error);
+      updateStatus("error", "Failed to delete flavor. Please try again.");
+    }
+  };
+
+  const updateFlavorStoreStatus = async (flavorId, newStatus) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.patch(
+        `${apiBase}/api/vendor/flavors/${flavorId}/store-status`,
+        { store_status: newStatus }
+      );
+      
+      if (response.data.success) {
+        const statusMessage = newStatus === 'published' ? 'published to store' : 'status updated';
+        updateStatus("success", `Flavor ${statusMessage} successfully!`);
+        await fetchSavedFlavors(); // Refresh the list
+      } else {
+        updateStatus("error", response.data.error || "Failed to update flavor status");
+      }
+    } catch (error) {
+      console.error("Error updating flavor store status:", error);
+      updateStatus("error", "Failed to update flavor status. Please try again.");
+    }
+  };
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === selectedFlavorImages.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? selectedFlavorImages.length - 1 : prev - 1
+    );
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (!imageModalOpen) return;
+      
+      if (e.key === 'ArrowLeft') {
+        prevImage();
+      } else if (e.key === 'ArrowRight') {
+        nextImage();
+      } else if (e.key === 'Escape') {
+        closeImageModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [imageModalOpen, selectedFlavorImages.length]);
+
+  const handleSaveFlavor = async () => {
     if (!flavorForm.name.trim()) {
       updateStatus("error", "Please enter a flavor name");
       return;
     }
 
-    if (flavorImages.length === 0) {
+    // Check if we have any images (either new or existing)
+    const hasNewImages = flavorImages.length > 0;
+    const hasExistingImages = imagePreviews.some(img => img.isExisting);
+    
+    if (!hasNewImages && !hasExistingImages) {
       updateStatus("error", "Please upload at least one image");
       return;
     }
 
-    // Here you would typically save to backend
-    updateStatus(
-      "success",
-      `Flavor "${flavorForm.name}" saved with ${flavorImages.length} image(s)!`
-    );
+    if (!currentVendor?.vendor_id) {
+      updateStatus("error", "Vendor information not available");
+      return;
+    }
 
-    // Reset form
-    setFlavorForm({
-      name: "",
-      description: "",
-      drumSize: "small",
-      drumsUsed: "",
-    });
-    setFlavorImages([]);
-    setImagePreviews([]);
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Create FormData for flavor upload
+      const formData = new FormData();
+      formData.append("flavor_name", flavorForm.name.trim());
+      formData.append("flavor_description", flavorForm.description.trim());
+      
+      // Add new images
+      flavorImages.forEach((image, index) => {
+        formData.append("images", image);
+      });
+
+      let response;
+      if (isEditingFlavor && editingFlavor) {
+        // Update existing flavor
+        response = await axios.put(
+          `${apiBase}/api/vendor/flavors/${editingFlavor.flavor_id}`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      } else {
+        // Create new flavor
+        response = await axios.post(
+          `${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      }
+
+      if (response.data.success) {
+        const action = isEditingFlavor ? "updated" : "saved";
+        updateStatus(
+          "success",
+          `Flavor "${flavorForm.name}" ${action} successfully!`
+        );
+
+        // Refresh the flavors list
+        await fetchSavedFlavors();
+
+        // Reset form
+        setFlavorForm({
+          name: "",
+          description: "",
+          drumSize: "small",
+          drumsUsed: "",
+        });
+        setFlavorImages([]);
+        setImagePreviews([]);
+        setEditingFlavor(null);
+        setIsEditingFlavor(false);
+      } else {
+        updateStatus("error", response.data.error || `Failed to ${isEditingFlavor ? 'update' : 'save'} flavor`);
+      }
+    } catch (error) {
+      console.error("Error saving flavor:", error);
+      updateStatus("error", `Failed to ${isEditingFlavor ? 'update' : 'save'} flavor. Please try again.`);
+    }
   };
 
   // Fetch vendor data when component mounts
@@ -465,12 +792,26 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
 
-  // Fetch store products when my-store view is active and vendor is loaded
+  // Fetch published flavors when my-store view is active and vendor is loaded
   useEffect(() => {
     if (activeView === "my-store" && currentVendor?.vendor_id && !isInitialLoading) {
-      fetchStoreProducts();
+      fetchPublishedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, fetchStoreProducts, isInitialLoading]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+
+  // Fetch saved flavors when inventory view is active and vendor is loaded
+  useEffect(() => {
+    if (activeView === "inventory" && currentVendor?.vendor_id && !isInitialLoading) {
+      fetchSavedFlavors();
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+
+  // Fetch drum data when vendor is loaded
+  useEffect(() => {
+    if (currentVendor?.vendor_id && !isInitialLoading) {
+      fetchDrumData();
+    }
+  }, [currentVendor?.vendor_id, isInitialLoading]);
 
   // Fetch vendor dashboard data
   const fetchDashboardData = async (vendorId) => {
@@ -747,6 +1088,7 @@ export const Vendor = () => {
     { id: "addresses", label: "Store Addresses", icon: "📍" },
     { id: "documents", label: "Documents", icon: "📄" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
+    { id: "feedback", label: "Feedback", icon: "💬" },
   ];
 
   const sidebarItems = [
@@ -767,7 +1109,7 @@ export const Vendor = () => {
     return (
       <>
         {/* Custom Navbar */}
-        <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20">
+        <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20 overflow-visible">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -797,7 +1139,33 @@ export const Vendor = () => {
           </div>
           
           {/* Profile Dropdown in Navbar */}
-          <div className="relative" ref={profileDropdownRef}>
+          <div className="relative flex items-center space-x-2" ref={profileDropdownRef}>
+            {/* Notification and Feedback Icons */}
+            <button
+              onClick={() => setActiveView("notifications")}
+              className="p-2 rounded-full hover:bg-blue-200 transition-colors relative"
+            >
+              <img 
+                src={bellNotificationIcon} 
+                alt="Notifications" 
+                className="w-6 h-6"
+              />
+              {/* Notification badge */}
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                3
+              </span>
+            </button>
+            
+            <button
+              onClick={() => setActiveView("feedback")}
+              className="p-2 rounded-full hover:bg-blue-200 transition-colors"
+            >
+              <img 
+                src={feedbackIcon} 
+                alt="Feedback" 
+                className="w-6 h-6"
+              />
+            </button>
             <button
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
               className="p-2 rounded-full hover:bg-blue-100 transition-colors"
@@ -827,7 +1195,7 @@ export const Vendor = () => {
 
             {/* Dropdown Menu */}
             {isProfileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100]">
                 <div className="py-1">
                   {/* User Info */}
                   <div className="px-4 py-2 text-sm text-gray-700 border-b">
@@ -1351,6 +1719,88 @@ export const Vendor = () => {
                           <h2 className="text-2xl font-semibold mb-6">
                             Notifications
                           </h2>
+                          <div className="space-y-4">
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">New Order Received</h3>
+                                  <p className="text-sm text-gray-600">You have a new order for Mango Flavor - Large size</p>
+                                  <p className="text-xs text-gray-500">2 minutes ago</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">Order Delivered</h3>
+                                  <p className="text-sm text-gray-600">Order #12345 has been successfully delivered</p>
+                                  <p className="text-xs text-gray-500">1 hour ago</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
+                                  <p className="text-sm text-gray-600">Vanilla Flavor is running low on stock</p>
+                                  <p className="text-xs text-gray-500">3 hours ago</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                      </div>
+                    )}
+
+                    {/* Feedback Tab */}
+                    {activeTab === "feedback" && (
+                      <div>
+                        <h2 className="text-2xl font-semibold mb-6">
+                          Customer Feedback
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="bg-gray-50 rounded-lg p-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 font-semibold">JD</span>
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-gray-900">John Doe</h3>
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-yellow-400">★★★★★</span>
+                                  <span className="text-sm text-gray-600">5.0</span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-gray-700 mb-2">
+                              "Amazing ice cream! The Mango Flavor is absolutely delicious. Will definitely order again!"
+                            </p>
+                            <p className="text-xs text-gray-500">2 days ago</p>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-6">
+                            <div className="flex items-center space-x-3 mb-4">
+                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <span className="text-green-600 font-semibold">SM</span>
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-gray-900">Sarah Miller</h3>
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-yellow-400">★★★★☆</span>
+                                  <span className="text-sm text-gray-600">4.0</span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-gray-700 mb-2">
+                              "Great quality ice cream, but delivery was a bit late. Overall satisfied with the product."
+                            </p>
+                            <p className="text-xs text-gray-500">1 week ago</p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1380,7 +1830,7 @@ export const Vendor = () => {
   return (
     <>
       {/* Custom Navbar */}
-      <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20">
+      <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20 overflow-visible">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -1410,7 +1860,33 @@ export const Vendor = () => {
         </div>
         
         {/* Profile Dropdown in Navbar */}
-        <div className="relative" ref={profileDropdownRef}>
+        <div className="relative flex items-center space-x-2" ref={profileDropdownRef}>
+          {/* Notification and Feedback Icons */}
+          <button
+            onClick={() => setActiveView("notifications")}
+            className="p-2 rounded-full hover:bg-blue-200 transition-colors relative"
+          >
+            <img 
+              src={bellNotificationIcon} 
+              alt="Notifications" 
+              className="w-6 h-6"
+            />
+            {/* Notification badge */}
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              3
+            </span>
+          </button>
+          
+          <button
+            onClick={() => setActiveView("feedback")}
+            className="p-2 rounded-full hover:bg-blue-200 transition-colors"
+          >
+            <img 
+              src={feedbackIcon} 
+              alt="Feedback" 
+              className="w-6 h-6"
+            />
+          </button>
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             className="p-2 rounded-full hover:bg-blue-100 transition-colors"
@@ -1440,7 +1916,7 @@ export const Vendor = () => {
 
           {/* Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[100]">
               <div className="py-1">
                 {/* User Info */}
                 <div className="px-4 py-2 text-sm text-gray-700 border-b">
@@ -2314,10 +2790,10 @@ export const Vendor = () => {
                   </div>
                 </div>
 
-                {/* Add Flavor Section */}
-                <div className="bg-sky-100 border border-blue-300 rounded-lg p-6 mt-4">
+                {/* Add/Edit Flavor Section */}
+                <div id="flavor-form" className="bg-sky-100 border border-blue-300 rounded-lg p-6 mt-4">
                   <div className="text-blue-800 font-medium text-xl mb-4">
-                    Add Flavor:
+                    {isEditingFlavor ? `Edit Flavor: ${editingFlavor?.flavor_name}` : "Add Flavor:"}
                   </div>
 
                   <div className="flex items-start space-x-6">
@@ -2424,15 +2900,161 @@ export const Vendor = () => {
                           onChange={handleImageUpload}
                           className="hidden"
                         />
-                        <button
-                          onClick={handleSaveFlavor}
-                          className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200"
-                        >
-                          Save Flavor
-                        </button>
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={handleSaveFlavor}
+                            className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200"
+                          >
+                            {isEditingFlavor ? "Update Flavor" : "Save Flavor"}
+                          </button>
+                          {isEditingFlavor && (
+                            <button
+                              onClick={cancelEditFlavor}
+                              className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Saved Flavors Section */}
+                <div className="bg-[#D4F6FF] border border-blue-300 rounded-lg p-6 mt-4">
+                  <div className="text-blue-800 font-medium text-xl mb-4">
+                    My Flavors
+                  </div>
+                  
+                  {flavorsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="text-blue-600">Loading flavors...</div>
+                    </div>
+                  ) : savedFlavors.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-600 mb-4">No flavors added yet</div>
+                      <div className="text-sm text-gray-500">
+                        Add your first flavor using the form above
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {savedFlavors.map((flavor) => {
+                        // Parse image URLs (stored as JSON array)
+                        let imageUrls = [];
+                        try {
+                          imageUrls = JSON.parse(flavor.image_url || '[]');
+                        } catch (e) {
+                          // Fallback for single image (old format)
+                          if (flavor.image_url) {
+                            imageUrls = [flavor.image_url];
+                          }
+                        }
+                        
+                        return (
+                          <div key={flavor.flavor_id} className="bg-white rounded-lg p-4 shadow-sm border border-blue-300">
+                            <div className="aspect-square mb-3 rounded-lg overflow-hidden bg-gray-100">
+                              {imageUrls.length > 0 ? (
+                                <div className="relative w-full h-full">
+                                  <img
+                                    src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
+                                    alt={flavor.flavor_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {imageUrls.length > 1 && (
+                                    <button
+                                      onClick={() => openImageModal(imageUrls, flavor.flavor_name)}
+                                      className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white text-xs px-2 py-1 rounded-full transition-all duration-200 cursor-pointer"
+                                    >
+                                      +{imageUrls.length - 1} more
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            {flavor.flavor_name}
+                          </h3>
+                          {flavor.flavor_description && (
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {flavor.flavor_description}
+                            </p>
+                          )}
+                          <div className="text-xs text-gray-500 mt-2">
+                            Added {new Date(flavor.created_at).toLocaleDateString()}
+                          </div>
+                          
+                          {/* Store Status Badge */}
+                          <div className="mt-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              flavor.store_status === 'published' 
+                                ? 'bg-green-100 text-green-800' 
+                                : flavor.store_status === 'ready'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {flavor.store_status === 'published' ? '📦 In Store' : 
+                               flavor.store_status === 'ready' ? '✅ Ready' : '📝 Draft'}
+                            </span>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex flex-col space-y-2 mt-3">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => startEditFlavor(flavor)}
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => confirmDeleteFlavor(flavor)}
+                                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                            
+                            {/* Store Status Buttons */}
+                            {flavor.store_status === 'draft' && (
+                              <button
+                                onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'ready')}
+                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                              >
+                                Mark as Ready
+                              </button>
+                            )}
+                            
+                            {flavor.store_status === 'ready' && (
+                              <button
+                                onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'published')}
+                                className="w-full bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                              >
+                                📦 Upload to Store
+                              </button>
+                            )}
+                            
+                            {flavor.store_status === 'published' && (
+                              <button
+                                onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'ready')}
+                                className="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                              >
+                                Remove from Store
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2440,7 +3062,7 @@ export const Vendor = () => {
             {activeView === "my-store" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
                 {/* Store Header */}
-                <div className="bg-blue-200 rounded-2xl p-8 mb-8 mx-4">
+                <div className="bg-sky-100 rounded-2xl p-8 mb-8 mx-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                       {/* Store Logo */}
@@ -2508,14 +3130,14 @@ export const Vendor = () => {
                   </div>
                 </div>
 
-                {/* Products Section */}
-                {storeLoading ? (
+                {/* Published Flavors Section */}
+                {publishedFlavorsLoading ? (
                   <div className="flex justify-center items-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                   </div>
                 ) : (
                   <div className="px-4">
-                    {storeProducts.length === 0 ? (
+                    {publishedFlavors.length === 0 ? (
                       <div className="text-center py-16">
                         <div className="bg-blue-200 rounded-2xl p-12 max-w-md mx-auto">
                           <div className="text-6xl mb-4">🍦</div>
@@ -2536,52 +3158,87 @@ export const Vendor = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                        {storeProducts.map((product) => (
-                          <div
-                            key={product.id}
-                            className="bg-blue-200 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300"
-                          >
-                            {/* Product Image */}
-                            <div className="mb-4">
-                              {product.image_url ? (
-                                <img
-                                  src={product.image_url}
-                                  alt={product.name}
-                                  className="w-full h-48 object-cover rounded-xl"
-                                />
-                              ) : (
-                                <div className="w-full h-48 bg-white rounded-xl flex items-center justify-center">
-                                  <div className="text-center">
-                                    <div className="text-4xl mb-2">🍦</div>
-                                    <div className="text-sm text-gray-600">
-                                      No Image
+                        {publishedFlavors.map((flavor) => {
+                          // Parse image URLs (stored as JSON array)
+                          let imageUrls = [];
+                          try {
+                            imageUrls = JSON.parse(flavor.image_url || '[]');
+                          } catch (e) {
+                            if (flavor.image_url) {
+                              imageUrls = [flavor.image_url];
+                            }
+                          }
+                          
+                          return (
+                            <div
+                              key={flavor.flavor_id}
+                              className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300"
+                            >
+                              {/* Flavor Image */}
+                              <div className="mb-4">
+                                {imageUrls.length > 0 ? (
+                                  <div className="relative">
+                                    <img
+                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
+                                      alt={flavor.flavor_name}
+                                      className="w-full h-48 object-cover rounded-xl"
+                                    />
+                                    {imageUrls.length > 1 && (
+                                      <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                        +{imageUrls.length - 1} more
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-48 bg-white rounded-xl flex items-center justify-center">
+                                    <div className="text-center">
+                                      <div className="text-4xl mb-2">🍦</div>
+                                      <div className="text-sm text-gray-600">
+                                        No Image
+                                      </div>
                                     </div>
                                   </div>
+                                )}
+                              </div>
+
+                              {/* Flavor Info */}
+                              <div className="space-y-3">
+                                <h3 className="text-lg font-semibold text-gray-900 text-center">
+                                  {flavor.flavor_name}
+                                </h3>
+
+                                <p className="text-gray-700 text-center text-sm line-clamp-2">
+                                  {flavor.flavor_description}
+                                </p>
+
+                                {/* Available Drum Sizes and Pricing */}
+                                <div className="space-y-2">
+                                  <div className="text-center">
+                                    <span className="text-sm font-semibold text-gray-700">
+                                      Available in all sizes
+                                    </span>
+                                  </div>
+                                  
+                                  {/* All Available Drum Sizes */}
+                                  <div className="text-xs text-gray-600 space-y-1">
+                                    <div>Small ({drumCapacity.small} gal): ₱{drumPrices.small}</div>
+                                    <div>Medium ({drumCapacity.medium} gal): ₱{drumPrices.medium}</div>
+                                    <div>Large ({drumCapacity.large} gal): ₱{drumPrices.large}</div>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
 
-                            {/* Product Info */}
-                            <div className="space-y-3">
-                              <h3 className="text-lg font-semibold text-gray-900 text-center">
-                                {product.name}
-                              </h3>
-
-                              <div className="text-center">
-                                <span className="text-xl font-bold text-gray-900">
-                                  ₱{product.price}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center text-sm text-gray-700">
-                                <span>{product.stock_quantity} in stock</span>
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                  {product.sold_count || 0} sold
-                                </span>
+                                <div className="flex justify-between items-center">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                    📦 Published
+                                  </span>
+                                  <span className="text-sm text-gray-600 font-medium">
+                                    {flavor.sold_count || 0} sold
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2605,6 +3262,163 @@ export const Vendor = () => {
               </div>
             )}
 
+            {activeView === "notifications" && (
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <img 
+                      src={bellNotificationIcon} 
+                      alt="Notifications" 
+                      className="w-10 h-10"
+                    />
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        Notifications
+                      </h1>
+                      <p className="text-gray-600">
+                        Stay updated with your store activities and customer interactions
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">New Order Received</h3>
+                          <p className="text-sm text-gray-600">You have a new order for Mango Flavor - Large size</p>
+                          <p className="text-xs text-gray-500">2 minutes ago</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Order Delivered</h3>
+                          <p className="text-sm text-gray-600">Order #12345 has been successfully delivered</p>
+                          <p className="text-xs text-gray-500">1 hour ago</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
+                          <p className="text-sm text-gray-600">Vanilla Flavor is running low on stock</p>
+                          <p className="text-xs text-gray-500">3 hours ago</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeView === "feedback" && (
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <img 
+                      src={feedbackIcon} 
+                      alt="Feedback" 
+                      className="w-10 h-10"
+                    />
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        Customer Feedback
+                      </h1>
+                      <p className="text-gray-600">
+                        View and manage customer reviews and feedback
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold">JD</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">John Doe</h3>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">★★★★★</span>
+                            <span className="text-sm text-gray-600">5.0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-2">
+                        "Amazing ice cream! The Mango Flavor is absolutely delicious. Will definitely order again!"
+                      </p>
+                      <p className="text-xs text-gray-500">2 days ago</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 font-semibold">SM</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Sarah Miller</h3>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">★★★★☆</span>
+                            <span className="text-sm text-gray-600">4.0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-2">
+                        "Great quality ice cream, but delivery was a bit late. Overall satisfied with the product."
+                      </p>
+                      <p className="text-xs text-gray-500">1 week ago</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-purple-600 font-semibold">MJ</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Mike Johnson</h3>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">★★★★★</span>
+                            <span className="text-sm text-gray-600">5.0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-2">
+                        "Best ice cream in town! The variety of flavors is impressive. Highly recommended!"
+                      </p>
+                      <p className="text-xs text-gray-500">2 weeks ago</p>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                          <span className="text-orange-600 font-semibold">AL</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">Anna Lee</h3>
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">★★★☆☆</span>
+                            <span className="text-sm text-gray-600">3.0</span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-2">
+                        "Good ice cream but could be creamier. The packaging was excellent though."
+                      </p>
+                      <p className="text-xs text-gray-500">3 weeks ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeView === "analytics" && (
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-6">
@@ -2615,6 +3429,131 @@ export const Vendor = () => {
           </div>
         </div>
       </div>
+
+      {/* Image Carousel Modal */}
+      {imageModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-5xl max-h-[90vh] w-full mx-4">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-800">
+                {selectedFlavorName} - Image {currentImageIndex + 1} of {selectedFlavorImages.length}
+              </h3>
+              <button
+                onClick={closeImageModal}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold transition-colors duration-200"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Carousel Container */}
+            <div className="relative">
+              {/* Main Image */}
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
+                <img
+                  src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${selectedFlavorImages[currentImageIndex]}`}
+                  alt={`${selectedFlavorName} - Image ${currentImageIndex + 1}`}
+                  className="w-full h-96 object-contain mx-auto"
+                />
+                
+                {/* Navigation Arrows */}
+                {selectedFlavorImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+              
+              {/* Thumbnail Strip */}
+              {selectedFlavorImages.length > 1 && (
+                <div className="flex space-x-2 overflow-x-auto pb-2">
+                  {selectedFlavorImages.map((imageUrl, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                        index === currentImageIndex 
+                          ? 'border-blue-500 ring-2 ring-blue-200' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <img
+                        src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrl}`}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="mt-4 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                Use arrow keys or click thumbnails to navigate
+              </div>
+              <button
+                onClick={closeImageModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Delete Flavor
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to delete "{flavorToDelete?.flavor_name}"? This action cannot be undone.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelDeleteFlavor}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteFlavor}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -17,7 +17,8 @@ async function runMigration() {
         console.log('Connected to MySQL database');
 
         // Read the migration file
-        const migrationPath = path.join(__dirname, 'migrations', 'add_user_status_field.sql');
+        const migrationFile = process.argv[2] || 'add_user_status_field.sql';
+        const migrationPath = path.join(__dirname, 'migrations', migrationFile);
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
         // Split the SQL into individual statements

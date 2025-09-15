@@ -13,6 +13,7 @@
     import { Admin } from "./pages/admin/admin.jsx";
     import { Vendor } from "./pages/vendor/vendor.jsx";
     import { Customer } from "./pages/customer/customer.jsx";
+    import { FindNearbyVendors } from "./pages/customer/FindNearbyVendors.jsx";
     // import Nav from '../src/components/nav';
 
     function App() {
@@ -98,6 +99,7 @@
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />
           <Route path="/vendor-redirect" element={<VendorRedirect />} />
           <Route path="/customer" element={requireRole('customer', <Customer />)} />
+          <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
         </Routes>
       </Router>
     </>

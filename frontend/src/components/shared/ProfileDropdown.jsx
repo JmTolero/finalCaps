@@ -149,7 +149,12 @@ export const ProfileDropdown = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
           <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-            <div className="font-medium">{user.fname || user.name || 'User'}</div>
+            <div className="font-medium">
+              {user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user.firstName || user.fname || user.name || 'User'
+              }
+            </div>
             <div className="text-gray-500">{getRoleDisplayName(user.role)}</div>
           </div>
           
@@ -241,6 +246,57 @@ export const ProfileDropdown = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
                 </svg>
                 My Orders
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/customer?view=settings');
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Account Settings
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                    const response = await fetch(`${apiBase}/api/auth/verify-vendor`, {
+                      credentials: 'include',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    
+                    if (response.ok) {
+                      navigate('/vendor');
+                    } else {
+                      // Check if user is already a vendor
+                      const userRaw = sessionStorage.getItem('user');
+                      if (userRaw) {
+                        const userData = JSON.parse(userRaw);
+                        if (userData.role === 'vendor') {
+                          navigate('/vendor');
+                        } else {
+                          // Redirect to become vendor page
+                          navigate('/become-vendor');
+                        }
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Vendor verification failed:', error);
+                    navigate('/become-vendor');
+                  }
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Become Vendor
               </button>
             </>
           )}
