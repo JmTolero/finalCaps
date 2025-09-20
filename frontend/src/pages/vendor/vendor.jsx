@@ -51,6 +51,7 @@ export const Vendor = () => {
     const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
     return !userRaw; // Only show loading if no user in sessionStorage
   });
+  const [isUserChanging, setIsUserChanging] = useState(false);
   
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState({
@@ -72,6 +73,7 @@ export const Vendor = () => {
   const [publishedFlavorsLoading, setPublishedFlavorsLoading] = useState(false);    
 
   // Drum management state
+  const [drumReturnLoading, setDrumReturnLoading] = useState(null);
   const [availableDrums, setAvailableDrums] = useState({
     small: 0,
     medium: 0,
@@ -110,6 +112,24 @@ export const Vendor = () => {
     medium: 800,
     large: 1200,
   });
+
+  // Delivery pricing state
+  const [deliveryZones, setDeliveryZones] = useState([]);
+  const [isEditingDelivery, setIsEditingDelivery] = useState(false);
+  const [tempDeliveryZones, setTempDeliveryZones] = useState([]);
+  const [newDeliveryZone, setNewDeliveryZone] = useState({
+    city: '',
+    province: '',
+    delivery_price: 0
+  });
+  const [showAddZoneForm, setShowAddZoneForm] = useState(false);
+
+  // Orders state
+  const [vendorOrders, setVendorOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderFilter, setOrderFilter] = useState('all');
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [recentStatusChange, setRecentStatusChange] = useState(null); // For undo functionality
 
   // Flavor form state
   const [flavorForm, setFlavorForm] = useState({
@@ -155,7 +175,7 @@ export const Vendor = () => {
       }
       
         const response = await axios.get(
-          `${apiBase}/api/user/${userIdToUse}/addresses`
+          `${apiBase}/api/addresses/user/${userIdToUse}/addresses`
         );
       setAddresses(response.data || []);
     } catch (error) {
@@ -266,20 +286,45 @@ export const Vendor = () => {
   }, [fetchAddresses, navigate, currentVendor]);
 
   const fetchPublishedFlavors = async () => {
-    if (!currentVendor?.vendor_id) return;
+    if (!currentVendor?.vendor_id) {
+      console.log('❌ Cannot fetch published flavors: no vendor_id', currentVendor);
+      return;
+    }
     
     try {
+      console.log('🔄 Fetching published flavors for vendor_id:', currentVendor.vendor_id);
+      console.log('🔄 Current vendor object:', currentVendor);
       setPublishedFlavorsLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`);
+      const apiUrl = `${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`;
+      console.log('🔄 API URL:', apiUrl);
+      
+      const response = await axios.get(apiUrl);
+      
+      console.log('📦 Published flavors response:', response.data);
       
       if (response.data.success) {
         // Filter only published flavors
         const published = response.data.flavors.filter(flavor => flavor.store_status === 'published');
+        console.log('✅ Published flavors found:', published.length, published);
+        console.log('📊 All flavors from API:', response.data.flavors.map(f => ({
+          id: f.flavor_id,
+          name: f.flavor_name,
+          status: f.store_status,
+          vendor_id: f.vendor_id
+        })));
         setPublishedFlavors(published);
+      } else {
+        console.log('❌ API returned unsuccessful response:', response.data);
       }
     } catch (error) {
-      console.error("Error fetching published flavors:", error);
+      console.error("❌ Error fetching published flavors:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
       setPublishedFlavors([]);
     } finally {
       setPublishedFlavorsLoading(false);
@@ -419,6 +464,250 @@ export const Vendor = () => {
     }));
   };
 
+  // Delivery pricing functions
+  const fetchDeliveryPricing = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/vendor/delivery/${currentVendor.vendor_id}/pricing`);
+      
+      if (response.data.success) {
+        setDeliveryZones(response.data.delivery_zones || []);
+      }
+    } catch (error) {
+      console.error("Error fetching delivery pricing:", error);
+      // Set empty array on error
+      setDeliveryZones([]);
+    }
+  };
+
+  const handleDeliveryEdit = () => {
+    setIsEditingDelivery(true);
+    setTempDeliveryZones([...deliveryZones]);
+  };
+
+  const handleDeliverySave = async () => {
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/vendor/delivery/${currentVendor.vendor_id}/pricing`, {
+        delivery_zones: tempDeliveryZones
+      });
+
+      if (response.data.success) {
+        setDeliveryZones([...tempDeliveryZones]);
+        setIsEditingDelivery(false);
+        updateStatus(
+          "success",
+          `Delivery pricing updated for ${tempDeliveryZones.length} zones`
+        );
+      } else {
+        updateStatus("error", response.data.error || "Failed to update delivery pricing");
+      }
+    } catch (error) {
+      console.error("Error updating delivery pricing:", error);
+      updateStatus("error", "Failed to update delivery pricing. Please try again.");
+    }
+  };
+
+  const handleDeliveryCancel = () => {
+    setTempDeliveryZones([...deliveryZones]);
+    setIsEditingDelivery(false);
+    setShowAddZoneForm(false);
+  };
+
+  const handleDeliveryZoneChange = (index, field, value) => {
+    const updatedZones = [...tempDeliveryZones];
+    updatedZones[index] = {
+      ...updatedZones[index],
+      [field]: value
+    };
+    setTempDeliveryZones(updatedZones);
+  };
+
+  const handleAddDeliveryZone = async () => {
+    if (!newDeliveryZone.city || !newDeliveryZone.province || newDeliveryZone.delivery_price <= 0) {
+      updateStatus("error", "Please fill in all fields with valid values");
+      return;
+    }
+
+    if (!currentVendor?.vendor_id) return;
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.post(`${apiBase}/api/vendor/delivery/${currentVendor.vendor_id}/zones`, {
+        city: newDeliveryZone.city,
+        province: newDeliveryZone.province,
+        delivery_price: parseFloat(newDeliveryZone.delivery_price)
+      });
+
+      if (response.data.success) {
+        setNewDeliveryZone({ city: '', province: '', delivery_price: 0 });
+        setShowAddZoneForm(false);
+        fetchDeliveryPricing(); // Refresh the list
+        updateStatus("success", "Delivery zone added successfully");
+      } else {
+        updateStatus("error", response.data.error || "Failed to add delivery zone");
+      }
+    } catch (error) {
+      console.error("Error adding delivery zone:", error);
+      updateStatus("error", "Failed to add delivery zone. Please try again.");
+    }
+  };
+
+   const handleRemoveDeliveryZone = async (deliveryPricingId) => {
+     if (!currentVendor?.vendor_id) return;
+     
+     try {
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       const response = await axios.delete(`${apiBase}/api/vendor/delivery/${currentVendor.vendor_id}/zones/${deliveryPricingId}`);
+
+       if (response.data.success) {
+         fetchDeliveryPricing(); // Refresh the list
+         updateStatus("success", "Delivery zone removed successfully");
+       } else {
+         updateStatus("error", response.data.error || "Failed to remove delivery zone");
+       }
+     } catch (error) {
+       console.error("Error removing delivery zone:", error);
+       updateStatus("error", "Failed to remove delivery zone. Please try again.");
+     }
+   };
+
+   // Fetch vendor orders
+   const fetchVendorOrders = async () => {
+     if (!currentVendor?.vendor_id) {
+       console.log('❌ Cannot fetch vendor orders: no vendor_id', currentVendor);
+       return;
+     }
+     
+     try {
+       console.log('🔄 Fetching orders for vendor_id:', currentVendor.vendor_id);
+       setOrdersLoading(true);
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}`);
+       
+       console.log('📦 Vendor orders response:', response.data);
+       
+       if (response.data.success) {
+         console.log('✅ Vendor orders found:', response.data.orders.length);
+         console.log('📊 Order details:', response.data.orders.map(o => ({
+           id: o.order_id,
+           status: o.status,
+           payment_status: o.payment_status,
+           customer: `${o.customer_fname} ${o.customer_lname}`,
+           amount: o.total_amount
+         })));
+         setVendorOrders(response.data.orders);
+       } else {
+         console.log('❌ API returned unsuccessful response:', response.data);
+         setVendorOrders([]);
+       }
+     } catch (error) {
+       console.error("❌ Error fetching vendor orders:", error);
+       setVendorOrders([]);
+     } finally {
+       setOrdersLoading(false);
+     }
+   };
+
+   // Update order status (approve/decline)
+   const updateOrderStatus = async (orderId, newStatus, previousStatus = null) => {
+     try {
+       console.log('🔄 Updating order status:', orderId, 'to', newStatus);
+       
+       // Store previous status for undo functionality (if not provided, get from current orders)
+       if (!previousStatus) {
+         const currentOrder = vendorOrders.find(o => o.order_id === orderId);
+         previousStatus = currentOrder?.status;
+       }
+       
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       const response = await axios.put(`${apiBase}/api/orders/${orderId}/status`, {
+         status: newStatus
+       });
+       
+       if (response.data.success) {
+         const statusMessage = newStatus === 'preparing' ? 'Ice cream preparation started! Customer has been notified.' :
+                              newStatus === 'out_for_delivery' ? 'Order marked as out for delivery! Customer will be notified.' :
+                              newStatus === 'delivered' ? 'Order marked as delivered! Thank you for completing this order.' :
+                              newStatus === 'confirmed' ? 'Order approved! Customer can now proceed with payment.' :
+                              newStatus === 'cancelled' ? 'Order has been declined.' :
+                              `Order status updated to ${newStatus}`;
+         
+         // Store recent change for potential undo (only for certain actions)
+         if (['confirmed', 'preparing', 'out_for_delivery'].includes(newStatus)) {
+           setRecentStatusChange({
+             orderId,
+             newStatus,
+             previousStatus,
+             timestamp: Date.now()
+           });
+           
+           // Clear undo option after 30 seconds
+           setTimeout(() => {
+             setRecentStatusChange(null);
+           }, 30000);
+         }
+         
+         updateStatus("success", statusMessage);
+         fetchVendorOrders(); // Refresh the orders list
+       } else {
+         updateStatus("error", response.data.error || "Failed to update order status");
+       }
+     } catch (error) {
+       console.error("❌ Error updating order status:", error);
+       updateStatus("error", "Failed to update order status. Please try again.");
+     }
+   };
+
+  // Undo recent status change
+  const undoStatusChange = async () => {
+    if (!recentStatusChange) return;
+    
+    try {
+      console.log('🔄 Undoing status change for order:', recentStatusChange.orderId);
+      await updateOrderStatus(recentStatusChange.orderId, recentStatusChange.previousStatus, recentStatusChange.newStatus);
+      setRecentStatusChange(null);
+      updateStatus("success", "Status change has been undone successfully.");
+    } catch (error) {
+      console.error("❌ Error undoing status change:", error);
+      updateStatus("error", "Failed to undo status change. Please manually update if needed.");
+    }
+  };
+
+  // Handle drum return pickup
+  const handleDrumReturnPickup = async (orderId) => {
+    if (!window.confirm('Mark this container as picked up? This will update the status to "returned".')) {
+      return;
+    }
+
+    setDrumReturnLoading(orderId);
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.post(`${apiBase}/api/orders/${orderId}/drum-return`, {
+        drum_status: 'returned',
+        return_requested_at: new Date().toISOString()
+      });
+      
+      if (response.data.success) {
+        updateStatus("success", `Container for Order #${orderId} marked as returned successfully!`);
+        // Refresh orders to show updated status
+        fetchVendorOrders();
+      } else {
+        updateStatus("error", response.data.error || "Failed to update container status");
+      }
+    } catch (error) {
+      console.error('Error updating container return status:', error);
+      updateStatus("error", "Failed to update container status. Please try again.");
+    } finally {
+      setDrumReturnLoading(null);
+    }
+  };
+
   const handleDrumSizeChange = (size, value) => {
     setTempDrums((prev) => ({
       ...prev,
@@ -459,27 +748,44 @@ export const Vendor = () => {
   };
 
   const fetchSavedFlavors = async () => {
-    if (!currentVendor?.vendor_id) return;
+    if (!currentVendor?.vendor_id) {
+      console.log('❌ Cannot fetch saved flavors: no vendor_id', currentVendor);
+      return;
+    }
     
     try {
+      console.log('🔄 Fetching saved flavors for vendor_id:', currentVendor.vendor_id);
+      console.log('🔄 Current vendor object:', currentVendor);
       setFlavorsLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(
-        `${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`
-      );
+      const apiUrl = `${apiBase}/api/vendor/flavors/${currentVendor.vendor_id}`;
+      console.log('🔄 API URL:', apiUrl);
+      
+      const response = await axios.get(apiUrl);
+      
+      console.log('📦 Saved flavors response:', response.data);
       
       if (response.data.success) {
+        console.log('✅ Saved flavors found:', response.data.flavors.length, response.data.flavors);
         setSavedFlavors(response.data.flavors);
+      } else {
+        console.log('❌ API returned unsuccessful response:', response.data);
       }
     } catch (error) {
-      console.error("Error fetching flavors:", error);
+      console.error("❌ Error fetching flavors:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url,
+      });
     } finally {
       setFlavorsLoading(false);
     }
   };
 
   // Fetch drum pricing and availability from database
-  const fetchDrumData = async () => {
+  const fetchDrumData = async () => { 
     if (!currentVendor?.vendor_id) return;
     
     try {
@@ -742,29 +1048,112 @@ export const Vendor = () => {
     }
   };
 
-  // Fetch vendor data when component mounts
+  // Reset vendor data helper function
+  const resetVendorData = useCallback(() => {
+    setCurrentVendor(null);
+    setVendorData({
+      fname: "",
+      email: "",
+      store_name: "",
+      contact_no: "",
+    });
+    setProfileImage(null);
+    setProfileImagePreview(null);
+    setAddresses([]);
+    setPublishedFlavors([]);
+    setSavedFlavors([]);
+    setDashboardData({
+      total_orders: 0,
+      total_revenue: 0,
+      pending_orders: 0,
+      confirmed_orders: 0,
+      delivered_orders: 0,
+      sales_today: 0,
+      sales_this_month: 0,
+      top_flavor: "N/A",
+      product_count: 0,
+      upcoming_deliveries: [],
+    });
+    setAvailableDrums({
+      small: 0,
+      medium: 0,
+      large: 0,
+    });
+  }, []);
+
+  // Track current user ID to detect changes
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Fetch vendor data when component mounts or user changes
   useEffect(() => {
     const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
     if (userRaw) {
       const user = JSON.parse(userRaw);
-      // Only fetch vendor data if user is actually a vendor and we don't have vendor data yet
-      if (user.role === 'vendor' && !currentVendor) {
-        fetchCurrentVendor();
+      // Always fetch vendor data for vendors, regardless of currentVendor state
+      if (user.role === 'vendor') {
+        // Check if this is a different user
+        const isDifferentUser = currentUserId !== user.id;
+        if (isDifferentUser || !currentVendor) {
+          console.log('🔄 User changed or no vendor data:', { 
+            currentUserId, 
+            newUserId: user.id, 
+            hasVendor: !!currentVendor,
+            isDifferentUser,
+            userName: user.username
+          });
+          setCurrentUserId(user.id);
+          resetVendorData();
+          fetchCurrentVendor();
+        }
       }
+    } else {
+      // No user in session, reset everything
+      setCurrentUserId(null);
+      resetVendorData();
     }
-  }, []);
+  }, [resetVendorData, fetchCurrentVendor, currentVendor, currentUserId]);
+
+  // Listen for user changes to refetch vendor data
+  useEffect(() => {
+    const handleUserChange = async () => {
+      console.log('🔄 UserChanged event triggered');
+      setIsUserChanging(true);
+      const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        if (user.role === 'vendor') {
+          // Always reset and fetch for user changes
+          console.log('UserChanged event - resetting vendor data for user:', user.id);
+          setCurrentUserId(user.id);
+          resetVendorData();
+          setIsInitialLoading(true); // Ensure loading state is set during user change
+          await fetchCurrentVendor();
+        }
+      } else {
+        setCurrentUserId(null);
+        resetVendorData();
+        setIsInitialLoading(false);
+      }
+      setIsUserChanging(false);
+    };
+
+    window.addEventListener('userChanged', handleUserChange);
+    return () => {
+      window.removeEventListener('userChanged', handleUserChange);
+    };
+  }, [resetVendorData, fetchCurrentVendor]);
 
   // Fetch vendor data when settings view becomes active
   useEffect(() => {
     const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
     if (userRaw) {
       const user = JSON.parse(userRaw);
-      // Only fetch vendor data when settings view becomes active
-      if (user.role === 'vendor' && activeView === "settings") {
+      // Only fetch vendor data when settings view becomes active and we don't have current vendor data
+      if (user.role === 'vendor' && activeView === "settings" && !currentVendor) {
         fetchCurrentVendor();
       }
     }
-  }, [activeView]);
+  }, [activeView, currentVendor, fetchCurrentVendor]);
 
   // Handle URL tab parameter
   useEffect(() => {
@@ -794,24 +1183,70 @@ export const Vendor = () => {
 
   // Fetch published flavors when my-store view is active and vendor is loaded
   useEffect(() => {
-    if (activeView === "my-store" && currentVendor?.vendor_id && !isInitialLoading) {
+    if (activeView === "my-store" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Triggering fetchPublishedFlavors - conditions:', {
+        activeView,
+        vendorId: currentVendor?.vendor_id,
+        isInitialLoading,
+        isUserChanging
+      });
       fetchPublishedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
   // Fetch saved flavors when inventory view is active and vendor is loaded
   useEffect(() => {
-    if (activeView === "inventory" && currentVendor?.vendor_id && !isInitialLoading) {
+    if (activeView === "inventory" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Triggering fetchSavedFlavors - conditions:', {
+        activeView,
+        vendorId: currentVendor?.vendor_id,
+        isInitialLoading,
+        isUserChanging
+      });
       fetchSavedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
   // Fetch drum data when vendor is loaded
   useEffect(() => {
     if (currentVendor?.vendor_id && !isInitialLoading) {
       fetchDrumData();
+      fetchDeliveryPricing();
     }
   }, [currentVendor?.vendor_id, isInitialLoading]);
+
+  // Fetch vendor orders when orders view is active and vendor is loaded
+  useEffect(() => {
+    if (activeView === "orders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Triggering fetchVendorOrders - conditions:', {
+        activeView,
+        vendorId: currentVendor?.vendor_id,
+        isInitialLoading,
+        isUserChanging
+      });
+      fetchVendorOrders();
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+
+  // Auto-refresh vendor orders every 10 seconds when on orders view to see payment updates
+  useEffect(() => {
+    let interval;
+    
+    if (activeView === "orders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      // Set up auto-refresh every 10 seconds for payment status updates
+      interval = setInterval(() => {
+        console.log('🔄 Auto-refreshing vendor orders for payment updates...');
+        fetchVendorOrders();
+      }, 10000); // 10 seconds for fast payment detection
+    }
+    
+    // Cleanup interval on component unmount or view change
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
   // Fetch vendor dashboard data
   const fetchDashboardData = async (vendorId) => {
@@ -866,7 +1301,7 @@ export const Vendor = () => {
       if (editingAddress) {
         // Update existing address
         await axios.put(
-          `${apiBase}/api/address/${editingAddress.address_id}`,
+          `${apiBase}/api/addresses/address/${editingAddress.address_id}`,
           newAddress
         );
         updateStatus("success", "Store address updated successfully!");
@@ -881,7 +1316,7 @@ export const Vendor = () => {
           is_default: isFirstAddress, // Auto-set as default for first address
         };
         await axios.post(
-          `${apiBase}/api/user/${currentVendor.user_id}/address`,
+          `${apiBase}/api/addresses/user/${currentVendor.user_id}/address`,
           addressPayload
         );
         updateStatus(
@@ -928,7 +1363,7 @@ export const Vendor = () => {
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      await axios.delete(`${apiBase}/api/address/${addressId}`);
+      await axios.delete(`${apiBase}/api/addresses/address/${addressId}`);
       updateStatus("success", "Address deleted successfully!");
       fetchAddresses();
     } catch (error) {
@@ -950,7 +1385,7 @@ export const Vendor = () => {
 
       // Set as primary address for the user
       await axios.put(
-        `${apiBase}/api/user/${currentVendor.user_id}/primary-address/${addressId}?table=users`
+        `${apiBase}/api/addresses/user/${currentVendor.user_id}/primary-address/${addressId}`
       );
       
       updateStatus("success", "Primary address set successfully!");
@@ -2195,81 +2630,21 @@ export const Vendor = () => {
                     </div>
                   </div>
                   
-                  {/* Upcoming Deliveries Card */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Upcoming Deliveries
-                    </h3>
-                    <div className="space-y-3">
-                      {dashboardLoading ? (
-                        <div className="text-center py-8">
-                          <div className="w-full h-16 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <span className="text-sm text-gray-500">
-                              Loading...
-                            </span>
-                      </div>
-                      </div>
-                      ) : dashboardData.upcoming_deliveries.length > 0 ? (
-                        dashboardData.upcoming_deliveries.map((delivery) => (
-                          <div
-                            key={delivery.order_id}
-                            className="border border-gray-200 rounded-lg p-3"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {delivery.customer_name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {delivery.delivery_address}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(
-                                    delivery.delivery_datetime
-                                  ).toLocaleDateString()}{" "}
-                                  at{" "}
-                                  {new Date(
-                                    delivery.delivery_datetime
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </p>
-                    </div>
-                              <div className="text-right">
-                                <p className="text-sm font-semibold text-green-600">
-                                  ₱{delivery.total_amount}
-                                </p>
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                    delivery.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : delivery.status === "confirmed"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : delivery.status === "preparing"
-                                      ? "bg-purple-100 text-purple-800"
-                                      : "bg-green-100 text-green-800"
-                                  }`}
-                                >
-                                  {delivery.status
-                                    .replace("_", " ")
-                                    .toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8">
-                          <div className="w-full h-16 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <span className="text-sm text-gray-500">
-                              No upcoming deliveries
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                   {/* Upcoming Deliveries Card */}
+                   <div className="bg-white p-6 rounded-lg shadow-sm">
+                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                       Upcoming Deliveries
+                     </h3>
+                     <div className="space-y-3">
+                       <div className="text-center py-8">
+                         <div className="w-full h-16 bg-blue-50 rounded-lg flex items-center justify-center">
+                           <span className="text-sm text-gray-500">
+                             No upcoming deliveries
+                           </span>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
                 </div>
               </div>
             )}
@@ -3254,11 +3629,740 @@ export const Vendor = () => {
               </div>
             )}
 
+            {activeView === "orders" && (
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                  <div className="flex items-center space-x-4 mb-6">
+                    <img 
+                      src={ordersIcon} 
+                      alt="Orders" 
+                      className="w-10 h-10"
+                    />
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        Order Management
+                      </h1>
+                      <p className="text-gray-600">
+                        Review and manage customer orders
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Undo Notification */}
+                  {recentStatusChange && (
+                    <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-yellow-800 font-medium">
+                            Order #{recentStatusChange.orderId} status changed to "{recentStatusChange.newStatus}"
+                          </p>
+                          <p className="text-yellow-700 text-sm">
+                            You have 30 seconds to undo this action if it was accidental.
+                          </p>
+                        </div>
+                        <button
+                          onClick={undoStatusChange}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ↶ Undo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Order Filters */}
+                  <div className="mb-8">
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { value: 'all', label: 'All Orders', count: vendorOrders.length },
+                        { value: 'pending', label: 'Pending Approval', count: vendorOrders.filter(o => o.status === 'pending').length },
+                        { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
+                        { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'paid').length },
+                        { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
+                        { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
+                        { value: 'delivered', label: 'Delivered', count: vendorOrders.filter(o => o.status === 'delivered').length },
+                        { value: 'drum_return', label: 'Container Returns', count: vendorOrders.filter(o => o.drum_status === 'not returned' || o.drum_status === 'return_requested').length },
+                        { value: 'cancelled', label: 'Cancelled', count: vendorOrders.filter(o => o.status === 'cancelled').length }
+                      ].map((filter) => (
+                        <button
+                          key={filter.value}
+                          onClick={() => setOrderFilter(filter.value)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            orderFilter === filter.value
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {filter.label} {filter.count > 0 && `(${filter.count})`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Orders List */}
+                  <div className="space-y-4">
+                    {(() => {
+                      const filteredOrders = orderFilter === 'all' 
+                        ? vendorOrders 
+                        : orderFilter === 'confirmed'
+                        ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'unpaid')
+                        : orderFilter === 'paid'
+                        ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'paid')
+                        : orderFilter === 'drum_return'
+                        ? vendorOrders.filter(order => order.drum_status === 'not returned' || order.drum_status === 'return_requested')
+                        : vendorOrders.filter(order => order.status === orderFilter);
+
+                      return ordersLoading ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                          <p className="text-gray-600">Loading orders...</p>
+                        </div>
+                      ) : vendorOrders.length === 0 ? (
+                        <div className="text-center py-12">
+                          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+                          <p className="text-gray-600">Customer orders will appear here when they place them.</p>
+                        </div>
+                      ) : filteredOrders.length === 0 ? (
+                        <div className="text-center py-12">
+                          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No {orderFilter === 'all' ? 'orders' : orderFilter} orders</h3>
+                          <p className="text-gray-600">
+                            {orderFilter === 'all' 
+                              ? "Customer orders will appear here when they place them." 
+                              : `No orders matching "${orderFilter.replace('_', ' ')}" filter found.`
+                            }
+                          </p>
+                        </div>
+                      ) : (
+                        filteredOrders.map((order) => (
+                        <div key={order.order_id} className="bg-gray-50 rounded-lg border border-gray-200">
+                          {/* Condensed Order Summary */}
+                          <div className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-4">
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                      Order #{order.order_id}
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                      {order.customer_fname} {order.customer_lname} • {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      🕒 Delivery: {order.delivery_datetime ? 
+                                        new Date(order.delivery_datetime).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        }) : 'Not scheduled'
+                                      }
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                    <p className="text-xs text-gray-500">
+                                      Payment: {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3 ml-4">
+                                <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                                  order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
+                                  order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ') : 'N/A'}
+                                </span>
+                                <button
+                                  onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                  {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded Order Details */}
+                          {expandedOrderId === order.order_id && (
+                            <div className="border-t border-gray-200 p-6 bg-white">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {/* Customer Information */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-gray-900">Customer Information</h4>
+                              <div className="bg-white rounded-lg p-4 space-y-2">
+                                <p className="text-sm"><strong>Name:</strong> {order.customer_fname} {order.customer_lname || ''}</p>
+                                <p className="text-sm"><strong>Contact:</strong> {order.customer_contact || 'N/A'}</p>
+                                <p className="text-sm"><strong>Email:</strong> {order.customer_email || 'N/A'}</p>
+                              </div>
+                            </div>
+
+                            {/* Order Details */}
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-gray-900">Order Details</h4>
+                              <div className="bg-white rounded-lg p-4 space-y-2">
+                                <p className="text-sm"><strong>Total Amount:</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
+                                <p className="text-sm"><strong>Payment Status:</strong> 
+                                  <span className={`ml-1 font-medium ${
+                                    order.payment_status === 'unpaid' ? 'text-yellow-600' :
+                                    order.payment_status === 'paid' ? 'text-green-600' :
+                                    order.payment_status === 'partial' ? 'text-orange-600' : 'text-gray-600'
+                                  }`}>
+                                    {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
+                                  </span>
+                                </p>
+                                <p className="text-sm"><strong>Delivery Date:</strong> {order.delivery_datetime ? new Date(order.delivery_datetime).toLocaleString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'Not scheduled'}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Delivery Information */}
+                          <div className="mb-6">
+                            <h4 className="font-medium text-gray-900 mb-2">Delivery Information</h4>
+                            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">📍 Delivery Address:</span>
+                                <p className="text-gray-900 mt-1">{order.delivery_address || 'No address specified'}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">🕒 Scheduled Delivery:</span>
+                                <p className="text-gray-900 mt-1 font-medium">
+                                  {order.delivery_datetime ? 
+                                    new Date(order.delivery_datetime).toLocaleString('en-US', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    }) : 'No delivery time scheduled'
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          {order.status === 'pending' && (
+                            <div className="flex space-x-4">
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Approve Order #${order.order_id}?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nThis will allow the customer to proceed with payment.`)) {
+                                    updateOrderStatus(order.order_id, 'confirmed');
+                                  }
+                                }}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+                              >
+                                ✅ Approve Order
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Decline Order #${order.order_id}?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nThis action cannot be easily undone. The customer will be notified.`)) {
+                                    updateOrderStatus(order.order_id, 'cancelled');
+                                  }
+                                }}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+                              >
+                                ❌ Decline Order
+                              </button>
+                            </div>
+                          )}
+
+                          {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                              <p className="text-green-800 font-medium mb-2">Order Approved!</p>
+                              <p className="text-green-700 text-sm">
+                                This order has been approved. Waiting for customer payment to start preparation.
+                              </p>
+                            </div>
+                          )}
+
+                          {order.status === 'confirmed' && order.payment_status === 'paid' && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                              <p className="text-blue-800 font-medium mb-2">Payment Received!</p>
+                              <p className="text-blue-700 text-sm mb-3">
+                                Customer has paid. You can now start preparing the ice cream.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Start preparing ice cream for Order #${order.order_id}?\n\nThis will notify the customer that their order is being prepared.`)) {
+                                    updateOrderStatus(order.order_id, 'preparing');
+                                  }
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                              >
+                                🍦 Start Preparing Ice Cream
+                              </button>
+                            </div>
+                          )}
+
+                          {order.status === 'preparing' && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                              <p className="text-blue-800 font-medium mb-2">🍦 Preparing Ice Cream</p>
+                              <p className="text-blue-700 text-sm mb-3">
+                                Ice cream is being prepared. Mark as ready for delivery when finished.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Mark Order #${order.order_id} as ready for delivery?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAddress: ${order.delivery_address}\n\nThis will notify the customer that their order is on the way.`)) {
+                                    updateOrderStatus(order.order_id, 'out_for_delivery');
+                                  }
+                                }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                              >
+                                🚚 Ready for Delivery
+                              </button>
+                            </div>
+                          )}
+
+                          {order.status === 'out_for_delivery' && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                              <p className="text-purple-800 font-medium mb-2">🚚 Out for Delivery</p>
+                              <p className="text-purple-700 text-sm mb-3">
+                                Order is on the way to customer. Mark as delivered when completed.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Mark Order #${order.order_id} as delivered?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nConfirm that the order has been successfully delivered to the customer.`)) {
+                                    updateOrderStatus(order.order_id, 'delivered');
+                                  }
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                              >
+                                ✅ Mark as Delivered
+                              </button>
+                            </div>
+                          )}
+
+                          {order.status === 'delivered' && (
+                            <div className="space-y-4">
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <p className="text-green-800 font-medium mb-2">🎉 Order Completed!</p>
+                                <p className="text-green-700 text-sm">
+                                  This order has been successfully delivered to the customer.
+                                </p>
+                              </div>
+
+                              {/* Container Return Section */}
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div>
+                                    <h3 className="text-blue-800 font-medium mb-1">📦 Container Return Status</h3>
+                                    <p className="text-blue-700 text-sm">
+                                      {order.drum_status === 'in use' && 'Container is currently in use by customer'}
+                                      {order.drum_status === 'not returned' && 'Customer has requested container return - waiting for pickup'}
+                                      {order.drum_status === 'returned' && 'Container has been successfully returned'}
+                                      {!order.drum_status && 'Container status unknown'}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {order.drum_status === 'not returned' && (
+                                      <button 
+                                        onClick={() => handleDrumReturnPickup(order.order_id)}
+                                        disabled={drumReturnLoading === order.order_id}
+                                        className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                                      >
+                                        {drumReturnLoading === order.order_id ? (
+                                          <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            <span>Updating...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span>📦</span>
+                                            <span>Mark as Picked Up</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                    {order.drum_status === 'returned' && (
+                                      <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                        ✅ Container Returned
+                                      </span>
+                                    )}
+                                    {order.drum_status === 'in use' && (
+                                      <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                                        📦 In Use
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {order.return_requested_at && (
+                                  <p className="text-blue-600 text-xs">
+                                    Return requested on: {new Date(order.return_requested_at).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {order.status === 'cancelled' && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                              <p className="text-red-800 font-medium">Order Declined</p>
+                              <p className="text-red-700 text-sm">This order has been cancelled.</p>
+                            </div>
+                          )}
+                            </div>
+                          )}
+                        </div>
+                        ))
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeView === "payments" && (
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">
-                  Payments
-                </h1>
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                  <div className="flex items-center space-x-4 mb-8">
+                    <img 
+                      src={paymentsIcon} 
+                      alt="Payments" 
+                      className="w-10 h-10"
+                    />
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">
+                        Payments & Pricing
+                      </h1>
+                      <p className="text-gray-600">
+                        Manage your drum prices and delivery zones
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Drum Pricing Section */}
+                  <div className="mb-12">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                          Drum Pricing
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                          Set prices for different drum sizes
+                        </p>
+                      </div>
+                      {!isEditingPrices && (
+                        <button
+                          onClick={handlePricesEdit}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                        >
+                          Edit Prices
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditingPrices ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Small Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.small}
+                              onChange={(e) =>
+                                handlePriceChange("small", e.target.value)
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Medium Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.medium}
+                              onChange={(e) =>
+                                handlePriceChange("medium", e.target.value)
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Large Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.large}
+                              onChange={(e) =>
+                                handlePriceChange("large", e.target.value)
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={handlePricesSave}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Save Prices
+                          </button>
+                          <button
+                            onClick={handlePricesCancel}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
+                          <div className="text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.small}
+                          </div>
+                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                            Small Drum
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {drumCapacity.small} gallons
+                          </div>
+                        </div>
+                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
+                          <div className="text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.medium}
+                          </div>
+                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                            Medium Drum
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {drumCapacity.medium} gallons
+                          </div>
+                        </div>
+                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
+                          <div className="text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.large}
+                          </div>
+                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                            Large Drum
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {drumCapacity.large} gallons
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Delivery Pricing Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                          Delivery Zones & Pricing
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                          Set delivery prices for different cities and provinces
+                        </p>
+                      </div>
+                      {!isEditingDelivery && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setShowAddZoneForm(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                          >
+                            Add Zone
+                          </button>
+                          <button
+                            onClick={handleDeliveryEdit}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                          >
+                            Edit Zones
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add New Zone Form */}
+                    {showAddZoneForm && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Delivery Zone</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              City
+                            </label>
+                            <input
+                              type="text"
+                              value={newDeliveryZone.city}
+                              onChange={(e) => setNewDeliveryZone({...newDeliveryZone, city: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="e.g., Makati City"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Province
+                            </label>
+                            <input
+                              type="text"
+                              value={newDeliveryZone.province}
+                              onChange={(e) => setNewDeliveryZone({...newDeliveryZone, province: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="e.g., Metro Manila"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Delivery Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={newDeliveryZone.delivery_price}
+                              onChange={(e) => setNewDeliveryZone({...newDeliveryZone, delivery_price: parseFloat(e.target.value) || 0})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-3 mt-4">
+                          <button
+                            onClick={handleAddDeliveryZone}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Add Zone
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddZoneForm(false);
+                              setNewDeliveryZone({ city: '', province: '', delivery_price: 0 });
+                            }}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delivery Zones List */}
+                    {isEditingDelivery ? (
+                      <div className="space-y-4">
+                        {tempDeliveryZones.map((zone, index) => (
+                          <div key={zone.delivery_pricing_id || index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  City
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zone.city}
+                                  onChange={(e) => handleDeliveryZoneChange(index, 'city', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Province
+                                </label>
+                                <input
+                                  type="text"
+                                  value={zone.province}
+                                  onChange={(e) => handleDeliveryZoneChange(index, 'province', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Delivery Price (₱)
+                                </label>
+                                <input
+                                  type="number"
+                                  value={zone.delivery_price}
+                                  onChange={(e) => handleDeliveryZoneChange(index, 'delivery_price', parseFloat(e.target.value) || 0)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={handleDeliverySave}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={handleDeliveryCancel}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {deliveryZones.length > 0 ? (
+                          deliveryZones.map((zone) => (
+                            <div key={zone.delivery_pricing_id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-4">
+                                    <div>
+                                      <h3 className="font-semibold text-gray-800">
+                                        {zone.city}, {zone.province}
+                                      </h3>
+                                      <p className="text-sm text-gray-600">
+                                        Delivery Price: ₱{parseFloat(zone.delivery_price).toFixed(2)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveDeliveryZone(zone.delivery_pricing_id)}
+                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            <p>No delivery zones configured yet.</p>
+                            <p className="text-sm">Add your first delivery zone to get started.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

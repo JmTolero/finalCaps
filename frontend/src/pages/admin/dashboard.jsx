@@ -35,14 +35,21 @@ export const AdminDashboard = () => {
     const fetchOrderRecords = async () => {
       try{
         setLoading(true);
-        const res = await axios.get('http://localhost:3001/api/admin/orderRecords');
+        const res = await axios.get('http://localhost:3001/api/orders/admin/all');
         console.log('Order records response:', res.data);
-        console.log('Number of orders:', res.data?.length || 0);
-        setOrders(res.data || []);
-        setError(null);
+        
+        if (res.data.success) {
+          console.log('Number of orders:', res.data.orders?.length || 0);
+          setOrders(res.data.orders || []);
+          setError(null);
+        } else {
+          setError('Failed to fetch order records: ' + res.data.error);
+          setOrders([]);
+        }
       }catch(err){
         console.log('Error fetching orders:', err);
-        setError('Failed to fetch order records');
+        setError('Failed to fetch order records: ' + (err.response?.data?.error || err.message));
+        setOrders([]);
       } finally {
         setLoading(false);
       }
@@ -127,13 +134,13 @@ export const AdminDashboard = () => {
               <thead className="bg-blue-200">
                 <tr>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Order ID</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Customer ID</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Vendor ID</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Customer</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Vendor</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Total Amount</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Delivery Date/Time</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Container Size</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Status</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Order Status</th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 border-r border-blue-300">Payment Status</th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700">Drum Status</th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700">Created</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -145,10 +152,16 @@ export const AdminDashboard = () => {
                           <div className="text-xs md:text-sm font-bold text-blue-600">#{order.order_id}</div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <div className="text-xs md:text-sm font-medium text-gray-900">{order.fname || 'N/A'}</div>
+                          <div className="text-xs md:text-sm font-medium text-gray-900">
+                            {order.customer_fname} {order.customer_lname || ''}
+                          </div>
+                          <div className="text-xs text-gray-500">{order.customer_email}</div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <div className="text-xs md:text-sm font-medium text-gray-900">{order.store_name || 'N/A'}</div>
+                          <div className="text-xs md:text-sm font-medium text-gray-900">{order.vendor_name || 'N/A'}</div>
+                        </td>
+                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
+                          <div className="text-xs md:text-sm font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
                           <div className="text-xs md:text-sm text-gray-500">
@@ -159,40 +172,32 @@ export const AdminDashboard = () => {
                           </div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {order.size || 'N/A'}
+                          <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium ${
+                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
+                            order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'N/A'}
                           </span>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium ${
-                            order.status === 'completed' 
-                              ? 'bg-green-100 text-green-800'
-                              : order.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : order.status === 'processing'
-                              ? 'bg-blue-100 text-blue-800'
-                              : order.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
+                            order.payment_status === 'unpaid' ? 'bg-red-100 text-red-800' :
+                            order.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                            order.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.status || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-medium ${
-                            order.payment_status === 'paid' 
-                              ? 'bg-green-100 text-green-800'
-                              : order.payment_status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : order.payment_status === 'failed'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {order.payment_status || 'N/A'}
+                            {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
                           </span>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 whitespace-nowrap">
-                          <div className="text-xs md:text-sm font-medium text-gray-900">{order.status_name || 'N/A'}</div>
+                          <div className="text-xs md:text-sm text-gray-500">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
+                          </div>
                         </td>   
                       </tr>
                     )
@@ -216,7 +221,7 @@ export const AdminDashboard = () => {
                     <p className="text-sm text-gray-500 mt-1">Booking Details</p>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {order.size || 'N/A'}
+                    ₱{parseFloat(order.total_amount || 0).toFixed(2)}
                   </span>
                 </div>
                 
@@ -224,13 +229,22 @@ export const AdminDashboard = () => {
                   {/* Customer Info */}
                   <div className="space-y-1">
                     <span className="text-gray-600 text-sm font-medium">Customer:</span>
-                    <p className="font-semibold text-gray-900">{order.fname || 'N/A'}</p>
+                    <p className="font-semibold text-gray-900">
+                      {order.customer_fname} {order.customer_lname || ''}
+                    </p>
+                    <p className="text-xs text-gray-500">{order.customer_email}</p>
                   </div>
                   
                   {/* Vendor Info */}
                   <div className="space-y-1">
-                    <span className="text-gray-600 text-sm font-medium">Store:</span>
-                    <p className="font-semibold text-gray-900">{order.store_name || 'N/A'}</p>
+                    <span className="text-gray-600 text-sm font-medium">Vendor:</span>
+                    <p className="font-semibold text-gray-900">{order.vendor_name || 'N/A'}</p>
+                  </div>
+                  
+                  {/* Total Amount */}
+                  <div className="space-y-1">
+                    <span className="text-gray-600 text-sm font-medium">Total Amount:</span>
+                    <p className="font-bold text-green-600 text-lg">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
                   </div>
                   
                   {/* Delivery Date/Time */}
@@ -249,17 +263,15 @@ export const AdminDashboard = () => {
                     <span className="text-gray-600 text-sm font-medium">Order Status:</span>
                     <div>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        order.status === 'completed' 
-                          ? 'bg-green-100 text-green-800'
-                          : order.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : order.status === 'processing'
-                          ? 'bg-blue-100 text-blue-800'
-                          : order.status === 'cancelled'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
+                        order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                        order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {order.status || 'N/A'}
+                        {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -269,23 +281,22 @@ export const AdminDashboard = () => {
                     <span className="text-gray-600 text-sm font-medium">Payment:</span>
                     <div>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        order.payment_status === 'paid' 
-                          ? 'bg-green-100 text-green-800'
-                          : order.payment_status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : order.payment_status === 'failed'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
+                        order.payment_status === 'unpaid' ? 'bg-red-100 text-red-800' :
+                        order.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                        order.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
                       }`}>
-                        {order.payment_status || 'N/A'}
+                        {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
                       </span>
                     </div>
                   </div>
                   
-                  {/* Drum Status */}
+                  {/* Created Date */}
                   <div className="space-y-1 sm:col-span-2">
-                    <span className="text-gray-600 text-sm font-medium">Drum Status:</span>
-                    <p className="font-semibold text-gray-900">{order.status_name || 'N/A'}</p>
+                    <span className="text-gray-600 text-sm font-medium">Created:</span>
+                    <p className="font-semibold text-gray-900">
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -659,7 +659,7 @@ export const Vendor = () => {
 
       // Set as primary address for the user
       await axios.put(
-        `${apiBase}/api/user/${currentVendor.user_id}/primary-address/${addressId}?table=users`
+        `${apiBase}/api/addresses/user/${currentVendor.user_id}/primary-address/${addressId}`
       );
 
       updateStatus("success", "Primary address set successfully!");

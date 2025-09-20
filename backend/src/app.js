@@ -10,6 +10,7 @@ const adminLocationRoutes = require('./routes/admin/locationRoutes');
 const vendorRoutes = require('./routes/vendor/vendorRoutes');
 const flavorRoutes = require('./routes/vendor/flavorRoutes');
 const drumRoutes = require('./routes/vendor/drumRoutes');
+const deliveryRoutes = require('./routes/vendor/deliveryRoutes');
 const sharedFlavorRoutes = require('./routes/shared/flavorRoutes');
 const customerRoutes = require('./routes/customer/customerRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
@@ -38,13 +39,14 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', orderRoutes);
-app.use('/api', addressRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminLocationRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/vendor/flavors', flavorRoutes);
 app.use('/api/vendor/drums', drumRoutes);
+app.use('/api/vendor/delivery', deliveryRoutes);
 app.use('/api/flavors', sharedFlavorRoutes);
 app.use('/api/customer', customerRoutes);
 

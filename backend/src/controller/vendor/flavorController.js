@@ -41,6 +41,17 @@ const getVendorFlavors = async (req, res) => {
   try {
     const { vendor_id } = req.params;
     
+    console.log('🔍 Fetching flavors for vendor_id:', vendor_id);
+    console.log('🔍 Request params:', req.params);
+    console.log('🔍 Request headers:', req.headers);
+    
+    // First, let's check if there are any flavors at all for this vendor
+    const [allFlavorsCheck] = await pool.query(`
+      SELECT COUNT(*) as total_flavors FROM flavors WHERE vendor_id = ?
+    `, [vendor_id]);
+    
+    console.log('📊 Total flavors in database for vendor', vendor_id, ':', allFlavorsCheck[0].total_flavors);
+    
     const [flavors] = await pool.query(`
       SELECT 
         f.flavor_id,
@@ -51,15 +62,23 @@ const getVendorFlavors = async (req, res) => {
         f.created_at,
         f.vendor_id,
         f.sold_count,
-        COALESCE(SUM(oi.quantity), 0) as calculated_sold_count
+        COALESCE(SUM(CASE WHEN o.status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered') THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count
       FROM flavors f
       LEFT JOIN products p ON f.flavor_id = p.flavor_id
       LEFT JOIN order_items oi ON p.product_id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.order_id
-      WHERE f.vendor_id = ? AND (o.status IS NULL OR o.status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered'))
+      WHERE f.vendor_id = ?
       GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count
       ORDER BY f.created_at DESC
     `, [vendor_id]);
+    
+    console.log('📦 Found flavors for vendor', vendor_id, ':', flavors.length, 'flavors');
+    console.log('📦 Flavor details:', flavors.map(f => ({
+      id: f.flavor_id,
+      name: f.flavor_name,
+      store_status: f.store_status,
+      vendor_id: f.vendor_id
+    })));
 
     // Update sold_count in database if calculated count is different
     for (const flavor of flavors) {

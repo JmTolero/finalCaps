@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
@@ -46,11 +46,20 @@ export const Customer = () => {
   const [allFlavors, setAllFlavors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Orders data
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [orderFilter, setOrderFilter] = useState('all');
+  const [drumReturnLoading, setDrumReturnLoading] = useState(null);
   // Check URL parameters for view
   useEffect(() => {
     const view = searchParams.get('view');
     if (view === 'settings') {
       setActiveView('settings');
+    } else if (view === 'orders') {
+      setActiveView('orders');
     }
   }, [searchParams]);
 
@@ -103,7 +112,117 @@ export const Customer = () => {
       fetchCustomerData();
       fetchAddresses();
     }
+    
+    if (activeView === 'orders') {
+      fetchCustomerOrders();
+    }
   }, [activeView]);
+
+  // Auto-refresh orders every 15 seconds when on orders view to track status changes
+  useEffect(() => {
+    let interval;
+    
+    if (activeView === 'orders') {
+      // Set up auto-refresh every 15 seconds for order tracking
+      interval = setInterval(() => {
+        console.log('🔄 Auto-refreshing customer orders for status tracking...');
+        fetchCustomerOrders();
+      }, 15000); // 15 seconds for faster order status updates
+    }
+    
+    // Cleanup interval on component unmount or view change
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeView]);
+
+  // Auto-refresh customer dashboard every 30 seconds when on dashboard view
+  useEffect(() => {
+    let interval;
+    
+    if (activeView === 'dashboard') {
+      // Initial fetch
+      fetchAllFlavors();
+      
+      // Set up auto-refresh every 30 seconds
+      interval = setInterval(() => {
+        console.log('🔄 Auto-refreshing customer dashboard products...');
+        fetchAllFlavors(false); // Don't show loading spinner for auto-refresh
+      }, 30000); // 30 seconds
+    }
+    
+    // Cleanup interval on component unmount or view change
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeView]);
+
+  // Reset customer data helper function
+  const resetCustomerData = useCallback(() => {
+    setAddresses([]);
+    setAllFlavors([]);
+    setVendorStatus(null);
+  }, []);
+
+  // Track current user ID to detect changes
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Listen for user changes to refresh data
+  useEffect(() => {
+    const handleUserChange = () => {
+      const userRaw = sessionStorage.getItem('user');
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        const isDifferentUser = currentUserId !== user.id;
+        
+        if (isDifferentUser) {
+          console.log('Customer component - user changed:', { 
+            currentUserId, 
+            newUserId: user.id 
+          });
+          setCurrentUserId(user.id);
+          
+          // Update customer data
+          setCustomerData({
+            fname: user.firstName || user.fname || '',
+            lname: user.lastName || user.lname || '',
+            email: user.email || '',
+            contact_no: user.contact_no || '',
+            role: user.role || 'customer'
+          });
+          
+          // Reset other data
+          resetCustomerData();
+          
+          // Check vendor status if user is a vendor
+          if (user.role === 'vendor') {
+            checkVendorStatus(user.id);
+          }
+          
+          // Reload data for current view
+          if (activeView === 'dashboard') {
+            fetchAllFlavors();
+          }
+          if (activeView === 'settings') {
+            fetchCustomerData();
+            fetchAddresses();
+          }
+        }
+      } else {
+        setCurrentUserId(null);
+        resetCustomerData();
+      }
+    };
+
+    window.addEventListener('userChanged', handleUserChange);
+    return () => {
+      window.removeEventListener('userChanged', handleUserChange);
+    };
+  }, [activeView, resetCustomerData, currentUserId]);
 
 
   const fetchCustomerData = async () => {
@@ -144,20 +263,138 @@ export const Customer = () => {
     }
   };
 
-  const fetchAllFlavors = async () => {
+  const fetchAllFlavors = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       // Fetch all published flavors from all vendors
       const response = await axios.get(`${apiBase}/api/flavors/all-published`);
       if (response.data.success) {
         setAllFlavors(response.data.flavors);
+        console.log('🔄 Customer dashboard - flavors refreshed:', response.data.flavors.length);
       }
     } catch (error) {
       console.error('Error fetching flavors:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  const fetchCustomerOrders = async () => {
+    try {
+      setOrdersLoading(true);
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        console.error('No user session found');
+        setOrders([]);
+        return;
+      }
+      
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/orders/customer/${user.id}`);
+      
+      if (response.data.success) {
+        setOrders(response.data.orders);
+        console.log('📦 Customer orders fetched:', response.data.orders.length);
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching customer orders:', error);
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handlePayment = (order) => {
+    // Create payment data for the order
+    const paymentData = {
+      orderId: order.order_id,
+      vendorId: order.vendor_id,
+      vendorName: order.vendor_name,
+      totalAmount: order.total_amount,
+      deliveryAddress: order.delivery_address,
+      deliveryDateTime: order.delivery_datetime,
+      paymentType: order.payment_type || 'full', // Default to full payment
+      items: [] // TODO: Add order items if needed
+    };
+    
+    console.log('Starting payment for order:', paymentData);
+    
+    // Show detailed payment confirmation dialog
+    const paymentAmount = parseFloat(order.total_amount).toFixed(2);
+    const confirmMessage = `⚠️ PAYMENT CONFIRMATION ⚠️\n\nOrder: #${order.order_id}\nVendor: ${order.vendor_name}\nAmount: ₱${paymentAmount}\nDelivery: ${order.delivery_address}\n\nProceed with GCash payment?\n\n✅ This will charge your GCash account\n✅ The vendor will be notified to start preparing\n✅ You cannot cancel after payment is processed`;
+    
+    if (window.confirm(confirmMessage)) {
+      // Show final confirmation for payment
+      if (window.confirm(`Final confirmation: Pay ₱${paymentAmount} via GCash now?`)) {
+        // Process payment
+        updateOrderPaymentStatus(order.order_id, 'paid');
+      }
+    }
+  };
+
+  const updateOrderPaymentStatus = async (orderId, paymentStatus) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Update payment status in database
+      const response = await axios.put(`${apiBase}/api/orders/${orderId}/payment-status`, {
+        payment_status: paymentStatus
+      });
+      
+      if (response.data.success) {
+        console.log('Payment status updated successfully for order:', orderId);
+        
+        // Refresh orders to show updated status
+        fetchCustomerOrders();
+        
+        alert('Payment successful! The vendor has been notified and will start preparing your ice cream. You can track the progress in your orders.');
+      } else {
+        throw new Error(response.data.error || 'Failed to update payment status');
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Payment completed, but failed to update status. Please contact support.');
+    }
+  };
+
+  const handleDrumReturn = async (order) => {
+    if (!window.confirm('Are you sure you want to request drum return for this order? The vendor will be notified to pick up the drum.')) {
+      return;
+    }
+
+    setDrumReturnLoading(order.order_id);
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.post(`${apiBase}/api/orders/${order.order_id}/drum-return`, {
+        drum_status: 'return_requested',
+        return_requested_at: new Date().toISOString()
+      });
+      
+      if (response.data.success) {
+        // Update local state
+        setOrders(prevOrders => 
+          prevOrders.map(o => 
+            o.order_id === order.order_id 
+              ? { ...o, drum_status: 'return_requested', return_requested_at: new Date().toISOString() }
+              : o
+          )
+        );
+        alert('Drum return requested successfully! The vendor will be notified to pick up the drum.');
+      } else {
+        alert('Failed to request drum return. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error requesting drum return:', error);
+      alert('Failed to request drum return. Please try again.');
+    } finally {
+      setDrumReturnLoading(null);
     }
   };
 
@@ -175,7 +412,7 @@ export const Customer = () => {
       const user = JSON.parse(userRaw);
       const userId = user.id;
       
-      const response = await axios.get(`${apiBase}/api/user/${userId}/addresses`);
+      const response = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
       setAddresses(response.data || []);
     } catch (error) {
       console.error('Error fetching addresses:', error);
@@ -207,11 +444,11 @@ export const Customer = () => {
       
       if (editingAddress) {
         // Update existing address
-        await axios.put(`${apiBase}/api/address/${editingAddress.address_id}`, addressPayload);
+        await axios.put(`${apiBase}/api/addresses/address/${editingAddress.address_id}`, addressPayload);
         setStatus({ type: 'success', message: 'Address updated successfully!' });
       } else {
         // Create new address
-        await axios.post(`${apiBase}/api/user/${userId}/address`, addressPayload);
+        await axios.post(`${apiBase}/api/addresses/user/${userId}/address`, addressPayload);
         setStatus({ type: 'success', message: 'Address added successfully!' });
       }
       
@@ -252,7 +489,7 @@ export const Customer = () => {
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      await axios.delete(`${apiBase}/api/address/${addressId}`);
+      await axios.delete(`${apiBase}/api/addresses/address/${addressId}`);
       setStatus({ type: 'success', message: 'Address deleted successfully!' });
       fetchAddresses();
     } catch (error) {
@@ -276,13 +513,37 @@ export const Customer = () => {
       const user = JSON.parse(userRaw);
       const userId = user.id;
       
-      await axios.put(`${apiBase}/api/user/${userId}/address/${addressId}/default`);
+      await axios.put(`${apiBase}/api/addresses/user/${userId}/address/${addressId}/default`);
       setStatus({ type: 'success', message: 'Default address updated!' });
       fetchAddresses();
     } catch (error) {
       setStatus({ 
         type: 'error', 
         message: error.response?.data?.error || 'Failed to set default address' 
+      });
+    }
+  };
+
+  const setPrimaryAddress = async (addressId) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Get user ID from sessionStorage
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        setStatus({ type: 'error', message: 'No user session found. Please log in again.' });
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      const userId = user.id;
+      
+      await axios.put(`${apiBase}/api/addresses/user/${userId}/primary-address/${addressId}`);
+      setStatus({ type: 'success', message: 'Primary address updated!' });
+      fetchAddresses();
+    } catch (error) {
+      setStatus({ 
+        type: 'error', 
+        message: error.response?.data?.error || 'Failed to set primary address' 
       });
     }
   };
@@ -352,25 +613,22 @@ export const Customer = () => {
     }
   };
 
-  if (activeView === 'settings') {
-    
+  if (activeView === 'orders') {
     return (
       <>
         <NavWithLogo />
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16" key={`settings-${settingsKey}`}>
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
           <div className="max-w-6xl mx-auto px-4">
             {/* Header */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-                  <p className="text-gray-600 mt-2">Manage your profile and delivery preferences</p>
+                  <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+                  <p className="text-gray-600 mt-2">Track your order status and history</p>
                 </div>
                 <button
                   onClick={() => {
                     setActiveView('dashboard');
-                    setSettingsKey(0); // Reset settings key
-                    // Navigate to clean URL
                     navigate('/customer');
                   }}
                   className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
@@ -378,7 +636,411 @@ export const Customer = () => {
                   ← Back to Home
                 </button>
               </div>
+              
+              {/* Order Filters */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all', label: 'All Orders', count: orders.length },
+                  { value: 'pending', label: 'Pending', count: orders.filter(o => o.status === 'pending').length },
+                  { value: 'confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'confirmed').length },
+                  { value: 'preparing', label: 'Preparing', count: orders.filter(o => o.status === 'preparing').length },
+                  { value: 'out_for_delivery', label: 'Out for Delivery', count: orders.filter(o => o.status === 'out_for_delivery').length },
+                  { value: 'delivered', label: 'Delivered', count: orders.filter(o => o.status === 'delivered').length },
+                  { value: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'cancelled').length }
+                ].map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setOrderFilter(filter.value)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      orderFilter === filter.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {filter.label} {filter.count > 0 && `(${filter.count})`}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Orders List */}
+            <div className="bg-white rounded-lg shadow-sm">
+              {(() => {
+                const filteredOrders = orderFilter === 'all' 
+                  ? orders 
+                  : orders.filter(order => order.status === orderFilter);
+
+                // Show filter results summary
+                if (!ordersLoading && orders.length > 0) {
+                  const filterLabel = orderFilter === 'all' ? 'orders' : `${orderFilter.replace('_', ' ')} orders`;
+                  console.log(`Showing ${filteredOrders.length} ${filterLabel} out of ${orders.length} total orders`);
+                }
+                
+                return ordersLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading your orders...</p>
+                  </div>
+                ) : orders.length === 0 ? (
+                <div className="p-8 text-center">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+                  <p className="text-gray-600 mb-4">You haven't placed any orders yet.</p>
+                  <button
+                    onClick={() => {
+                      setActiveView('dashboard');
+                      navigate('/customer');
+                    }}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Start Shopping
+                  </button>
+                </div>
+                ) : filteredOrders.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No {orderFilter === 'all' ? 'orders' : orderFilter} orders</h3>
+                    <p className="text-gray-600">
+                      {orderFilter === 'all' 
+                        ? "You haven't placed any orders yet." 
+                        : `No orders with status "${orderFilter.replace('_', ' ')}" found.`
+                      }
+                    </p>
+                  </div>
+                ) : (
+                <div className="divide-y divide-gray-200">
+                  {filteredOrders.map((order) => (
+                    <div key={order.order_id} className="p-6">
+                      {/* Condensed Order Summary */}
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                Order #{order.order_id}
+                              </h3>
+                                    <p className="text-sm text-gray-600">
+                                      {order.vendor_name} • {new Date(order.created_at).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      🕒 Delivery: {order.delivery_datetime ? 
+                                        new Date(order.delivery_datetime).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        }) : 'Not scheduled'
+                                      }
+                                    </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                            order.status === 'pending' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : order.status === 'confirmed'
+                              ? 'bg-green-100 text-green-800'
+                              : order.status === 'preparing'
+                              ? 'bg-blue-100 text-blue-800'
+                              : order.status === 'out_for_delivery'
+                              ? 'bg-purple-100 text-purple-800'
+                              : order.status === 'delivered'
+                              ? 'bg-green-100 text-green-800'
+                              : order.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
+                          </span>
+                          <button
+                            onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                          >
+                            {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Order Details */}
+                      {expandedOrderId === order.order_id && (
+                        <div className="border-t pt-4 space-y-6">
+                          {/* Order Status Progression */}
+                          {(order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered') && (
+                        <div className="mb-6">
+                          <h4 className="font-medium text-gray-900 mb-3">Order Progress</h4>
+                          <div className="flex items-center justify-between">
+                            {/* Step 1: Confirmed */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
+                                  ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+                              }`}>
+                                ✓
+                              </div>
+                              <span className="text-xs mt-1 text-center">Confirmed</span>
+                            </div>
+                            
+                            {/* Progress Line 1 */}
+                            <div className={`flex-1 h-1 mx-2 ${
+                              order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
+                                ? 'bg-green-500' : 'bg-gray-300'
+                            }`}></div>
+                            
+                            {/* Step 2: Preparing */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
+                                  ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
+                              }`}>
+                                {order.status === 'preparing' ? '🍦' : '✓'}
+                              </div>
+                              <span className="text-xs mt-1 text-center">Preparing</span>
+                            </div>
+                            
+                            {/* Progress Line 2 */}
+                            <div className={`flex-1 h-1 mx-2 ${
+                              order.status === 'out_for_delivery' || order.status === 'delivered'
+                                ? 'bg-purple-500' : 'bg-gray-300'
+                            }`}></div>
+                            
+                            {/* Step 3: Out for Delivery */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                order.status === 'out_for_delivery' || order.status === 'delivered'
+                                  ? 'bg-purple-500 text-white' : 'bg-gray-300 text-gray-600'
+                              }`}>
+                                {order.status === 'out_for_delivery' ? '🚚' : '✓'}
+                              </div>
+                              <span className="text-xs mt-1 text-center">Out for Delivery</span>
+                            </div>
+                            
+                            {/* Progress Line 3 */}
+                            <div className={`flex-1 h-1 mx-2 ${
+                              order.status === 'delivered' ? 'bg-green-500' : 'bg-gray-300'
+                            }`}></div>
+                            
+                            {/* Step 4: Delivered */}
+                            <div className="flex flex-col items-center">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                order.status === 'delivered'
+                                  ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+                              }`}>
+                                {order.status === 'delivered' ? '🎉' : '✓'}
+                              </div>
+                              <span className="text-xs mt-1 text-center">Delivered</span>
+                            </div>
+                          </div>
+                          
+                          {/* Current Status Message */}
+                          <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-600">
+                              {order.status === 'confirmed' && 'Order confirmed! Waiting for payment to start preparation.'}
+                              {order.status === 'preparing' && '🍦 Your ice cream is being prepared!'}
+                              {order.status === 'out_for_delivery' && '🚚 Your order is on the way!'}
+                              {order.status === 'delivered' && '🎉 Order delivered successfully!'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Vendor</h4>
+                          <p className="text-gray-600">{order.vendor_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Total Amount</h4>
+                          <p className="text-lg font-semibold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <h4 className="font-medium text-gray-900 mb-2">Delivery Details</h4>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">Address:</span>
+                            <p className="text-gray-900">{order.delivery_address || 'No address specified'}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">Scheduled Date & Time:</span>
+                            <p className="text-gray-900">
+                              {order.delivery_datetime ? 
+                                new Date(order.delivery_datetime).toLocaleString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : 'No delivery time specified'
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <h4 className="font-medium text-gray-900 mb-2">Payment</h4>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-gray-600">Method:</span>
+                          <span className="font-medium">{order.payment_method?.toUpperCase() || 'N/A'}</span>
+                          {order.payment_type && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-sm text-gray-600">
+                                {order.payment_type === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-gray-600">Status:</span>
+                          <span className={`font-medium ${
+                            order.payment_status === 'unpaid' ? 'text-yellow-600' : 
+                            order.payment_status === 'paid' ? 'text-green-600' : 
+                            order.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
+                          }`}>
+                            {order.payment_status?.charAt(0).toUpperCase() + order.payment_status?.slice(1) || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <p className="text-green-800 font-medium mb-2">Order Approved! Payment Required</p>
+                          <p className="text-green-700 text-sm mb-3">
+                            Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
+                          </p>
+                          <button 
+                            onClick={() => handlePayment(order)}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            💳 Pay Now via GCash
+                          </button>
+                        </div>
+                      )}
+
+                      {order.status === 'delivered' && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="text-blue-800 font-medium mb-1">🎉 Order Delivered Successfully!</p>
+                              <p className="text-blue-700 text-sm">Your ice cream order has been delivered. Enjoy!</p>
+                            </div>
+                            {order.drum_status === 'return_requested' ? (
+                              <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                📦 Return Requested
+                              </span>
+                            ) : order.drum_status === 'returned' ? (
+                              <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                ✅ Container Returned
+                              </span>
+                            ) : (
+                              <button 
+                                onClick={() => handleDrumReturn(order)}
+                                disabled={drumReturnLoading === order.order_id}
+                                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                              >
+                                {drumReturnLoading === order.order_id ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Requesting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>📦</span>
+                                    <span>Return Container</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          {order.drum_status === 'return_requested' && (
+                            <p className="text-blue-600 text-sm">
+                              The vendor has been notified to pick up the container. They will contact you to schedule the pickup.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (activeView === 'settings') {
+    
+    return (
+      <>
+        <NavWithLogo />
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="flex items-center justify-end mb-6">
+              <div className="flex items-center space-x-4">
+                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+                  Find nearby Vendors
+                </Link>
+                
+                {/* Navigation Icons */}
+                <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+                  {/* Products/Flavors Icon */}
+                  <button 
+                    onClick={() => navigate('/customer')}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Shops Icon */}
+                  <Link to="/find-vendors" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                  </Link>
+                  
+                  {/* Notification Bell */}
+                  <button 
+                    onClick={() => navigate('/customer/notifications')}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  >
+                    <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  </button>
+                  
+                  {/* Cart Icon */}
+                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Feedback Icon */}
+                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8" key={`settings-${settingsKey}`}>
+          <div className="max-w-6xl mx-auto px-4">
 
             {/* Status Messages */}
             {status.type && (
@@ -536,6 +1198,11 @@ export const Customer = () => {
                                         Default
                                       </span>
                                     )}
+                                    {address.is_primary && (
+                                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                                        Primary
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-gray-600">
                                     {address.unit_number && `${address.unit_number}, `}
@@ -563,6 +1230,12 @@ export const Customer = () => {
                                       Set Default
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => setPrimaryAddress(address.address_id)}
+                                    className="text-purple-600 hover:text-purple-800 text-sm"
+                                  >
+                                    Set as Primary
+                                  </button>
                                   <button
                                     onClick={() => deleteAddress(address.address_id)}
                                     className="text-red-600 hover:text-red-800 text-sm"
@@ -702,7 +1375,10 @@ export const Customer = () => {
                 </Link>
                 
                 {/* Notification Bell */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
+                <button 
+                  onClick={() => navigate('/customer/notifications')}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
                   <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
                 </button>
@@ -748,7 +1424,11 @@ export const Customer = () => {
               }
               
               return (
-                <div key={`${flavor.vendor_id}-${flavor.flavor_id}`} className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300">
+                <div 
+                  key={`${flavor.vendor_id}-${flavor.flavor_id}`} 
+                  className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                  onClick={() => navigate(`/flavor/${flavor.flavor_id}`)}
+                >
                   {/* Flavor Image */}
                   <div className="mb-4">
                     {imageUrls.length > 0 ? (

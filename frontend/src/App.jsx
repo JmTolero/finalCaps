@@ -14,6 +14,10 @@
     import { Vendor } from "./pages/vendor/vendor.jsx";
     import { Customer } from "./pages/customer/customer.jsx";
     import { FindNearbyVendors } from "./pages/customer/FindNearbyVendors.jsx";
+    import { FlavorDetail } from "./pages/customer/FlavorDetail.jsx";
+    import { Checkout } from "./pages/customer/Checkout.jsx";
+    import { Notifications } from "./pages/customer/Notifications.jsx";
+import LoginTest from "./pages/shared/LoginTest.jsx";
     // import Nav from '../src/components/nav';
 
     function App() {
@@ -99,7 +103,11 @@
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />
           <Route path="/vendor-redirect" element={<VendorRedirect />} />
           <Route path="/customer" element={requireRole('customer', <Customer />)} />
+          <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
+          <Route path="/flavor/:flavorId" element={requireRole('customer', <FlavorDetail />)} />
+          <Route path="/checkout" element={requireRole('customer', <Checkout />)} />
+          <Route path="/login-test" element={<LoginTest />} />
         </Routes>
       </Router>
     </>

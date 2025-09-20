@@ -134,10 +134,19 @@ const registerVendor = async (req, res) => {
 
 const getCurrentVendor = async (req, res) => {
     try {
-        // This would need proper authentication middleware in a real app
-        // For now, we'll use a placeholder approach
-        const vendorId = req.params.vendor_id || 1; // This should come from auth
+        // Get user ID from request headers (sent by frontend)
+        const userId = req.headers['x-user-id'];
         
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                error: 'User ID is required'
+            });
+        }
+        
+        console.log('Fetching vendor data for user ID:', userId);
+        
+        // Get vendor data by user_id instead of vendor_id
         const [vendors] = await pool.query(`
             SELECT 
                 v.vendor_id,
@@ -153,15 +162,24 @@ const getCurrentVendor = async (req, res) => {
                 u.contact_no
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
-            WHERE v.vendor_id = ?
-        `, [vendorId]);
+            WHERE v.user_id = ?
+        `, [userId]);
         
         if (vendors.length === 0) {
+            console.log('No vendor found for user ID:', userId);
             return res.status(404).json({
                 success: false,
-                error: 'Vendor not found'
+                error: 'Vendor not found for this user'
             });
         }
+        
+        console.log('Vendor data found for user:', userId, 'vendor:', vendors[0].vendor_id);
+        console.log('📦 Vendor details:', {
+            vendor_id: vendors[0].vendor_id,
+            store_name: vendors[0].store_name,
+            status: vendors[0].status,
+            user_id: vendors[0].user_id
+        });
         
         res.json({
             success: true,
