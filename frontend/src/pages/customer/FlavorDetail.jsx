@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { NavWithLogo } from '../../components/shared/nav';
 
@@ -22,10 +22,69 @@ export const FlavorDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
+  
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchFlavorDetails();
   }, [flavorId]);
+
+  // Fetch notifications for customer
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotificationsLoading(true);
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, [fetchNotifications, fetchUnreadCount]);
 
   const fetchFlavorDetails = async () => {
     try {
@@ -165,37 +224,62 @@ export const FlavorDetail = () => {
   return (
     <>
       <NavWithLogo />
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
+      
+      {/* Header Section */}
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
         <div className="max-w-6xl mx-auto px-6">
-          {/* Navigation Icons */}
-          <div className="flex justify-end mb-6">
-            <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-sm">
-               <button 
-                 onClick={() => navigate('/customer')}
-                 className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-               >
-                <img src={productsIcon} alt="Products" className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => navigate('/find-vendors')}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
-              </button>
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img src={cartIcon} alt="Cart" className="w-5 h-5" />
-              </button>
-              <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                <img src={feedbackIcon} alt="Support" className="w-5 h-5" />
-              </button>
+          <div className="flex items-center justify-end mb-6">
+            <div className="flex items-center space-x-4">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+                Find nearby Vendors
+              </Link>
+              
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+                {/* Products/Flavors Icon - Navigate back to customer dashboard */}
+                <button 
+                  onClick={() => navigate('/customer')}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                </button>
+                
+                {/* Shops Icon */}
+                <Link to="/find-vendors" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                </Link>
+                
+                {/* Notification Bell */}
+                <button 
+                  onClick={() => navigate('/customer/notifications')}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Cart Icon */}
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                </button>
+                
+                {/* Feedback Icon */}
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8">
+        <div className="max-w-6xl mx-auto px-6">
           {/* Main Product Card */}
           <div className="bg-sky-100 rounded-2xl shadow-xl overflow-hidden mb-6">
             <div className="flex flex-col lg:flex-row">

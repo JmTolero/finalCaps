@@ -154,6 +154,8 @@ const getCurrentVendor = async (req, res) => {
                 v.status,
                 v.user_id,
                 v.profile_image_url,
+                v.business_permit_url,
+                v.valid_id_url,
                 v.proof_image_url,
                 u.fname,
                 u.lname,
@@ -288,9 +290,9 @@ const updateVendorProfile = async (req, res) => {
         
         await pool.query(vendorQuery, vendorUpdateData);
         
-        // Get updated vendor data to return profile image URL
+        // Get updated vendor data to return all document URLs
         const [updatedVendor] = await pool.query(
-            'SELECT profile_image_url, proof_image_url FROM vendors WHERE vendor_id = ?',
+            'SELECT profile_image_url, business_permit_url, valid_id_url, proof_image_url FROM vendors WHERE vendor_id = ?',
             [vendor_id]
         );
         
@@ -329,6 +331,8 @@ const updateVendorProfile = async (req, res) => {
             success: true,
             message: 'Vendor profile updated successfully',
             profile_image_url: updatedVendor[0]?.profile_image_url,
+            business_permit_url: updatedVendor[0]?.business_permit_url,
+            valid_id_url: updatedVendor[0]?.valid_id_url,
             proof_image_url: updatedVendor[0]?.proof_image_url
         });
         
@@ -673,15 +677,17 @@ const getVendorsWithLocations = async (req, res) => {
                 u.lname,
                 u.email,
                 u.contact_no,
-                CONCAT_WS(', ', 
-                    COALESCE(a.unit_number, ''), 
-                    a.street_name, 
-                    a.barangay, 
-                    a.cityVillage, 
-                    a.province, 
-                    a.region,
-                    COALESCE(a.postal_code, '')
-                ) as location,
+                CASE 
+                  WHEN a.address_id IS NULL OR (
+                    (a.cityVillage IS NULL OR a.cityVillage = '') AND 
+                    (a.province IS NULL OR a.province = '')
+                  ) 
+                  THEN 'Location not specified'
+                  ELSE CONCAT_WS(', ',
+                    COALESCE(NULLIF(a.cityVillage, ''), NULL),
+                    COALESCE(NULLIF(a.province, ''), NULL)
+                  )
+                END as location,
                 a.latitude,
                 a.longitude,
                 GROUP_CONCAT(DISTINCT f.flavor_name) as flavors

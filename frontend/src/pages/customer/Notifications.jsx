@@ -59,38 +59,34 @@ export const Notifications = () => {
       const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // Sample notifications data matching the image
-      const sampleNotifications = [
-        {
-          id: 1,
-          type: 'order',
-          title: 'Order Confirmed',
-          description: 'Vendor ChillTayo has confirmed your 5-gallon order.',
-          timestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
-          isRead: false,
-          image: '🍦'
-        },
-        {
-          id: 2,
-          type: 'delivery',
-          title: 'Out for Delivery',
-          description: 'Good news! Your ice cream order is out for delivery. Please prepare to receive it.',
-          timestamp: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-          isRead: false,
-          image: '🍦'
-        },
-        {
-          id: 3,
-          type: 'drum',
-          title: 'Drum return status',
-          description: 'Vendor has acknowledged your drum return request. Please prepare the drum for pickup.',
-          timestamp: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-          isRead: false,
-          image: '🍦'
+      // Fetch real notifications from API
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
         }
-      ];
-      
-      setNotifications(sampleNotifications);
+      });
+
+      if (response.data.success) {
+        // Transform API notifications to match the expected format
+        const transformedNotifications = response.data.notifications.map(notification => ({
+          id: notification.id,
+          type: getNotificationType(notification.notification_type),
+          title: notification.title,
+          description: notification.message,
+          timestamp: new Date(notification.created_at),
+          isRead: notification.is_read,
+          image: getNotificationIcon(notification.notification_type),
+          related_order_id: notification.related_order_id,
+          vendor_name: notification.vendor_name,
+          customer_name: notification.customer_name
+        }));
+        
+        setNotifications(transformedNotifications);
+        console.log('📬 Fetched real notifications:', transformedNotifications.length);
+      } else {
+        console.error('Failed to fetch notifications:', response.data.error);
+        setNotifications([]);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setNotifications([]);
@@ -99,16 +95,112 @@ export const Notifications = () => {
     }
   };
 
+  // Helper function to map notification types
+  const getNotificationType = (notificationType) => {
+    const typeMap = {
+      'order_placed': 'order',
+      'order_accepted': 'order',
+      'order_rejected': 'order',
+      'order_preparing': 'order',
+      'order_ready': 'delivery',
+      'order_delivered': 'delivery',
+      'order_cancelled': 'order',
+      'payment_confirmed': 'payment',
+      'payment_failed': 'payment',
+      'drum_return_requested': 'drum',
+      'drum_picked_up': 'drum',
+      'system_announcement': 'promotion'
+    };
+    return typeMap[notificationType] || 'order';
+  };
+
+  // Helper function to get notification icons
+  const getNotificationIcon = (notificationType) => {
+    const iconMap = {
+      'order_placed': '📦',
+      'order_accepted': '✅',
+      'order_rejected': '❌',
+      'order_preparing': '👨‍🍳',
+      'order_ready': '🚚',
+      'order_delivered': '🎉',
+      'order_cancelled': '❌',
+      'payment_confirmed': '💳',
+      'payment_failed': '❌',
+      'drum_return_requested': '🥁',
+      'drum_picked_up': '✅',
+      'system_announcement': '📢'
+    };
+    return iconMap[notificationType] || '📦';
+  };
+
   const markAllAsRead = async () => {
     try {
-      setNotifications(prev => 
-        prev.map(notification => ({ ...notification, isRead: true }))
-      );
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // In a real app, you'd call an API to mark all as read
-      console.log('All notifications marked as read');
+      const response = await axios.put(`${apiBase}/api/notifications/customer/${user.id}/mark-all-read`, {}, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setNotifications(prev => 
+          prev.map(notification => ({ ...notification, isRead: true }))
+        );
+        console.log('📖 Marked all notifications as read');
+      }
     } catch (error) {
       console.error('Error marking notifications as read:', error);
+    }
+  };
+
+  // Mark individual notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        // Update local state to mark this notification as read
+        setNotifications(prev => 
+          prev.map(notification => 
+            notification.id === notificationId 
+              ? { ...notification, isRead: true }
+              : notification
+          )
+        );
+        console.log('📖 Marked notification as read:', notificationId);
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Handle notification click
+  const handleNotificationClick = async (notification) => {
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      await markNotificationAsRead(notification.id);
+    }
+
+    // Handle navigation based on notification type
+    if (notification.type === 'order') {
+      handleViewOrder();
+    } else if (notification.type === 'profile') {
+      handleViewProfile();
     }
   };
 
@@ -245,7 +337,11 @@ export const Notifications = () => {
                   className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors relative"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 
                 {/* Cart Icon */}
@@ -373,7 +469,8 @@ export const Notifications = () => {
                       notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className={`p-6 hover:bg-gray-50 transition-colors ${
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
                             !notification.isRead ? 'bg-blue-50' : ''
                           }`}
                         >
@@ -395,7 +492,8 @@ export const Notifications = () => {
                                   </p>
                                   <div className="flex justify-between items-center">
                                     <button
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent triggering parent onClick
                                         if (notification.type === 'order') {
                                           handleViewOrder();
                                         } else if (notification.type === 'profile') {

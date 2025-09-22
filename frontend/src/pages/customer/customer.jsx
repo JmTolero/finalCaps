@@ -53,6 +53,60 @@ export const Customer = () => {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
   const [drumReturnLoading, setDrumReturnLoading] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  // Fetch notifications for customer
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      setNotificationsLoading(true);
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications);
+        console.log('📬 Fetched notifications:', response.data.notifications.length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unread_count);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  }, []);
+
   // Check URL parameters for view
   useEffect(() => {
     const view = searchParams.get('view');
@@ -116,18 +170,22 @@ export const Customer = () => {
     if (activeView === 'orders') {
       fetchCustomerOrders();
     }
-  }, [activeView]);
+    
+    // Fetch notifications and unread count
+    fetchNotifications();
+    fetchUnreadCount();
+  }, [activeView, fetchNotifications, fetchUnreadCount]);
 
-  // Auto-refresh orders every 15 seconds when on orders view to track status changes
+  // Auto-refresh orders every 1:30 minutes when on orders view to track status changes
   useEffect(() => {
     let interval;
     
     if (activeView === 'orders') {
-      // Set up auto-refresh every 15 seconds for order tracking
+      // Set up auto-refresh every 1:30 minutes for order tracking
       interval = setInterval(() => {
         console.log('🔄 Auto-refreshing customer orders for status tracking...');
         fetchCustomerOrders();
-      }, 15000); // 15 seconds for faster order status updates
+      }, 90000); // 1:30 minutes (90 seconds) for better network efficiency
     }
     
     // Cleanup interval on component unmount or view change
@@ -138,7 +196,7 @@ export const Customer = () => {
     };
   }, [activeView]);
 
-  // Auto-refresh customer dashboard every 30 seconds when on dashboard view
+  // Auto-refresh customer dashboard every 1:30 minutes when on dashboard view
   useEffect(() => {
     let interval;
     
@@ -146,11 +204,11 @@ export const Customer = () => {
       // Initial fetch
       fetchAllFlavors();
       
-      // Set up auto-refresh every 30 seconds
+      // Set up auto-refresh every 1:30 minutes
       interval = setInterval(() => {
         console.log('🔄 Auto-refreshing customer dashboard products...');
         fetchAllFlavors(false); // Don't show loading spinner for auto-refresh
-      }, 30000); // 30 seconds
+      }, 90000); // 1:30 minutes (90 seconds) for better network efficiency
     }
     
     // Cleanup interval on component unmount or view change
@@ -311,32 +369,12 @@ export const Customer = () => {
   };
 
   const handlePayment = (order) => {
-    // Create payment data for the order
-    const paymentData = {
-      orderId: order.order_id,
-      vendorId: order.vendor_id,
-      vendorName: order.vendor_name,
-      totalAmount: order.total_amount,
-      deliveryAddress: order.delivery_address,
-      deliveryDateTime: order.delivery_datetime,
-      paymentType: order.payment_type || 'full', // Default to full payment
-      items: [] // TODO: Add order items if needed
-    };
+    console.log('💳 Payment button clicked for order:', order.order_id);
     
-    console.log('Starting payment for order:', paymentData);
-    
-    // Show detailed payment confirmation dialog
-    const paymentAmount = parseFloat(order.total_amount).toFixed(2);
-    const confirmMessage = `⚠️ PAYMENT CONFIRMATION ⚠️\n\nOrder: #${order.order_id}\nVendor: ${order.vendor_name}\nAmount: ₱${paymentAmount}\nDelivery: ${order.delivery_address}\n\nProceed with GCash payment?\n\n✅ This will charge your GCash account\n✅ The vendor will be notified to start preparing\n✅ You cannot cancel after payment is processed`;
-    
-    if (window.confirm(confirmMessage)) {
-      // Show final confirmation for payment
-      if (window.confirm(`Final confirmation: Pay ₱${paymentAmount} via GCash now?`)) {
-        // Process payment
-        updateOrderPaymentStatus(order.order_id, 'paid');
-      }
-    }
+    // Navigate to dedicated payment page
+    navigate(`/customer/payment/${order.order_id}`);
   };
+
 
   const updateOrderPaymentStatus = async (orderId, paymentStatus) => {
     try {
@@ -360,6 +398,31 @@ export const Customer = () => {
     } catch (error) {
       console.error('Error updating payment status:', error);
       alert('Payment completed, but failed to update status. Please contact support.');
+    }
+  };
+
+  // Mark notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      // Update local state
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, is_read: true } : n
+      ));
+      
+      // Update unread count
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      console.log(`📖 Marked notification ${notificationId} as read`);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -972,6 +1035,23 @@ export const Customer = () => {
                           )}
                         </div>
                       )}
+
+                      {order.status === 'cancelled' && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="text-red-800 font-medium mb-1">❌ Order Declined</p>
+                              <p className="text-red-700 text-sm">This order has been declined by the vendor.</p>
+                              {order.decline_reason && (
+                                <div className="mt-2 p-3 bg-red-100 rounded-lg">
+                                  <p className="text-red-800 text-sm font-medium mb-1">Reason for decline:</p>
+                                  <p className="text-red-700 text-sm">{order.decline_reason}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                         </div>
                       )}
                     </div>
@@ -1004,8 +1084,13 @@ export const Customer = () => {
                 <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
                   {/* Products/Flavors Icon */}
                   <button 
-                    onClick={() => navigate('/customer')}
+                    onClick={() => {
+                      console.log('Products icon clicked - navigating to customer dashboard');
+                      setActiveView('dashboard');
+                      navigate('/customer');
+                    }}
                     className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Browse Products"
                   >
                     <img src={productsIcon} alt="Products" className="w-5 h-5" />
                   </button>
@@ -1021,7 +1106,11 @@ export const Customer = () => {
                     className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
                   >
                     <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </button>
                   
                   {/* Cart Icon */}
@@ -1364,8 +1453,12 @@ export const Customer = () => {
               
               {/* Navigation Icons */}
               <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
-                {/* Products/Flavors Icon - Active on main customer page */}
-                <button className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
+                {/* Products/Flavors Icon - Navigate to customer main dashboard */}
+                <button 
+                  onClick={() => navigate('/customer')}
+                  className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors"
+                  title="Browse Products"
+                >
                   <img src={productsIcon} alt="Products" className="w-5 h-5" />
                 </button>
                 
@@ -1380,7 +1473,11 @@ export const Customer = () => {
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 
                 {/* Cart Icon */}
@@ -1472,7 +1569,7 @@ export const Customer = () => {
                     {/* Location */}
                     <div className="text-left">
                       <span className="text-sm text-gray-600">
-                        {flavor.location || 'Location not specified'}
+                        {flavor.location}
                       </span>
                     </div>
 
@@ -1507,6 +1604,7 @@ export const Customer = () => {
           </div>
         )}
       </main>
+
     </>
   );
 };

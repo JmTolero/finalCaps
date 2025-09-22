@@ -1,4 +1,5 @@
 const pool = require('../../db/config');
+const { createNotification } = require('../shared/notificationController');
 const { User } = require('../../model/shared/userModel');
 
 const countTotal = async (req, res) => {
@@ -118,6 +119,18 @@ const updateVendorStatus = async (req, res) => {
             return res.status(400).json({ error: 'Invalid status. Must be pending, approved, or rejected' });
         }
         
+        // Get vendor information before updating
+        const [vendorInfo] = await pool.query(
+            'SELECT v.*, u.fname, u.lname, u.email FROM vendors v LEFT JOIN users u ON v.user_id = u.user_id WHERE v.vendor_id = ?',
+            [vendor_id]
+        );
+        
+        if (vendorInfo.length === 0) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        const vendor = vendorInfo[0];
+        
         // Update vendor status
         const [result] = await pool.query(
             'UPDATE vendors SET status = ? WHERE vendor_id = ?',
@@ -126,6 +139,37 @@ const updateVendorStatus = async (req, res) => {
         
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        // Create notification based on status change
+        if (status.toLowerCase() === 'approved') {
+            await createNotification({
+                user_id: vendor.user_id,
+                user_type: 'vendor',
+                title: 'Vendor Application Approved! 🎉',
+                message: `Congratulations ${vendor.fname}! Your vendor application has been approved. You can now set up your store and start selling your delicious ice cream!`,
+                notification_type: 'system_announcement',
+                related_vendor_id: vendor_id
+            });
+        } else if (status.toLowerCase() === 'rejected') {
+            // Calculate auto-return date (1 week from now)
+            const autoReturnDate = new Date();
+            autoReturnDate.setDate(autoReturnDate.getDate() + 7);
+            
+            // Record the rejection for auto-return tracking
+            await pool.query(
+                'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, ?)',
+                [vendor_id, vendor.user_id, autoReturnDate]
+            );
+            
+            await createNotification({
+                user_id: vendor.user_id,
+                user_type: 'vendor',
+                title: 'Vendor Application Needs Review 📋',
+                message: `Hello ${vendor.fname}, your vendor application requires some improvements. You can reapply after 1 week (${autoReturnDate.toLocaleDateString()}) to give you time to address any issues.`,
+                notification_type: 'system_announcement',
+                related_vendor_id: vendor_id
+            });
         }
         
         console.log('Vendor status updated successfully');

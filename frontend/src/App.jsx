@@ -17,6 +17,7 @@
     import { FlavorDetail } from "./pages/customer/FlavorDetail.jsx";
     import { Checkout } from "./pages/customer/Checkout.jsx";
     import { Notifications } from "./pages/customer/Notifications.jsx";
+import PaymentPage from "./pages/customer/PaymentPage.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
     // import Nav from '../src/components/nav';
 
@@ -104,6 +105,7 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
           <Route path="/vendor-redirect" element={<VendorRedirect />} />
           <Route path="/customer" element={requireRole('customer', <Customer />)} />
           <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
+          <Route path="/customer/payment/:orderId" element={requireRole('customer', <PaymentPage />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
           <Route path="/flavor/:flavorId" element={requireRole('customer', <FlavorDetail />)} />
           <Route path="/checkout" element={requireRole('customer', <Checkout />)} />

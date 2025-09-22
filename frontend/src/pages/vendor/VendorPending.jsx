@@ -3,14 +3,85 @@ import { useNavigate, Link } from 'react-router-dom';
 import logoImage from '../../assets/images/LOGO.png';
 import axios from 'axios';
 
+// Import customer icons for header
+import cartIcon from '../../assets/images/customerIcon/cart.png';
+import notifIcon from '../../assets/images/customerIcon/notifbell.png';
+import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
+import shopsIcon from '../../assets/images/customerIcon/shops.png';
+import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
+
 export const VendorPending = () => {
   const navigate = useNavigate();
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     checkVendorStatus();
+    fetchNotifications();
+    fetchUnreadCount();
+
+    // Auto-refresh vendor notifications every 30 seconds for real-time updates
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing vendor pending notifications...');
+      fetchNotifications();
+      fetchUnreadCount();
+    }, 30000); // 30 seconds for notification updates
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
+
+  // Fetch notifications for vendor
+  const fetchNotifications = async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/vendor/${user.id}`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications);
+        console.log('📬 Fetched vendor notifications:', response.data.notifications.length);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/vendor/${user.id}/unread-count`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unreadCount);
+        console.log('📊 Unread notifications count:', response.data.unreadCount);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
 
   const checkVendorStatus = async () => {
     try {
@@ -35,7 +106,7 @@ export const VendorPending = () => {
         if (userData.vendor_status === 'approved') {
           navigate('/vendor-setup');
         } else if (userData.vendor_status === 'rejected') {
-          // Handle rejected status
+          // Handle rejected status - stay on this page but show rejection message
           console.log('Vendor application was rejected');
         }
       }
@@ -83,38 +154,70 @@ export const VendorPending = () => {
           </Link>
         </div>
         
-        <button
-          onClick={handleLogout}
-          className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>Logout</span>
-        </button>
+        <div className="flex items-center space-x-4">
+          
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Logout</span>
+          </button>
+        </div>
       </header>
 
       <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center px-4 py-8">
         <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header Section */}
-          <div className="bg-gradient-to-r from-blue-50 to-sky-50 px-8 py-6 border-b border-gray-100">
+          <div className={`px-8 py-6 border-b border-gray-100 ${
+            vendorData?.vendor_status === 'rejected' 
+              ? 'bg-gradient-to-r from-red-50 to-pink-50' 
+              : 'bg-gradient-to-r from-blue-50 to-sky-50'
+          }`}>
             <div className="text-center">
-              {/* Pending Icon with Animation */}
-              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-full flex items-center justify-center mb-6 shadow-lg animate-pulse">
-                <svg className="w-12 h-12 text-yellow-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{animation: 'spin 3s linear infinite'}}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              {/* Icon with Animation */}
+              <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-lg ${
+                vendorData?.vendor_status === 'rejected'
+                  ? 'bg-gradient-to-br from-red-100 to-red-200'
+                  : 'bg-gradient-to-br from-yellow-100 to-yellow-200 animate-pulse'
+              }`}>
+                {vendorData?.vendor_status === 'rejected' ? (
+                  <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                ) : (
+                  <svg className="w-12 h-12 text-yellow-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{animation: 'spin 3s linear infinite'}}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
               </div>
 
               {/* Title */}
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Account Pending Approval
+                {vendorData?.vendor_status === 'rejected' 
+                  ? 'Account Application Rejected' 
+                  : 'Account Pending Approval'
+                }
               </h1>
-              <p className="text-lg text-yellow-600 font-semibold mb-2">
-                ⚠️ Your account is under review
+              <p className={`text-lg font-semibold mb-2 ${
+                vendorData?.vendor_status === 'rejected' 
+                  ? 'text-red-600' 
+                  : 'text-yellow-600'
+              }`}>
+                {vendorData?.vendor_status === 'rejected' 
+                  ? '❌ Your application needs improvements' 
+                  : '⚠️ Your account is under review'   
+                }
               </p>
               <p className="text-sm text-gray-600">
-                We're carefully reviewing your application and documents
+                {vendorData?.vendor_status === 'rejected' 
+                  ? 'Please review the feedback and reapply after 1 week' 
+                  : 'We\'re carefully reviewing your application and documents'
+                }
               </p>
             </div>
           </div>
@@ -127,35 +230,64 @@ export const VendorPending = () => {
               <p className="text-gray-600 mb-4">
                 Hi <span className="font-semibold text-blue-600">{vendorData?.fname || 'Vendor'}</span>,
               </p>
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-6 mb-4 rounded-r-lg shadow-sm">
+              <div className={`border-l-4 p-6 mb-4 rounded-r-lg shadow-sm ${
+                vendorData?.vendor_status === 'rejected'
+                  ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-400'
+                  : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-400'
+              }`}>
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
-                    <svg className="w-6 h-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    {vendorData?.vendor_status === 'rejected' ? (
+                      <svg className="w-6 h-6 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-gray-800 font-semibold mb-2">
-                      ⏳ Your Account is Under Review
+                      {vendorData?.vendor_status === 'rejected' 
+                        ? '📋 Application Needs Review' 
+                        : '⏳ Your Account is Under Review'
+                      }
                     </p>
                     <p className="text-gray-700 text-sm leading-relaxed">
-                      Our admin team is carefully reviewing your application and documents. You will be notified via email once your account is approved.
+                      {vendorData?.vendor_status === 'rejected' 
+                        ? 'Your vendor application requires some improvements. You can reapply after 1 week to give you time to address any issues. Please review your documents and make necessary corrections.'
+                        : 'Our admin team is carefully reviewing your application and documents. You will be notified via email once your account is approved.'
+                      }
                     </p>
                   </div>
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                You'll be able to complete your store setup and start selling once your account is approved.
+                {vendorData?.vendor_status === 'rejected' 
+                  ? 'You\'ll receive a notification when you\'re eligible to reapply. Use this time to improve your application.'
+                  : 'You\'ll be able to complete your store setup and start selling once your account is approved.'
+                }
               </p>
             </div>
 
             {/* Status Badge */}
             <div className="flex justify-center mb-6">
-              <span className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 rounded-full text-sm font-medium shadow-md border border-yellow-300">
-                <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Status: Pending Review
+              <span className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium shadow-md ${
+                vendorData?.vendor_status === 'rejected'
+                  ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300'
+                  : 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300'
+              }`}>
+                {vendorData?.vendor_status === 'rejected' ? (
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+                Status: {vendorData?.vendor_status === 'rejected' ? 'Rejected - Can Reapply in 1 Week' : 'Pending Review'}
               </span>
             </div>
 

@@ -144,3 +144,7 @@ The admin location management now works correctly with:
 
 The error was caused by the mismatch between the old complex frontend expecting multiple addresses and the new simplified backend returning single addresses. Now both are aligned and working correctly!
 
+
+
+
+

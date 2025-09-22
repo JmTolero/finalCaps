@@ -16,6 +16,8 @@ export const Checkout = () => {
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentType, setPaymentType] = useState('full'); // 'full' or 'downpayment'
+  const [savedOrderId, setSavedOrderId] = useState(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const receiptRef = useRef(null);
 
   // Debug receipt state changes
@@ -134,7 +136,7 @@ export const Checkout = () => {
       // Validate required fields before proceeding
       const finalDeliveryAddress = deliveryAddress || userAddress;
       if (!finalDeliveryAddress || finalDeliveryAddress.trim() === '') {
-        alert('Please add a delivery address in your profile settings before placing an order.');
+        setShowAddressModal(true);
         return;
       }
       
@@ -165,12 +167,15 @@ export const Checkout = () => {
   const handleReceiptClose = async () => {
     try {
       // Save order to database
-      await saveOrderToDatabase();
+      const orderId = await saveOrderToDatabase();
+      setSavedOrderId(orderId);
       setShowReceipt(false);
-      alert('Order placed successfully!');
+      
+      // Navigate directly to customer dashboard
       navigate('/customer');
     } catch (error) {
       console.error('Error saving order:', error);
+      setShowReceipt(false);
       alert('Failed to save order. Please try again.');
     }
   };
@@ -284,7 +289,6 @@ export const Checkout = () => {
        ORDER CONFIRMATION
 =================================
 
-Order ID: #${orderId}
 Date: ${new Date().toLocaleDateString()}
 Time: ${new Date().toLocaleTimeString()}
 Status: PENDING VENDOR APPROVAL
@@ -352,20 +356,21 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
         <div className="max-w-4xl mx-auto px-6">
           {/* Header */}
           <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Checkout</h1>
+          </div>
+
+          {/* Main Checkout Card */}
+          <div className="bg-sky-100 rounded-2xl shadow-xl p-8">
+            {/* Back Button */}
             <button 
               onClick={handleBack}
-              className="mb-4 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+              className="mb-6 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
             >
               <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back
             </button>
-            <h1 className="text-3xl font-bold text-gray-800">Checkout</h1>
-          </div>
-
-          {/* Main Checkout Card */}
-          <div className="bg-sky-100 rounded-2xl shadow-xl p-8">
             {/* Item Details */}
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Item Details</h2>
@@ -552,10 +557,6 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                   <h3 className="font-semibold text-gray-900 mb-3">Order Details</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Order ID:</span>
-                      <span className="font-medium">#{Date.now().toString().slice(-8)}</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-gray-600">Date:</span>
                       <span className="font-medium">{new Date().toLocaleDateString()}</span>
                     </div>
@@ -677,6 +678,64 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
           </div>
         </div>
       )}
+
+      {/* Address Required Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Address Required</h2>
+                <p className="text-gray-600">Please add a delivery address in your profile settings before placing an order.</p>
+              </div>
+
+              {/* Content */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium mb-1">How to add your address:</p>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Go to your profile settings</li>
+                      <li>• Navigate to Address Settings</li>
+                      <li>• Add your delivery address</li>
+                      <li>• Return here to place your order</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAddressModal(false)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Got it
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddressModal(false);
+                    navigate('/customer?view=settings');
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Go to Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 };

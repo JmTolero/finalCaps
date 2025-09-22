@@ -183,7 +183,11 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">{vendor.fname || 'Vendor'}</h2>
-                <p className="text-gray-700">{vendor.store_name || 'Frosty bites ice cream'}</p>
+                <p className="text-gray-700">
+                  {vendor.store_name || (
+                    <span className="text-gray-500 italic">Store name not set up yet</span>
+                  )}
+                </p>
               </div>
             </div>
 

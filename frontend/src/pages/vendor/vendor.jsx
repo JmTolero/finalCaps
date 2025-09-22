@@ -127,9 +127,15 @@ export const Vendor = () => {
   // Orders state
   const [vendorOrders, setVendorOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersRefreshLoading, setOrdersRefreshLoading] = useState(false);
   const [orderFilter, setOrderFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [recentStatusChange, setRecentStatusChange] = useState(null); // For undo functionality
+  
+  // Notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Flavor form state
   const [flavorForm, setFlavorForm] = useState({
@@ -613,10 +619,128 @@ export const Vendor = () => {
      }
    };
 
+   // Manual refresh vendor orders
+   const handleRefreshOrders = async () => {
+     if (!currentVendor?.vendor_id) return;
+     
+     try {
+       setOrdersRefreshLoading(true);
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}`);
+       
+       if (response.data.success) {
+         setVendorOrders(response.data.orders);
+         console.log('🔄 Manually refreshed vendor orders:', response.data.orders?.length || 0);
+       } else {
+         console.log('❌ API returned unsuccessful response:', response.data);
+       }
+     } catch (error) {
+       console.error('❌ Error refreshing vendor orders:', error);
+     } finally {
+       setOrdersRefreshLoading(false);
+     }
+   };
+
+   // Fetch notifications for vendor
+   const fetchNotifications = useCallback(async () => {
+     try {
+       if (!currentVendor?.vendor_id) return;
+
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       
+       setNotificationsLoading(true);
+       
+       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}`, {
+         headers: {
+           Authorization: `Bearer ${sessionStorage.getItem('token')}`
+         }
+       });
+
+       if (response.data.success) {
+         setNotifications(response.data.notifications);
+         console.log('📬 Fetched vendor notifications:', response.data.notifications.length);
+       }
+     } catch (error) {
+       console.error('Error fetching vendor notifications:', error);
+     } finally {
+       setNotificationsLoading(false);
+     }
+   }, [currentVendor?.vendor_id]);
+
+   // Fetch unread notification count for vendor
+   const fetchUnreadCount = useCallback(async () => {
+     try {
+       if (!currentVendor?.vendor_id) return;
+
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       
+       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}/unread-count`, {
+         headers: {
+           Authorization: `Bearer ${sessionStorage.getItem('token')}`
+         }
+       });
+
+       if (response.data.success) {
+         setUnreadCount(response.data.unread_count);
+       }
+     } catch (error) {
+       console.error('Error fetching unread count:', error);
+     }
+   }, [currentVendor?.vendor_id]);
+
+   // Mark notification as read
+   const markNotificationAsRead = async (notificationId) => {
+     try {
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       
+       await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {
+         headers: {
+           Authorization: `Bearer ${sessionStorage.getItem('token')}`
+         }
+       });
+
+       // Update local state
+       setNotifications(prev => prev.map(n => 
+         n.id === notificationId ? { ...n, is_read: true } : n
+       ));
+       
+       // Update unread count
+       setUnreadCount(prev => Math.max(0, prev - 1));
+       
+       console.log(`📖 Marked vendor notification ${notificationId} as read`);
+     } catch (error) {
+       console.error('Error marking notification as read:', error);
+     }
+   };
+
+   // Decline order with reason
+   const declineOrderWithReason = (orderId) => {
+     // Show decline reason modal
+     const reason = prompt(
+       "Please provide a reason for declining this order:\n\n" +
+       "Common reasons:\n" +
+       "• No available containers/drums\n" +
+       "• Delivery date fully booked\n" +
+       "• Ingredient shortage\n" +
+       "• Store closed on requested date\n" +
+       "• Other (please specify)\n\n" +
+       "Enter your reason:"
+     );
+     
+     if (reason && reason.trim()) {
+       updateOrderStatus(orderId, 'cancelled', null, reason.trim());
+     } else if (reason !== null) {
+       alert('Please provide a reason for declining the order.');
+     }
+   };
+
    // Update order status (approve/decline)
-   const updateOrderStatus = async (orderId, newStatus, previousStatus = null) => {
+   const updateOrderStatus = async (orderId, newStatus, previousStatus = null, declineReason = null) => {
      try {
        console.log('🔄 Updating order status:', orderId, 'to', newStatus);
+       if (declineReason) {
+         console.log('Decline reason:', declineReason);
+       }
        
        // Store previous status for undo functionality (if not provided, get from current orders)
        if (!previousStatus) {
@@ -625,9 +749,12 @@ export const Vendor = () => {
        }
        
        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-       const response = await axios.put(`${apiBase}/api/orders/${orderId}/status`, {
-         status: newStatus
-       });
+       const requestBody = { status: newStatus };
+       if (newStatus === 'cancelled' && declineReason) {
+         requestBody.decline_reason = declineReason;
+       }
+       
+       const response = await axios.put(`${apiBase}/api/orders/${orderId}/status`, requestBody);
        
        if (response.data.success) {
          const statusMessage = newStatus === 'preparing' ? 'Ice cream preparation started! Customer has been notified.' :
@@ -1215,6 +1342,14 @@ export const Vendor = () => {
     }
   }, [currentVendor?.vendor_id, isInitialLoading]);
 
+  // Fetch notifications when vendor is loaded
+  useEffect(() => {
+    if (currentVendor?.vendor_id && !isInitialLoading) {
+      fetchNotifications();
+      fetchUnreadCount();
+    }
+  }, [currentVendor?.vendor_id, isInitialLoading, fetchNotifications, fetchUnreadCount]);
+
   // Fetch vendor orders when orders view is active and vendor is loaded
   useEffect(() => {
     if (activeView === "orders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
@@ -1228,25 +1363,27 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
-  // Auto-refresh vendor orders every 10 seconds when on orders view to see payment updates
+
+  // Auto-refresh vendor notifications every 30 seconds for real-time updates
   useEffect(() => {
     let interval;
     
-    if (activeView === "orders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
-      // Set up auto-refresh every 10 seconds for payment status updates
+    if (currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      // Set up auto-refresh every 30 seconds for notification updates
       interval = setInterval(() => {
-        console.log('🔄 Auto-refreshing vendor orders for payment updates...');
-        fetchVendorOrders();
-      }, 10000); // 10 seconds for fast payment detection
+        console.log('🔄 Auto-refreshing vendor notifications...');
+        fetchNotifications();
+        fetchUnreadCount();
+      }, 30000); // 30 seconds for notification updates
     }
     
-    // Cleanup interval on component unmount or view change
+    // Cleanup interval on component unmount or vendor change
     return () => {
       if (interval) {
         clearInterval(interval);
       }
     };
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchNotifications, fetchUnreadCount]);
 
   // Fetch vendor dashboard data
   const fetchDashboardData = async (vendorId) => {
@@ -1522,8 +1659,6 @@ export const Vendor = () => {
     { id: "profile", label: "Profile", icon: "👤" },
     { id: "addresses", label: "Store Addresses", icon: "📍" },
     { id: "documents", label: "Documents", icon: "📄" },
-    { id: "notifications", label: "Notifications", icon: "🔔" },
-    { id: "feedback", label: "Feedback", icon: "💬" },
   ];
 
   const sidebarItems = [
@@ -1586,9 +1721,11 @@ export const Vendor = () => {
                 className="w-6 h-6"
               />
               {/* Notification badge */}
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                3
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
             
             <button
@@ -2145,99 +2282,199 @@ export const Vendor = () => {
                           <h2 className="text-2xl font-semibold mb-6">
                             Documents
                           </h2>
-                      </div>
-                    )}
+                          <p className="text-gray-600 mb-8">
+                            View your uploaded business documents and identification.
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* Business Permit */}
+                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                              <div className="flex items-center space-x-3 mb-4">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">Business Permit</h3>
+                                  <p className="text-sm text-gray-500">Legal business registration</p>
+                                </div>
+                              </div>
+                              
+                              {currentVendor?.business_permit_url ? (
+                                <div className="space-y-3">
+                                  <div className="relative">
+                                    <img
+                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`}
+                                      alt="Business Permit"
+                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                      <div className="text-center">
+                                        <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p className="text-sm text-gray-500">Business Permit</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`, '_blank')}
+                                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                  >
+                                    View Document
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-center py-8">
+                                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <p className="text-gray-500 text-sm">No business permit uploaded</p>
+                                </div>
+                              )}
+                            </div>
 
-                    {/* Notifications Tab */}
-                      {activeTab === "notifications" && (
-                      <div>
-                          <h2 className="text-2xl font-semibold mb-6">
-                            Notifications
-                          </h2>
-                          <div className="space-y-4">
-                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            {/* Valid ID */}
+                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                              <div className="flex items-center space-x-3 mb-4">
+                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                  </svg>
+                                </div>
                                 <div>
-                                  <h3 className="font-semibold text-gray-900">New Order Received</h3>
-                                  <p className="text-sm text-gray-600">You have a new order for Mango Flavor - Large size</p>
-                                  <p className="text-xs text-gray-500">2 minutes ago</p>
+                                  <h3 className="font-semibold text-gray-900">Valid ID</h3>
+                                  <p className="text-sm text-gray-500">Government issued ID</p>
                                 </div>
                               </div>
-                            </div>
-                            
-                            <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">Order Delivered</h3>
-                                  <p className="text-sm text-gray-600">Order #12345 has been successfully delivered</p>
-                                  <p className="text-xs text-gray-500">1 hour ago</p>
+                              
+                              {currentVendor?.valid_id_url ? (
+                                <div className="space-y-3">
+                                  <div className="relative">
+                                    <img
+                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`}
+                                      alt="Valid ID"
+                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                      <div className="text-center">
+                                        <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                        </svg>
+                                        <p className="text-sm text-gray-500">Valid ID</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`, '_blank')}
+                                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                  >
+                                    View Document
+                                  </button>
                                 </div>
-                              </div>
-                            </div>
-                            
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
-                                  <p className="text-sm text-gray-600">Vanilla Flavor is running low on stock</p>
-                                  <p className="text-xs text-gray-500">3 hours ago</p>
+                              ) : (
+                                <div className="text-center py-8">
+                                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                  </svg>
+                                  <p className="text-gray-500 text-sm">No valid ID uploaded</p>
                                 </div>
-                              </div>
+                              )}
                             </div>
-                          </div>
-                      </div>
-                    )}
 
-                    {/* Feedback Tab */}
-                    {activeTab === "feedback" && (
-                      <div>
-                        <h2 className="text-2xl font-semibold mb-6">
-                          Customer Feedback
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="bg-gray-50 rounded-lg p-6">
-                            <div className="flex items-center space-x-3 mb-4">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span className="text-blue-600 font-semibold">JD</span>
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-gray-900">John Doe</h3>
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-yellow-400">★★★★★</span>
-                                  <span className="text-sm text-gray-600">5.0</span>
+                            {/* Proof of Address */}
+                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                              <div className="flex items-center space-x-3 mb-4">
+                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">Proof of Address</h3>
+                                  <p className="text-sm text-gray-500">Address verification document</p>
                                 </div>
                               </div>
+                              
+                              {currentVendor?.proof_image_url ? (
+                                <div className="space-y-3">
+                                  <div className="relative">
+                                    <img
+                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`}
+                                      alt="Proof of Address"
+                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                      <div className="text-center">
+                                        <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <p className="text-sm text-gray-500">Proof of Address</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`, '_blank')}
+                                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                  >
+                                    View Document
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-center py-8">
+                                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <p className="text-gray-500 text-sm">No proof of address uploaded</p>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-gray-700 mb-2">
-                              "Amazing ice cream! The Mango Flavor is absolutely delicious. Will definitely order again!"
-                            </p>
-                            <p className="text-xs text-gray-500">2 days ago</p>
                           </div>
                           
-                          <div className="bg-gray-50 rounded-lg p-6">
-                            <div className="flex items-center space-x-3 mb-4">
-                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                <span className="text-green-600 font-semibold">SM</span>
+                          {/* Document Status Summary */}
+                          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 className="font-semibold text-blue-900 mb-3">Document Status</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-3 h-3 rounded-full ${currentVendor?.business_permit_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-sm text-blue-800">
+                                  Business Permit: {currentVendor?.business_permit_url ? 'Uploaded' : 'Missing'}
+                                </span>
                               </div>
-                              <div>
-                                <h3 className="font-semibold text-gray-900">Sarah Miller</h3>
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-yellow-400">★★★★☆</span>
-                                  <span className="text-sm text-gray-600">4.0</span>
-                                </div>
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-3 h-3 rounded-full ${currentVendor?.valid_id_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-sm text-blue-800">
+                                  Valid ID: {currentVendor?.valid_id_url ? 'Uploaded' : 'Missing'}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-3 h-3 rounded-full ${currentVendor?.proof_image_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-sm text-blue-800">
+                                  Proof of Address: {currentVendor?.proof_image_url ? 'Uploaded' : 'Missing'}
+                                </span>
                               </div>
                             </div>
-                            <p className="text-gray-700 mb-2">
-                              "Great quality ice cream, but delivery was a bit late. Overall satisfied with the product."
-                            </p>
-                            <p className="text-xs text-gray-500">1 week ago</p>
                           </div>
-                        </div>
                       </div>
                     )}
+
+
                   </div>
                 </div>
               </div>
@@ -2307,9 +2544,11 @@ export const Vendor = () => {
               className="w-6 h-6"
             />
             {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
           
           <button
@@ -3632,20 +3871,44 @@ export const Vendor = () => {
             {activeView === "orders" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
                 <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <img 
-                      src={ordersIcon} 
-                      alt="Orders" 
-                      className="w-10 h-10"
-                    />
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
-                        Order Management
-                      </h1>
-                      <p className="text-gray-600">
-                        Review and manage customer orders
-                      </p>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={ordersIcon} 
+                        alt="Orders" 
+                        className="w-10 h-10"
+                      />
+                      <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          Order Management
+                        </h1>
+                        <p className="text-gray-600">
+                          Review and manage customer orders
+                        </p>
+                      </div>
                     </div>
+                    
+                    {/* Manual Refresh Icon */}
+                    <button
+                      onClick={handleRefreshOrders}
+                      disabled={ordersRefreshLoading}
+                      className="p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+                      title="Refresh Orders"
+                    >
+                      <svg 
+                        className={`w-5 h-5 ${ordersRefreshLoading ? 'animate-spin' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                        />
+                      </svg>
+                    </button>
                   </div>
 
                   {/* Undo Notification */}
@@ -3686,7 +3949,10 @@ export const Vendor = () => {
                       ].map((filter) => (
                         <button
                           key={filter.value}
-                          onClick={() => setOrderFilter(filter.value)}
+                          onClick={() => {
+                            setOrderFilter(filter.value);
+                            handleRefreshOrders(); // Auto-refresh when filter changes
+                          }}
                           className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                             orderFilter === filter.value
                               ? 'bg-blue-600 text-white'
@@ -3879,7 +4145,7 @@ export const Vendor = () => {
                               <button
                                 onClick={() => {
                                   if (window.confirm(`Decline Order #${order.order_id}?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nThis action cannot be easily undone. The customer will be notified.`)) {
-                                    updateOrderStatus(order.order_id, 'cancelled');
+                                    declineOrderWithReason(order.order_id);
                                   }
                                 }}
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
@@ -4386,38 +4652,53 @@ export const Vendor = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">New Order Received</h3>
-                          <p className="text-sm text-gray-600">You have a new order for Mango Flavor - Large size</p>
-                          <p className="text-xs text-gray-500">2 minutes ago</p>
-                        </div>
+                    {notificationsLoading ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-3 text-gray-600">Loading notifications...</span>
                       </div>
-                    </div>
-                    
-                    <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Order Delivered</h3>
-                          <p className="text-sm text-gray-600">Order #12345 has been successfully delivered</p>
-                          <p className="text-xs text-gray-500">1 hour ago</p>
+                    ) : notifications.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <img src={bellNotificationIcon} alt="No notifications" className="w-8 h-8 opacity-50" />
                         </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications yet</h3>
+                        <p className="text-gray-600">You'll see order updates and customer interactions here</p>
                       </div>
-                    </div>
-                    
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Low Stock Alert</h3>
-                          <p className="text-sm text-gray-600">Vanilla Flavor is running low on stock</p>
-                          <p className="text-xs text-gray-500">3 hours ago</p>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className={`border-l-4 p-4 rounded-r-lg cursor-pointer transition-colors ${
+                            notification.is_read 
+                              ? 'bg-gray-50 border-gray-300' 
+                              : 'bg-blue-50 border-blue-400'
+                          }`}
+                          onClick={() => markNotificationAsRead(notification.id)}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              notification.is_read ? 'bg-gray-400' : 'bg-blue-500'
+                            }`}></div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900">{notification.title}</h3>
+                              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </p>
+                              {notification.related_order_id && (
+                                <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                  Order #{notification.related_order_id}
+                                </span>
+                              )}
+                            </div>
+                            {!notification.is_read && (
+                              <div className="w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

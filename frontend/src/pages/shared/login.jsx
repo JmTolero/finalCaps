@@ -1,5 +1,5 @@
 // import { useRef, useState, useEffect } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {NavWithLogo} from '../../components/shared/nav.jsx';
 import axios from 'axios';
@@ -10,6 +10,21 @@ export const Login = () => {
     const navigate = useNavigate();
     const [form, setForm] = useState({ username: '', password: '' });
     const [status, setStatus] = useState({ type: null, message: '' });
+
+    // Auto-hide error messages after 3 seconds and scroll to top when error occurs
+    useEffect(() => {
+        if (status.type === 'error') {
+            // Scroll to top when error occurs
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            const timer = setTimeout(() => {
+                setStatus({ type: null, message: '' });
+            }, 3000);
+            
+            // Cleanup timer on component unmount or status change
+            return () => clearTimeout(timer);
+        }
+    }, [status.type]);
 
     const handleChange = (e) => {
       // Prevent spaces in username and password fields
@@ -42,7 +57,7 @@ export const Login = () => {
         // If backend sends error, you can throw
         if (!data.user) {
           throw new Error(data?.error || "Login failed");
-        }
+        } 
 
         // Save user info in sessionStorage
         sessionStorage.setItem("user", JSON.stringify(data.user));
@@ -86,11 +101,8 @@ export const Login = () => {
                   return;
                 }
               } else if (userData.vendor_status === 'rejected') {
-                console.log('Vendor status is rejected');
-                setStatus({
-                  type: "error",
-                  message: "Your vendor application was rejected. Please contact support or re-apply.",
-                });
+                console.log('Vendor status is rejected, redirecting to pending page');
+                navigate("/vendor-pending");
                 return;
               } else if (userData.vendor_status === 'approved') {
                 console.log('Vendor status is approved, checking setup status');
@@ -151,6 +163,17 @@ export const Login = () => {
                 Sign in to your account and continue your ice cream journey
               </p>
             </div>
+
+            {/* Status Message - Moved to top */}
+            {status.type && (
+              <div className={`text-center mx-8 mt-6 p-4 rounded-xl ${
+                status.type === 'success' 
+                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                  : 'bg-red-100 text-red-800 border border-red-200'
+              }`}>
+                <div className="font-semibold">{status.message}</div>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="p-8 pb-12">
               {/* Two Column Layout for Desktop */}
@@ -290,17 +313,6 @@ export const Login = () => {
                   🚀 LOGIN
                 </button>
               </div>
-
-              {/* Status Message */}
-              {status.type && (
-                <div className={`text-center mt-6 p-4 rounded-xl ${
-                  status.type === 'success' 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-red-100 text-red-800 border border-red-200'
-                }`}>
-                  <div className="font-semibold">{status.message}</div>
-                </div>
-              )}
             </form>
           </div>
         </main>

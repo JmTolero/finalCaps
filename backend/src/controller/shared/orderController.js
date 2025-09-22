@@ -1,5 +1,6 @@
 const pool = require('../../db/config');    
 const Orders = require('../../model/shared/orderModel');
+const { createNotification } = require('./notificationController');
 
 const getOrderRecord = async (req, res) => {
     try{
@@ -69,6 +70,38 @@ const createOrder = async (req, res) => {
         const orderId = orderResult.insertId;
         console.log('Order created with ID:', orderId);
 
+        // Create notifications for both customer and vendor
+        try {
+            // Notification for customer
+            await createNotification({
+                user_id: customer_id,
+                user_type: 'customer',
+                title: 'Order Placed Successfully',
+                message: `Your order #${orderId} has been placed and is waiting for vendor approval.`,
+                notification_type: 'order_placed',
+                related_order_id: orderId,
+                related_vendor_id: vendor_id,
+                related_customer_id: customer_id
+            });
+
+            // Notification for vendor
+            await createNotification({
+                user_id: vendor_id,
+                user_type: 'vendor',
+                title: 'New Order Received',
+                message: `You have received a new order #${orderId} from a customer. Please review and respond.`,
+                notification_type: 'order_placed',
+                related_order_id: orderId,
+                related_vendor_id: vendor_id,
+                related_customer_id: customer_id
+            });
+
+            console.log('📬 Notifications created for order:', orderId);
+        } catch (notificationError) {
+            console.error('Failed to create notifications for order:', orderId, notificationError);
+            // Don't fail the order creation if notification creation fails
+        }
+
         // TODO: Insert order items if provided
         // For now, we'll store order items info in a separate table if needed
 
@@ -112,7 +145,8 @@ const getCustomerOrders = async (req, res) => {
                 u.fname as customer_fname,
                 u.lname as customer_lname,
                 ds.status_name as drum_status,
-                oi.return_requested_at
+                oi.return_requested_at,
+                o.decline_reason
             FROM orders o
             LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
             LEFT JOIN users u ON o.customer_id = u.user_id
@@ -154,7 +188,8 @@ const getVendorOrders = async (req, res) => {
                 u.lname as customer_lname,
                 u.contact_no as customer_contact,
                 ds.status_name as drum_status,
-                oi.return_requested_at
+                oi.return_requested_at,
+                o.decline_reason
             FROM orders o
             LEFT JOIN users u ON o.customer_id = u.user_id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
@@ -185,9 +220,12 @@ const getVendorOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const { order_id } = req.params;
-        const { status } = req.body;
+        const { status, decline_reason } = req.body;
 
         console.log('Updating order status:', order_id, 'to', status);
+        if (decline_reason) {
+            console.log('Decline reason:', decline_reason);
+        }
 
         // Validate status
         const validStatuses = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled', 'refund'];
@@ -198,17 +236,96 @@ const updateOrderStatus = async (req, res) => {
             });
         }
 
-        const [result] = await pool.query(`
-            UPDATE orders 
-            SET status = ? 
-            WHERE order_id = ?
-        `, [status, order_id]);
+        // If status is cancelled and decline_reason is provided, include it in the update
+        let updateQuery, updateParams;
+        if (status === 'cancelled' && decline_reason) {
+            updateQuery = `
+                UPDATE orders 
+                SET status = ?, decline_reason = ? 
+                WHERE order_id = ?
+            `;
+            updateParams = [status, decline_reason, order_id];
+        } else {
+            updateQuery = `
+                UPDATE orders 
+                SET status = ? 
+                WHERE order_id = ?
+            `;
+            updateParams = [status, order_id];
+        }
+
+        const [result] = await pool.query(updateQuery, updateParams);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
                 error: 'Order not found'
             });
+        }
+
+        // Get order details for notification
+        const [orderDetails] = await pool.query(`
+            SELECT customer_id, vendor_id, status 
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderDetails.length > 0) {
+            const { customer_id, vendor_id } = orderDetails[0];
+            
+            // Create appropriate notifications based on status
+            try {
+                let notificationType, title, message;
+                
+                switch (status) {
+                    case 'confirmed':
+                        notificationType = 'order_accepted';
+                        title = 'Order Confirmed';
+                        message = `Great news! Your order #${order_id} has been confirmed by the vendor and is being prepared.`;
+                        break;
+                    case 'preparing':
+                        notificationType = 'order_preparing';
+                        title = 'Order Being Prepared';
+                        message = `Your order #${order_id} is now being prepared by the vendor.`;
+                        break;
+                    case 'out_for_delivery':
+                        notificationType = 'order_ready';
+                        title = 'Order Out for Delivery';
+                        message = `Your order #${order_id} is on its way to you! Track your delivery.`;
+                        break;
+                    case 'delivered':
+                        notificationType = 'order_delivered';
+                        title = 'Order Delivered';
+                        message = `Your order #${order_id} has been delivered successfully. Enjoy your ice cream!`;
+                        break;
+                    case 'cancelled':
+                        notificationType = 'order_cancelled';
+                        title = 'Order Declined';
+                        message = decline_reason 
+                            ? `Your order #${order_id} has been declined by the vendor. Reason: ${decline_reason}`
+                            : `Your order #${order_id} has been cancelled. Contact support if you have any questions.`;
+                        break;
+                    default:
+                        return; // No notification for other statuses
+                }
+
+                // Create notification for customer
+                await createNotification({
+                    user_id: customer_id,
+                    user_type: 'customer',
+                    title,
+                    message,
+                    notification_type: notificationType,
+                    related_order_id: parseInt(order_id),
+                    related_vendor_id: vendor_id,
+                    related_customer_id: customer_id
+                });
+
+                console.log(`📬 Status notification created for order ${order_id}: ${status}`);
+            } catch (notificationError) {
+                console.error('Failed to create status notification:', notificationError);
+                // Don't fail the status update if notification creation fails
+            }
         }
 
         res.json({
@@ -254,6 +371,78 @@ const updatePaymentStatus = async (req, res) => {
                 success: false,
                 error: 'Order not found'
             });
+        }
+
+        // Get order details for notification
+        const [orderDetails] = await pool.query(`
+            SELECT customer_id, vendor_id, payment_status 
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderDetails.length > 0) {
+            const { customer_id, vendor_id } = orderDetails[0];
+            
+            // Create appropriate notifications based on payment status
+            try {
+                let notificationType, title, message;
+                
+                switch (payment_status) {
+                    case 'paid':
+                        notificationType = 'payment_confirmed';
+                        title = 'Payment Confirmed';
+                        message = `Your payment for order #${order_id} has been confirmed. The vendor will start preparing your order.`;
+                        
+                        // Create notification for customer
+                        await createNotification({
+                            user_id: customer_id,
+                            user_type: 'customer',
+                            title,
+                            message,
+                            notification_type: notificationType,
+                            related_order_id: parseInt(order_id),
+                            related_vendor_id: vendor_id,
+                            related_customer_id: customer_id
+                        });
+
+                        // Create notification for vendor
+                        await createNotification({
+                            user_id: vendor_id,
+                            user_type: 'vendor',
+                            title: 'Payment Received',
+                            message: `Payment confirmed for order #${order_id}. You can now start preparing the order.`,
+                            notification_type: 'payment_confirmed',
+                            related_order_id: parseInt(order_id),
+                            related_vendor_id: vendor_id,
+                            related_customer_id: customer_id
+                        });
+                        break;
+                    case 'partial':
+                        notificationType = 'payment_confirmed';
+                        title = 'Partial Payment Received';
+                        message = `Partial payment received for order #${order_id}. Remaining balance due on delivery.`;
+                        
+                        await createNotification({
+                            user_id: customer_id,
+                            user_type: 'customer',
+                            title,
+                            message,
+                            notification_type: notificationType,
+                            related_order_id: parseInt(order_id),
+                            related_vendor_id: vendor_id,
+                            related_customer_id: customer_id
+                        });
+                        break;
+                    default:
+                        // No notification for other payment statuses
+                        break;
+                }
+
+                console.log(`📬 Payment notification created for order ${order_id}: ${payment_status}`);
+            } catch (notificationError) {
+                console.error('Failed to create payment notification:', notificationError);
+                // Don't fail the payment update if notification creation fails
+            }
         }
 
         res.json({

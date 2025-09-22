@@ -13,6 +13,8 @@ const drumRoutes = require('./routes/vendor/drumRoutes');
 const deliveryRoutes = require('./routes/vendor/deliveryRoutes');
 const sharedFlavorRoutes = require('./routes/shared/flavorRoutes');
 const customerRoutes = require('./routes/customer/customerRoutes');
+const notificationRoutes = require('./routes/shared/notificationRoutes');
+const autoReturnRoutes = require('./routes/admin/autoReturnRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -49,6 +51,8 @@ app.use('/api/vendor/drums', drumRoutes);
 app.use('/api/vendor/delivery', deliveryRoutes);
 app.use('/api/flavors', sharedFlavorRoutes);
 app.use('/api/customer', customerRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin/auto-return', autoReturnRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

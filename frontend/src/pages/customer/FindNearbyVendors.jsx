@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import axios from "axios";
@@ -16,10 +16,69 @@ export const FindNearbyVendors = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchVendors();
   }, []);
+
+  // Fetch notifications for customer
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotificationsLoading(true);
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  // Fetch unread notification count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, [fetchNotifications, fetchUnreadCount]);
 
   const fetchVendors = async () => {
     try {
@@ -115,7 +174,11 @@ export const FindNearbyVendors = () => {
                     alt="Notifications"
                     className="w-5 h-5"
                   />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 {/* Cart Icon */}
@@ -214,7 +277,7 @@ export const FindNearbyVendors = () => {
                             />
                           </svg>
                           <span className="text-sm text-gray-600">
-                            {vendor.location || "Cordova, Cebu, Philippines"}
+                            {vendor.location}
                           </span>
                         </div>
 
@@ -328,7 +391,7 @@ export const FindNearbyVendors = () => {
                   Map will show vendor locations with markers
                 </p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Cordova, Cebu, Philippines
+                  Vendor locations will be displayed here
                 </p>
               </div>
             </div>

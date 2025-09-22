@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav"
 import { handleValidatedChange, validateFormData, trimFormData } from '../../utils/inputValidation';
 
 export const UserRegister = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstname: "",
     lastname: "",
@@ -17,6 +18,31 @@ export const UserRegister = () => {
     gender: ""
   });
   const [status, setStatus] = useState({ type: null, message: "" });
+
+  // Auto-hide error messages after 3 seconds, redirect after success after 5 seconds, scroll to top when error occurs
+  useEffect(() => {
+    if (status.type === 'error') {
+      // Scroll to top when error occurs
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      const timer = setTimeout(() => {
+        setStatus({ type: null, message: '' });
+      }, 3000);
+      
+      // Cleanup timer on component unmount or status change
+      return () => clearTimeout(timer);
+    } else if (status.type === 'success') {
+      // Scroll to top when success occurs (to show the success message)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      const timer = setTimeout(() => {
+        navigate('/login');
+      }, 5000);
+      
+      // Cleanup timer on component unmount or status change
+      return () => clearTimeout(timer);
+    }
+  }, [status.type, navigate]);
 
   const handleChange = (e) => {
     // Prevent spaces in username and password fields, allow spaces in names and email
@@ -51,7 +77,7 @@ export const UserRegister = () => {
         headers: { "Content-Type": "application/json" },
       });
   
-      setStatus({ type: "success", message: "Registered successfully" });
+      setStatus({ type: "success", message: "Registration successful! Redirecting to login page in 5 seconds..." });
       setForm({
         firstname: "",
         lastname: "",
@@ -88,6 +114,17 @@ export const UserRegister = () => {
               Create your account and start exploring our amazing ice cream offerings
             </p>
           </div>
+
+          {/* Status Message - Moved to top */}
+          {status.type && (
+            <div className={`text-center mx-8 mt-6 p-4 rounded-xl ${
+              status.type === 'success' 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              <div className="font-semibold">{status.message}</div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="p-8 pb-12">
             {/* Two Column Layout for Desktop */}
@@ -327,17 +364,6 @@ export const UserRegister = () => {
                 🚀 CREATE ACCOUNT
               </button>
             </div>
-
-            {/* Status Message */}
-            {status.type && (
-              <div className={`text-center mt-6 p-4 rounded-xl ${
-                status.type === 'success' 
-                  ? 'bg-green-100 text-green-800 border border-green-200' 
-                  : 'bg-red-100 text-red-800 border border-red-200'
-              }`}>
-                <div className="font-semibold">{status.message}</div>
-              </div>
-            )}
           </form>
         </div>
       </main>

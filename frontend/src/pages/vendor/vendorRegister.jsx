@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav.jsx';
 import axios from 'axios';
@@ -22,6 +22,24 @@ export const VendorRegister = () => {
   });
   const [status, setStatus] = useState({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
+
+  // Auto-hide error messages after 3 seconds and scroll to top when error/success occurs
+  useEffect(() => {
+    if (status.type === 'error') {
+      // Scroll to top when error occurs
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      const timer = setTimeout(() => {
+        setStatus({ type: null, message: '' });
+      }, 3000);
+      
+      // Cleanup timer on component unmount or status change
+      return () => clearTimeout(timer);
+    } else if (status.type === 'success') {
+      // Scroll to top when success occurs (to show the success message)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [status.type]);
 
   const handleChange = (e) => {
     // Prevent spaces in username, password, and contact fields
@@ -184,6 +202,17 @@ export const VendorRegister = () => {
               Join our ice cream vendor community and start sharing your delicious creations with customers
             </p>
           </div>
+
+          {/* Status Message - Moved to top */}
+          {status.type && (
+            <div className={`text-center mx-8 mt-6 p-4 rounded-xl ${
+              status.type === 'success' 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              <div className="font-semibold">{status.message}</div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="p-8">
             {/* Two Column Layout for Desktop */}
@@ -456,17 +485,6 @@ export const VendorRegister = () => {
                 </div>
               </div>
             </div>
-
-            {/* Status Message */}
-            {status.type && (
-              <div className={`text-center py-4 px-6 rounded-xl mt-8 text-lg font-semibold ${
-                status.type === 'success' 
-                  ? 'bg-green-100 text-green-800 border-2 border-green-300' 
-                  : 'bg-red-100 text-red-800 border-2 border-red-300'
-              }`}>
-                {status.message}
-              </div>
-            )}
 
             {/* Register Button */}
             <div className="mt-8 flex flex-col items-center space-y-4">

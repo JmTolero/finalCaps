@@ -127,11 +127,18 @@ export const VendorSetup = () => {
   const fetchVendorAddress = async (vendorId) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/address/vendor/${vendorId}/addresses`);
+      // Use the user_id from vendorData instead of vendorId
+      const userId = vendorData?.user_id;
+      if (!userId) {
+        console.log('No user ID available for fetching address');
+        return;
+      }
       
-      if (response.data.success && response.data.addresses.length > 0) {
+      const response = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
+      
+      if (response.data && response.data.length > 0) {
         // Get the first address (primary address)
-        const address = response.data.addresses[0];
+        const address = response.data[0];
         setAddressData({
           unit_number: address.unit_number || '',
           street_name: address.street_name || '',
@@ -259,7 +266,7 @@ export const VendorSetup = () => {
       if (addressData.street_name && addressData.barangay && addressData.cityVillage && addressData.province) {
         console.log('Adding address:', addressData);
         await axios.post(
-          `${apiBase}/api/user/${vendorData.user_id}/address`,
+          `${apiBase}/api/addresses/user/${vendorData.user_id}/address`,
           {
             ...addressData,
             address_label: 'Store Location'
