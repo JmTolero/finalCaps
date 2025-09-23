@@ -144,7 +144,7 @@ export const AllVendorStores = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 ml-6">
+            <div className="flex items-center space-x-8 ml-6">
               <button
                 onClick={() => navigate("/find-vendors")}
                 className="text-blue-700 hover:text-blue-800 font-medium"
