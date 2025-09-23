@@ -69,6 +69,7 @@ const getVendorById = async (req, res) => {
                 v.business_permit_url,
                 v.valid_id_url,
                 v.proof_image_url,
+                v.profile_image_url,
                 COALESCE(v.status, 'pending') as status,
                 v.user_id,
                 v.created_at,

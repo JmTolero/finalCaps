@@ -13,9 +13,11 @@
     import { Admin } from "./pages/admin/admin.jsx";
     import { Vendor } from "./pages/vendor/vendor.jsx";
     import { Customer } from "./pages/customer/customer.jsx";
-    import { FindNearbyVendors } from "./pages/customer/FindNearbyVendors.jsx";
-    import { FlavorDetail } from "./pages/customer/FlavorDetail.jsx";
-    import { Checkout } from "./pages/customer/Checkout.jsx";
+import { FindNearbyVendors } from "./pages/customer/FindNearbyVendors.jsx";
+import { AllVendorStores } from "./pages/customer/AllVendorStores.jsx";
+import { VendorStore } from "./pages/customer/VendorStore.jsx";
+import { FlavorDetail } from "./pages/customer/FlavorDetail.jsx";
+import { Checkout } from "./pages/customer/Checkout.jsx";
     import { Notifications } from "./pages/customer/Notifications.jsx";
 import PaymentPage from "./pages/customer/PaymentPage.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
@@ -107,6 +109,8 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
           <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
           <Route path="/customer/payment/:orderId" element={requireRole('customer', <PaymentPage />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
+          <Route path="/all-vendor-stores" element={requireRole('customer', <AllVendorStores />)} />
+          <Route path="/vendor/:vendorId/store" element={requireRole('customer', <VendorStore />)} />
           <Route path="/flavor/:flavorId" element={requireRole('customer', <FlavorDetail />)} />
           <Route path="/checkout" element={requireRole('customer', <Checkout />)} />
           <Route path="/login-test" element={<LoginTest />} />

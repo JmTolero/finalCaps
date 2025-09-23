@@ -327,7 +327,7 @@ export const Notifications = () => {
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/find-vendors" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
                 </Link>
                 

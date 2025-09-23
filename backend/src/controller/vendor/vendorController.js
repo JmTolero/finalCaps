@@ -720,4 +720,47 @@ const getVendorsWithLocations = async (req, res) => {
     }
 };
 
-module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations };
+const getAllApprovedVendors = async (req, res) => {
+    try {
+        console.log('📋 Fetching all approved vendors for customer store listing');
+
+        const [vendors] = await pool.query(`
+            SELECT 
+                v.vendor_id,
+                v.store_name,
+                v.profile_image_url,
+                v.status,
+                CASE 
+                    WHEN a.address_id IS NOT NULL THEN 
+                        TRIM(CONCAT(
+                            COALESCE(a.unit_number, ''), ' ',
+                            COALESCE(a.street_name, ''), ' ',
+                            COALESCE(a.barangay, ''), ' ',
+                            COALESCE(a.cityVillage, ''), ' ',
+                            COALESCE(a.province, '')
+                        ))
+                    ELSE 'Location not specified'
+                END as location
+            FROM vendors v
+            LEFT JOIN addresses a ON v.primary_address_id = a.address_id
+            WHERE v.status = 'approved'
+            ORDER BY v.store_name
+        `);
+
+        console.log(`📋 Found ${vendors.length} approved vendors`);
+
+        res.json({
+            success: true,
+            vendors: vendors
+        });
+    } catch (error) {
+        console.error('Error fetching all approved vendors:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch approved vendors',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors };

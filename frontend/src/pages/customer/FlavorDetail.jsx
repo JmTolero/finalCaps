@@ -37,9 +37,13 @@ export const FlavorDetail = () => {
     try {
       setNotificationsLoading(true);
       const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
+      if (!userRaw) {
+        console.log('🔔 FlavorDetail: No user found in sessionStorage');
+        return;
+      }
 
       const user = JSON.parse(userRaw);
+      console.log('🔔 FlavorDetail: Fetching notifications for user:', user.id);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
@@ -50,9 +54,13 @@ export const FlavorDetail = () => {
 
       if (response.data.success) {
         setNotifications(response.data.notifications || []);
+        console.log('📬 FlavorDetail: Fetched notifications:', response.data.notifications?.length || 0);
+        console.log('📬 FlavorDetail: Total notifications:', response.data.notifications?.length || 0);
+      } else {
+        console.log('🔔 FlavorDetail: API returned unsuccessful response:', response.data);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('🔔 FlavorDetail: Error fetching notifications:', error);
     } finally {
       setNotificationsLoading(false);
     }
@@ -62,9 +70,13 @@ export const FlavorDetail = () => {
   const fetchUnreadCount = useCallback(async () => {
     try {
       const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
+      if (!userRaw) {
+        console.log('🔔 FlavorDetail: No user found for unread count');
+        return;
+      }
 
       const user = JSON.parse(userRaw);
+      console.log('🔔 FlavorDetail: Fetching unread count for user:', user.id);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
@@ -74,14 +86,18 @@ export const FlavorDetail = () => {
       });
 
       if (response.data.success) {
-        setUnreadCount(response.data.unreadCount || 0);
+        setUnreadCount(response.data.unread_count || 0);
+        console.log('🔔 FlavorDetail: Unread count:', response.data.unread_count || 0);
+      } else {
+        console.log('🔔 FlavorDetail: Unread count API returned unsuccessful response:', response.data);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      console.error('🔔 FlavorDetail: Error fetching unread count:', error);
     }
   }, []);
 
   useEffect(() => {
+    console.log('🔔 FlavorDetail: Fetching notifications...');
     fetchNotifications();
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
@@ -245,13 +261,16 @@ export const FlavorDetail = () => {
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/find-vendors" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
                 </Link>
                 
                 {/* Notification Bell */}
                 <button 
-                  onClick={() => navigate('/customer/notifications')}
+                  onClick={() => {
+                    console.log('🔔 FlavorDetail: Notification button clicked');
+                    navigate('/customer/notifications');
+                  }}
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
@@ -263,12 +282,24 @@ export const FlavorDetail = () => {
                 </button>
                 
                 {/* Cart Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => {
+                    console.log('🛒 FlavorDetail: Cart button clicked');
+                    navigate('/customer?view=cart');
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
                 </button>
                 
                 {/* Feedback Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => {
+                    console.log('💬 FlavorDetail: Feedback button clicked');
+                    navigate('/customer?view=feedback');
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
                 </button>
               </div>

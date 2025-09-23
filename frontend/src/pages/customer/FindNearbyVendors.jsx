@@ -68,7 +68,7 @@ export const FindNearbyVendors = () => {
       });
 
       if (response.data.success) {
-        setUnreadCount(response.data.unreadCount || 0);
+        setUnreadCount(response.data.unread_count || 0);
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -160,7 +160,10 @@ export const FindNearbyVendors = () => {
                 </button>
 
                 {/* Shops Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => navigate("/all-vendor-stores")}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
                 </button>
 
@@ -182,7 +185,10 @@ export const FindNearbyVendors = () => {
                 </button>
 
                 {/* Cart Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={() => navigate("/customer/cart")}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
                 </button>
 

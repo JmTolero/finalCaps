@@ -43,4 +43,7 @@ router.get('/all-products', vendorController.getAllProducts);
 // Get vendors with their locations for map display
 router.get('/with-locations', vendorController.getVendorsWithLocations);
 
+// Get all approved vendors for customer store listing
+router.get('/all-approved', vendorController.getAllApprovedVendors);
+
 module.exports = router;

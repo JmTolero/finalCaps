@@ -62,13 +62,17 @@ const getVendorFlavors = async (req, res) => {
         f.created_at,
         f.vendor_id,
         f.sold_count,
-        COALESCE(SUM(CASE WHEN o.status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered') THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count
+        COALESCE(SUM(CASE WHEN o.status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered') THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count,
+        COALESCE(MIN(CASE WHEN vdp.drum_size = 'small' THEN vdp.price END), f.price_small) as small_price,
+        COALESCE(MIN(CASE WHEN vdp.drum_size = 'medium' THEN vdp.price END), f.price_medium) as medium_price,
+        COALESCE(MIN(CASE WHEN vdp.drum_size = 'large' THEN vdp.price END), f.price_large) as large_price
       FROM flavors f
+      LEFT JOIN vendor_drum_pricing vdp ON f.vendor_id = vdp.vendor_id
       LEFT JOIN products p ON f.flavor_id = p.flavor_id
       LEFT JOIN order_items oi ON p.product_id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.order_id
       WHERE f.vendor_id = ?
-      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count
+      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, f.price_small, f.price_medium, f.price_large
       ORDER BY f.created_at DESC
     `, [vendor_id]);
     
