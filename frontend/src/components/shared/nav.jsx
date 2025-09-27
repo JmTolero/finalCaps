@@ -211,7 +211,7 @@ export const NavWithLogo = () => {
                         <img
                             src={logoImage}
                             alt="ChillNet Logo"
-                            className="ChillNet-Logo h-10 rounded-full object-cover"
+                            className="ChillNet-Logo h-7 rounded-full object-cover"
                         />
                     </Link>
                     
