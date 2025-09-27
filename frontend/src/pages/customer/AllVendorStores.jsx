@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
+import { useCart } from "../../contexts/CartContext";
 import axios from "axios";
 
 // Import customer icons
@@ -12,6 +13,7 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 
 export const AllVendorStores = () => {
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,7 +101,7 @@ export const AllVendorStores = () => {
   const filteredVendors = vendors
     .filter(
       (vendor) =>
-        vendor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (vendor.store_name && vendor.store_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (vendor.location && vendor.location.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
@@ -114,21 +116,21 @@ export const AllVendorStores = () => {
       <NavWithLogo />
 
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1 max-w-md">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-3 sm:gap-4 lg:gap-6">
+            <div className="w-full sm:flex-1 sm:max-w-md">
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search vendor stores..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-10 pr-4 text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 sm:px-4 sm:py-3 sm:pl-10 sm:text-base"
                 />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none sm:pl-3">
                   <svg
-                    className="h-5 w-5 text-gray-400"
+                    className="h-4 w-4 text-gray-400 sm:h-5 sm:w-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -144,41 +146,41 @@ export const AllVendorStores = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-8 ml-6">
+            <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
               <button
                 onClick={() => navigate("/find-vendors")}
-                className="text-blue-700 hover:text-blue-800 font-medium"
+                className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base"
               >
                 Find nearby Vendors
               </button>
 
               {/* Navigation Icons */}
-              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
                 >
-                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 {/* Shops Icon */}
-                <button className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
-                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                <button className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors sm:p-2">
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
                 >
                   <img
                     src={notifIcon}
                     alt="Notifications"
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                   />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -186,18 +188,34 @@ export const AllVendorStores = () => {
 
                 {/* Cart Icon */}
                 <button 
-                  onClick={() => navigate("/customer?view=cart")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  onClick={() => navigate("/cart")}
+                  className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
+                    totalItems > 0 
+                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
-                  <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
+                      totalItems > 0 ? 'scale-110' : ''
+                    }`} 
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
                 </button>
 
                 {/* Feedback Icon */}
                 <button 
                   onClick={() => navigate("/customer?view=feedback")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
                 >
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -206,10 +224,10 @@ export const AllVendorStores = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="text-left mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">SHOPS AND VENDORS</h1>
-          <p className="text-gray-600 text-lg">Discover all available ice cream vendors in your area</p>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className="text-left mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">SHOPS AND VENDORS</h1>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600">Discover all available ice cream vendors in your area</p>
         </div>
 
         {loading ? (
@@ -218,18 +236,18 @@ export const AllVendorStores = () => {
             <p className="ml-4 text-gray-600">Loading vendor stores...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {filteredVendors.map((vendor) => (
               <div
                 key={vendor.vendor_id}
-                className="bg-sky-100 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200 cursor-pointer overflow-hidden p-4"
+                className="bg-sky-100 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer overflow-hidden p-3"
                 onClick={() => {
                   // Navigate to vendor's store page
                   navigate(`/vendor/${vendor.vendor_id}/store`);
                 }}
               >
                 {/* Image Area with White Background */}
-                <div className="relative w-full h-32 bg-white rounded-lg flex items-center justify-center mb-4">
+                <div className="relative w-full h-24 bg-white rounded-md flex items-center justify-center mb-2">
                   {vendor.profile_image_url ? (
                     <img
                       src={`${
@@ -238,26 +256,26 @@ export const AllVendorStores = () => {
                       }/uploads/vendor-documents/${
                         vendor.profile_image_url
                       }`}
-                      alt={vendor.store_name}
-                      className="w-full h-full object-cover rounded-lg"
+                      alt={vendor.store_name || "Vendor Store"}
+                      className="w-full h-full object-cover rounded-md"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                      <span className="text-3xl">🍦</span>
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                      <span className="text-xl">🍦</span>
                     </div>
                   )}
                 </div>
 
                 {/* Bottom Information Section - Only Name and Location */}
-                <div className="text-left">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">
-                    {vendor.store_name}
+                <div className="text-left space-y-1">
+                  <h3 className="text-sm font-semibold text-gray-800 line-clamp-1">
+                    {vendor.store_name || "Unnamed Store"}
                   </h3>
                   
                   {/* Location */}
-                  <div className="flex items-center space-x-1 mb-3">
+                  <div className="flex items-center space-x-1">
                     <svg
-                      className="w-4 h-4 text-gray-500"
+                      className="w-3 h-3 text-gray-500"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -267,13 +285,13 @@ export const AllVendorStores = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-xs text-gray-600 line-clamp-1">
                       {vendor.location || "Location not specified"}
                     </span>
                   </div>
 
                   {/* View Shop Button */}
-                  <button className="w-full px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold rounded-lg transition-colors">
+                  <button className="w-full px-2 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium text-xs rounded-md transition-colors">
                     View Shop
                   </button>
                 </div>

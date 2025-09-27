@@ -151,18 +151,22 @@ const addDeliveryZone = async (req, res) => {
       });
     }
 
-    // Insert new delivery zone
+    // Insert new delivery zone or update existing one
     const [result] = await pool.query(`
       INSERT INTO vendor_delivery_pricing 
       (vendor_id, city, province, delivery_price, is_active, created_at, updated_at)
       VALUES (?, ?, ?, ?, 1, NOW(), NOW())
+      ON DUPLICATE KEY UPDATE 
+      delivery_price = VALUES(delivery_price),
+      is_active = VALUES(is_active),
+      updated_at = NOW()
     `, [vendor_id, city, province, delivery_price]);
 
     res.json({
       success: true,
-      message: 'Delivery zone added successfully',
+      message: result.affectedRows === 1 ? 'Delivery zone added successfully' : 'Delivery zone updated successfully',
       delivery_zone: {
-        delivery_pricing_id: result.insertId,
+        delivery_pricing_id: result.insertId || 'existing',
         city,
         province,
         delivery_price
@@ -171,14 +175,6 @@ const addDeliveryZone = async (req, res) => {
 
   } catch (error) {
     console.error('Error adding delivery zone:', error);
-    
-    // Handle duplicate key error
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({
-        success: false,
-        error: 'Delivery zone for this city and province already exists'
-      });
-    }
     
     res.status(500).json({
       success: false,

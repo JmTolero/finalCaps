@@ -25,13 +25,22 @@ const upload = multer({
     fileSize: 20 * 1024 * 1024 // 20MB limit
   },
   fileFilter: (req, file, cb) => {
+    console.log('File filter - Field name:', file.fieldname);
+    console.log('File filter - Original name:', file.originalname);
+    console.log('File filter - MIME type:', file.mimetype);
+    
     const allowedTypes = /jpeg|jpg|png|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
     
+    console.log('File filter - Extension check:', extname);
+    console.log('File filter - MIME type check:', mimetype);
+    
     if (mimetype && extname) {
+      console.log('File filter - File accepted');
       return cb(null, true);
     } else {
+      console.log('File filter - File rejected');
       cb(new Error('Only images and PDF files are allowed'));
     }
   }
@@ -42,6 +51,7 @@ const registerVendor = async (req, res) => {
         console.log('=== VENDOR REGISTRATION REQUEST ===');
         console.log('Request body:', req.body);
         console.log('Request files:', req.files);
+        console.log('Request file fields:', Object.keys(req.files || {}));
         console.log('=====================================');
         
         // Handle both JSON and form-data requests and trim strings
@@ -447,20 +457,25 @@ const getVendorDashboardData = async (req, res) => {
             LIMIT 1
         `, [vendor_id]);
 
-        // Get upcoming deliveries (orders that are not completed)
+        // Get upcoming deliveries (only approved orders with delivery dates)
         const [upcomingDeliveries] = await pool.query(`
             SELECT 
                 o.order_id,
                 o.delivery_datetime,
                 o.delivery_address,
                 o.status,
+                o.payment_status,
                 u.fname as customer_name,
+                u.lname as customer_lname,
                 u.contact_no as customer_phone,
-                o.total_amount
+                o.total_amount,
+                o.created_at
             FROM orders o
             INNER JOIN users u ON o.customer_id = u.user_id
             WHERE o.vendor_id = ? 
-            AND o.status IN ('pending', 'confirmed', 'preparing', 'out_for_delivery')
+            AND o.status IN ('confirmed', 'preparing', 'out_for_delivery')
+            AND o.delivery_datetime IS NOT NULL
+            AND o.delivery_datetime > NOW()
             ORDER BY o.delivery_datetime ASC
             LIMIT 10
         `, [vendor_id]);
@@ -507,21 +522,21 @@ const registerExistingUserAsVendor = async (req, res) => {
         console.log('=== EXISTING USER VENDOR REGISTRATION REQUEST ===');
         console.log('Request body:', req.body);
         console.log('Request files:', req.files);
+        console.log('Request file fields:', Object.keys(req.files || {}));
         console.log('================================================');
         
         // Handle both JSON and form-data requests and trim strings
         const trimmedBody = trimObjectStrings(req.body);
         const { fname, lname, username, password, contact_no, email, birth_date, gender, store_name, city, province, role } = trimmedBody;
         
-        // Validate required fields
+        // Validate required fields (store_name will be set after approval)
         const requiredFields = [
             { key: 'fname', name: 'First name' },
             { key: 'lname', name: 'Last name' },
             { key: 'email', name: 'Email' },
             { key: 'password', name: 'Password' },
             { key: 'birth_date', name: 'Birth date' },
-            { key: 'gender', name: 'Gender' },
-            { key: 'store_name', name: 'Store name' }
+            { key: 'gender', name: 'Gender' }
         ];
         
         const validation = validateRequiredFields(trimmedBody, requiredFields);
@@ -585,10 +600,10 @@ const registerExistingUserAsVendor = async (req, res) => {
             );
         }
 
-        // Insert vendor record
+        // Insert vendor record (store_name will be set after approval)
         const [vendorResult] = await pool.query(
             'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, proof_image_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-            [store_name, businessPermitUrl, validIdUrl, proofImageUrl, 'pending', user.user_id, primaryAddressId]
+            [null, businessPermitUrl, validIdUrl, proofImageUrl, 'pending', user.user_id, primaryAddressId]
         );
 
         console.log('Vendor created with ID:', vendorResult.insertId);
@@ -598,7 +613,7 @@ const registerExistingUserAsVendor = async (req, res) => {
             message: 'Vendor application submitted successfully. Your account is pending approval.',
             vendor: {
                 vendor_id: vendorResult.insertId,
-                store_name: store_name,
+                store_name: null, // Will be set after approval
                 status: 'pending',
                 user_id: user.user_id
             },
@@ -730,19 +745,33 @@ const getAllApprovedVendors = async (req, res) => {
                 v.store_name,
                 v.profile_image_url,
                 v.status,
+                v.created_at,
                 CASE 
-                    WHEN a.address_id IS NOT NULL THEN 
-                        TRIM(CONCAT(
-                            COALESCE(a.unit_number, ''), ' ',
-                            COALESCE(a.street_name, ''), ' ',
-                            COALESCE(a.barangay, ''), ' ',
-                            COALESCE(a.cityVillage, ''), ' ',
-                            COALESCE(a.province, '')
-                        ))
-                    ELSE 'Location not specified'
+                    WHEN (a.address_id IS NULL OR (
+                        (a.cityVillage IS NULL OR a.cityVillage = '') AND 
+                        (a.province IS NULL OR a.province = '')
+                    )) AND (a2.address_id IS NULL OR (
+                        (a2.cityVillage IS NULL OR a2.cityVillage = '') AND 
+                        (a2.province IS NULL OR a2.province = '')
+                    ))
+                    THEN 'Location not specified'
+                    WHEN a.address_id IS NOT NULL AND (
+                        (a.cityVillage IS NOT NULL AND a.cityVillage != '') OR 
+                        (a.province IS NOT NULL AND a.province != '')
+                    )
+                    THEN CONCAT_WS(', ',
+                        COALESCE(NULLIF(a.cityVillage, ''), NULL),
+                        COALESCE(NULLIF(a.province, ''), NULL)
+                    )
+                    ELSE CONCAT_WS(', ',
+                        COALESCE(NULLIF(a2.cityVillage, ''), NULL),
+                        COALESCE(NULLIF(a2.province, ''), NULL)
+                    )
                 END as location
             FROM vendors v
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
+            LEFT JOIN user_addresses ua ON v.user_id = ua.user_id AND ua.is_default = 1
+            LEFT JOIN addresses a2 ON ua.address_id = a2.address_id
             WHERE v.status = 'approved'
             ORDER BY v.store_name
         `);

@@ -9,12 +9,11 @@ export const BecomeVendor = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    store_name: '',
     city: '',
     province: '',
     valid_id: null,
     business_permit: null,
-    ice_cream_photo: null
+    proof_image: null
   });
   const [status, setStatus] = useState({ type: null, message: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -73,11 +72,7 @@ export const BecomeVendor = () => {
       return false;
     }
     
-    // Validate form fields
-    if (!form.store_name.trim()) {
-      setStatus({ type: 'error', message: 'Store name is required' });
-      return false;
-    }
+    // Validate form fields (store name will be set after approval)
     if (!form.valid_id) {
       setStatus({ type: 'error', message: 'Valid ID is required' });
       return false;
@@ -86,7 +81,7 @@ export const BecomeVendor = () => {
       setStatus({ type: 'error', message: 'Business permit is required' });
       return false;
     }
-    if (!form.ice_cream_photo) {
+    if (!form.proof_image) {
       setStatus({ type: 'error', message: 'Ice cream photo is required' });
       return false;
     }
@@ -117,13 +112,15 @@ export const BecomeVendor = () => {
       formData.append('password', userData.password || 'defaultPassword123'); // Note: In production, you'd want to re-verify password
       formData.append('contact_no', userData.contact_no || '');
       formData.append('email', userData.email);
-      formData.append('store_name', form.store_name);
+      formData.append('birth_date', userData.birth_date || '1990-01-01'); // Default if not provided
+      formData.append('gender', userData.gender || 'prefer_not_to_say'); // Default if not provided
+      formData.append('store_name', ''); // Store name will be set after approval
       formData.append('city', form.city);
       formData.append('province', form.province);
       formData.append('role', 'vendor');
       formData.append('valid_id', form.valid_id);
       formData.append('business_permit', form.business_permit);
-      formData.append('ice_cream_photo', form.ice_cream_photo);
+      formData.append('proof_image', form.proof_image);
 
       const res = await axios.post(`${apiBase}/api/vendor/register-existing-user`, formData, {
         headers: {
@@ -132,20 +129,36 @@ export const BecomeVendor = () => {
       });
 
       if (res.data.success) {
-        // Clear session and redirect to login to refresh user data
-        sessionStorage.removeItem('user');
+        // Store vendor data for pending page
+        sessionStorage.setItem('pendingVendor', JSON.stringify({
+          vendor_id: res.data.vendor.vendor_id,
+          user_id: res.data.user.user_id,
+          store_name: res.data.vendor.store_name,
+          email: res.data.user.email,
+          fname: res.data.user.fname,
+          lname: res.data.user.lname
+        }));
+        
+        // Update user session with vendor role
+        const updatedUser = {
+          ...userData,
+          role: 'vendor'
+        };
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // Dispatch user change event to update navbar
         window.dispatchEvent(new Event('userChanged'));
         
-        // Show success message and redirect to login
+        // Show success message and redirect to pending page
         setStatus({
           type: 'success',
-          message: 'Vendor application submitted successfully! Please log in again to access your vendor account.'
+          message: 'Vendor application submitted successfully! Redirecting to pending page...'
         });
         
-        // Redirect to login after a short delay
+        // Redirect to vendor pending page after a short delay
         setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+          navigate('/vendor-pending');
+        }, 2000);
       } else {
         throw new Error(res.data.message || 'Registration failed');
       }
@@ -225,21 +238,7 @@ export const BecomeVendor = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Vendor Application Details</h3>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Store Information */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Store Name *
-                </label>
-                <input
-                  type="text"
-                  name="store_name"
-                  value={form.store_name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your store name"
-                  required
-                />
-              </div>
+              {/* Store Information - Store name will be set after approval */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -310,7 +309,7 @@ export const BecomeVendor = () => {
                   </label>
                   <input
                     type="file"
-                    name="ice_cream_photo"
+                    name="proof_image"
                     onChange={handleFileChange}
                     accept="image/*"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

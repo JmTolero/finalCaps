@@ -132,6 +132,12 @@ export const Vendor = () => {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [recentStatusChange, setRecentStatusChange] = useState(null); // For undo functionality
   
+  // Date filter state
+  const [dateFilter, setDateFilter] = useState({
+    selectedDate: '',
+    enabled: false
+  });
+  
   // Notifications state
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -710,6 +716,30 @@ export const Vendor = () => {
        console.log(`📖 Marked vendor notification ${notificationId} as read`);
      } catch (error) {
        console.error('Error marking notification as read:', error);
+     }
+   };
+
+   // Mark all notifications as read
+   const markAllNotificationsAsRead = async () => {
+     try {
+       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+       
+       await axios.put(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}/mark-all-read`, {}, {
+         headers: {
+           Authorization: `Bearer ${sessionStorage.getItem('token')}`
+         }
+       });
+
+       // Update local state - mark all notifications as read
+       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+       
+       // Reset unread count to 0
+       setUnreadCount(0);
+       
+       console.log(`📖 Marked all vendor notifications as read`);
+     } catch (error) {
+       console.error('Error marking all notifications as read:', error);
+       alert('Failed to mark all notifications as read. Please try again.');
      }
    };
 
@@ -2871,18 +2901,126 @@ export const Vendor = () => {
                   
                    {/* Upcoming Deliveries Card */}
                    <div className="bg-white p-6 rounded-lg shadow-sm">
-                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                       Upcoming Deliveries
-                     </h3>
-                     <div className="space-y-3">
+                     <div className="flex items-center justify-between mb-4">
+                       <h3 className="text-lg font-semibold text-gray-900">
+                         Upcoming Deliveries
+                       </h3>
+                       <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                         {dashboardData.upcoming_deliveries?.length || 0} orders
+                       </span>
+                     </div>
+                     
+                     {dashboardLoading ? (
+                       <div className="space-y-3">
+                         {[1, 2, 3].map((i) => (
+                           <div key={i} className="animate-pulse">
+                             <div className="h-16 bg-gray-200 rounded-lg"></div>
+                           </div>
+                         ))}
+                       </div>
+                     ) : dashboardData.upcoming_deliveries && dashboardData.upcoming_deliveries.length > 0 ? (
+                       <div className="space-y-3 max-h-80 overflow-y-auto">
+                         {dashboardData.upcoming_deliveries.map((delivery) => {
+                           const deliveryDate = new Date(delivery.delivery_datetime);
+                           const now = new Date();
+                           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                           const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                           const diffTime = deliveryDay.getTime() - today.getTime();
+                           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                           
+                           let urgencyClass = 'text-gray-600 bg-gray-100';
+                           let urgencyText = '';
+                           
+                           if (diffDays < 0) {
+                             urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
+                             urgencyText = 'OVERDUE';
+                           } else if (diffDays === 0) {
+                             urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
+                             urgencyText = 'TODAY';
+                           } else if (diffDays === 1) {
+                             urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
+                             urgencyText = 'TOMORROW';
+                           } else if (diffDays <= 3) {
+                             urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
+                             urgencyText = 'UPCOMING';
+                           }
+                           
+                           return (
+                             <div key={delivery.order_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                               <div className="flex items-start justify-between">
+                                 <div className="flex-1">
+                                   <div className="flex items-center space-x-2 mb-2">
+                                     <h4 className="font-medium text-gray-900">
+                                       Order #{delivery.order_id}
+                                     </h4>
+                                     <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass}`}>
+                                       <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                       </svg>
+                                       {urgencyText}
+                                     </div>
+                                   </div>
+                                   
+                                   <div className="space-y-1">
+                                     <p className="text-sm text-gray-600">
+                                       <span className="font-medium">Customer:</span> {delivery.customer_name} {delivery.customer_lname}
+                                     </p>
+                                     <p className="text-sm text-gray-600">
+                                       <span className="font-medium">Delivery:</span> {deliveryDate.toLocaleString('en-US', {
+                                         weekday: 'short',
+                                         month: 'short',
+                                         day: 'numeric',
+                                         hour: '2-digit',
+                                         minute: '2-digit',
+                                         hour12: true
+                                       })}
+                                     </p>
+                                     <p className="text-sm text-gray-600">
+                                       <span className="font-medium">Address:</span> {delivery.delivery_address || 'No address specified'}
+                                     </p>
+                                     <p className="text-sm text-gray-600">
+                                       <span className="font-medium">Status:</span> 
+                                       <span className={`ml-1 font-medium ${
+                                         delivery.status === 'confirmed' ? 'text-blue-600' :
+                                         delivery.status === 'preparing' ? 'text-yellow-600' :
+                                         delivery.status === 'out_for_delivery' ? 'text-purple-600' : 'text-gray-600'
+                                       }`}>
+                                         {delivery.status ? delivery.status.charAt(0).toUpperCase() + delivery.status.slice(1).replace('_', ' ') : 'N/A'}
+                                       </span>
+                                     </p>
+                                   </div>
+                                 </div>
+                                 
+                                 <div className="text-right ml-4">
+                                   <p className="text-lg font-bold text-green-600">
+                                     ₱{parseFloat(delivery.total_amount || 0).toFixed(2)}
+                                   </p>
+                                   <p className="text-xs text-gray-500">
+                                     {delivery.payment_status === 'paid' ? '✅ Paid' : '⏳ Pending Payment'}
+                                   </p>
+                                 </div>
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     ) : (
                        <div className="text-center py-8">
-                         <div className="w-full h-16 bg-blue-50 rounded-lg flex items-center justify-center">
-                           <span className="text-sm text-gray-500">
-                             No upcoming deliveries
-                           </span>
+                         <div className="w-full h-16 bg-gray-50 rounded-lg flex items-center justify-center">
+                           <div className="text-center">
+                             <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                             </svg>
+                             <span className="text-sm text-gray-500">
+                               No upcoming deliveries
+                             </span>
+                             <p className="text-xs text-gray-400 mt-1">
+                               Approved orders with delivery dates will appear here
+                             </p>
+                           </div>
                          </div>
                        </div>
-                     </div>
+                     )}
                    </div>
                 </div>
               </div>
@@ -3935,7 +4073,7 @@ export const Vendor = () => {
 
                   {/* Order Filters */}
                   <div className="mb-8">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 mb-4">
                       {[
                         { value: 'all', label: 'All Orders', count: vendorOrders.length },
                         { value: 'pending', label: 'Pending Approval', count: vendorOrders.filter(o => o.status === 'pending').length },
@@ -3963,12 +4101,53 @@ export const Vendor = () => {
                         </button>
                       ))}
                     </div>
+
+                    {/* Date Filter */}
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-700">Filter by Delivery Date</h4>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={dateFilter.enabled}
+                            onChange={(e) => setDateFilter(prev => ({ ...prev, enabled: e.target.checked }))}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">Show orders scheduled for specific date</span>
+                        </label>
+                      </div>
+                      
+                      {dateFilter.enabled && (
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="flex-1">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Select Delivery Date
+                            </label>
+                            <input
+                              type="date"
+                              value={dateFilter.selectedDate}
+                              onChange={(e) => setDateFilter(prev => ({ ...prev, selectedDate: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              onClick={() => setDateFilter({ selectedDate: '', enabled: false })}
+                              className="px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Orders List */}
                   <div className="space-y-4">
                     {(() => {
-                      const filteredOrders = orderFilter === 'all' 
+                      // First apply status filter
+                      let statusFilteredOrders = orderFilter === 'all' 
                         ? vendorOrders 
                         : orderFilter === 'confirmed'
                         ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'unpaid')
@@ -3977,6 +4156,22 @@ export const Vendor = () => {
                         : orderFilter === 'drum_return'
                         ? vendorOrders.filter(order => order.drum_status === 'not returned' || order.drum_status === 'return_requested')
                         : vendorOrders.filter(order => order.status === orderFilter);
+
+                      // Then apply date filter if enabled
+                      const filteredOrders = dateFilter.enabled && dateFilter.selectedDate
+                        ? statusFilteredOrders.filter(order => {
+                            if (!order.delivery_datetime) return false;
+                            
+                            const deliveryDate = new Date(order.delivery_datetime);
+                            const selectedDate = new Date(dateFilter.selectedDate);
+                            
+                            // Compare only the date part (year, month, day) ignoring time
+                            const deliveryDateOnly = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                            const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                            
+                            return deliveryDateOnly.getTime() === selectedDateOnly.getTime();
+                          })
+                        : statusFilteredOrders;
 
                       return ordersLoading ? (
                         <div className="text-center py-12">
@@ -3996,11 +4191,24 @@ export const Vendor = () => {
                           <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No {orderFilter === 'all' ? 'orders' : orderFilter} orders</h3>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No {orderFilter === 'all' ? 'orders' : orderFilter} orders
+                            {dateFilter.enabled && dateFilter.selectedDate && ' scheduled for selected date'}
+                          </h3>
                           <p className="text-gray-600">
                             {orderFilter === 'all' 
                               ? "Customer orders will appear here when they place them." 
                               : `No orders matching "${orderFilter.replace('_', ' ')}" filter found.`
+                            }
+                            {dateFilter.enabled && dateFilter.selectedDate && 
+                              <span className="block mt-1 text-sm">
+                                No orders scheduled for delivery on {new Date(dateFilter.selectedDate).toLocaleDateString('en-US', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}. Try selecting a different date or clearing the date filter.
+                              </span>
                             }
                           </p>
                         </div>
@@ -4019,17 +4227,62 @@ export const Vendor = () => {
                                     <p className="text-sm text-gray-600">
                                       {order.customer_fname} {order.customer_lname} • {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
                                     </p>
-                                    <p className="text-xs text-gray-500">
-                                      🕒 Delivery: {order.delivery_datetime ? 
-                                        new Date(order.delivery_datetime).toLocaleDateString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                          hour12: true
-                                        }) : 'Not scheduled'
+                                    {/* Enhanced Delivery Date Display */}
+                                    {order.delivery_datetime ? (() => {
+                                      const deliveryDate = new Date(order.delivery_datetime);
+                                      const now = new Date();
+                                      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                      const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                                      const diffTime = deliveryDay.getTime() - today.getTime();
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                      
+                                      let urgencyClass = 'text-gray-600 bg-gray-100';
+                                      let urgencyText = '';
+                                      
+                                      if (diffDays < 0) {
+                                        urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
+                                        urgencyText = 'OVERDUE';
+                                      } else if (diffDays === 0) {
+                                        urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
+                                        urgencyText = 'TODAY';
+                                      } else if (diffDays === 1) {
+                                        urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
+                                        urgencyText = 'TOMORROW';
+                                      } else if (diffDays <= 3) {
+                                        urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
+                                        urgencyText = 'UPCOMING';
                                       }
-                                    </p>
+                                      
+                                      return (
+                                        <div className="mt-2">
+                                          <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass}`}>
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {urgencyText}
+                                          </div>
+                                          <p className="text-sm font-medium text-gray-900 mt-1">
+                                            {deliveryDate.toLocaleString('en-US', {
+                                              weekday: 'short',
+                                              month: 'short',
+                                              day: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                              hour12: true
+                                            })}
+                                          </p>
+                                        </div>
+                                      );
+                                    })() : (
+                                      <div className="mt-2">
+                                        <div className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200">
+                                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          NOT SCHEDULED
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="text-right">
                                     <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
@@ -4089,42 +4342,167 @@ export const Vendor = () => {
                                     {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
                                   </span>
                                 </p>
-                                <p className="text-sm"><strong>Delivery Date:</strong> {order.delivery_datetime ? new Date(order.delivery_datetime).toLocaleString('en-US', {
-                                  weekday: 'short',
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                                }) : 'Not scheduled'}</p>
+                                <div className="text-sm">
+                                  <strong>Delivery Date:</strong>
+                                  {order.delivery_datetime ? (() => {
+                                    const deliveryDate = new Date(order.delivery_datetime);
+                                    const now = new Date();
+                                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                    const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                                    const diffTime = deliveryDay.getTime() - today.getTime();
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    
+                                    let urgencyClass = 'text-gray-600 bg-gray-100';
+                                    let urgencyText = '';
+                                    
+                                    if (diffDays < 0) {
+                                      urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
+                                      urgencyText = 'OVERDUE';
+                                    } else if (diffDays === 0) {
+                                      urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
+                                      urgencyText = 'TODAY';
+                                    } else if (diffDays === 1) {
+                                      urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
+                                      urgencyText = 'TOMORROW';
+                                    } else if (diffDays <= 3) {
+                                      urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
+                                      urgencyText = 'UPCOMING';
+                                    }
+                                    
+                                    return (
+                                      <div className="mt-2">
+                                        <div className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold ${urgencyClass}`}>
+                                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          {urgencyText}
+                                        </div>
+                                        <p className="text-gray-900 font-medium mt-2">
+                                          {deliveryDate.toLocaleString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          })}
+                                        </p>
+                                      </div>
+                                    );
+                                  })() : (
+                                    <div className="mt-2">
+                                      <div className="inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold text-gray-600 bg-gray-100 border border-gray-200">
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        NOT SCHEDULED
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Delivery Information */}
-                          <div className="mb-6">
-                            <h4 className="font-medium text-gray-900 mb-2">Delivery Information</h4>
-                            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">📍 Delivery Address:</span>
-                                <p className="text-gray-900 mt-1">{order.delivery_address || 'No address specified'}</p>
+                          {/* Order Items Details */}
+                          {order.order_items_details && (
+                            <div className="space-y-3 mb-6">
+                              <h4 className="font-medium text-gray-900">Order Items</h4>
+                              <div className="bg-pink-50 rounded-lg p-4 border border-pink-200">
+                                <p className="text-gray-800 font-medium">{order.order_items_details}</p>
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">🕒 Scheduled Delivery:</span>
-                                <p className="text-gray-900 mt-1 font-medium">
-                                  {order.delivery_datetime ? 
-                                    new Date(order.delivery_datetime).toLocaleString('en-US', {
-                                      weekday: 'long',
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    }) : 'No delivery time scheduled'
-                                  }
-                                </p>
+                            </div>
+                          )}
+
+                          {/* Enhanced Delivery Information */}
+                          <div className="mb-6">
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 space-y-4 border border-blue-200">
+                              <div className="flex items-center space-x-2 mb-4">
+                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <h4 className="text-lg font-semibold text-gray-900">Delivery Information</h4>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-gray-700">Delivery Address</span>
+                                  </div>
+                                  <p className="text-gray-900 font-medium">{order.delivery_address || 'No address specified'}</p>
+                                </div>
+                                
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-gray-700">Scheduled Delivery</span>
+                                  </div>
+                                  {order.delivery_datetime ? (() => {
+                                    const deliveryDate = new Date(order.delivery_datetime);
+                                    const now = new Date();
+                                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                    const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                                    const diffTime = deliveryDay.getTime() - today.getTime();
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    
+                                    let urgencyClass = 'text-gray-600 bg-gray-100';
+                                    let urgencyText = '';
+                                    
+                                    if (diffDays < 0) {
+                                      urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
+                                      urgencyText = 'OVERDUE';
+                                    } else if (diffDays === 0) {
+                                      urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
+                                      urgencyText = 'TODAY';
+                                    } else if (diffDays === 1) {
+                                      urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
+                                      urgencyText = 'TOMORROW';
+                                    } else if (diffDays <= 3) {
+                                      urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
+                                      urgencyText = 'UPCOMING';
+                                    }
+                                    
+                                    return (
+                                      <div>
+                                        <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass} mb-2`}>
+                                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                          {urgencyText}
+                                        </div>
+                                        <p className="text-gray-900 font-medium text-sm">
+                                          {deliveryDate.toLocaleString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          })}
+                                        </p>
+                                      </div>
+                                    );
+                                  })() : (
+                                    <div>
+                                      <div className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 mb-2">
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        NOT SCHEDULED
+                                      </div>
+                                      <p className="text-gray-500 text-sm">No delivery time scheduled</p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -4633,22 +5011,34 @@ export const Vendor = () => {
             )}
 
             {activeView === "notifications" && (
-              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+              <div className="min-h-screen">
                 <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
-                  <div className="flex items-center space-x-4 mb-8">
-                    <img 
-                      src={bellNotificationIcon} 
-                      alt="Notifications" 
-                      className="w-10 h-10"
-                    />
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
-                        Notifications
-                      </h1>
-                      <p className="text-gray-600">
-                        Stay updated with your store activities and customer interactions
-                      </p>
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={bellNotificationIcon} 
+                        alt="Notifications" 
+                        className="w-10 h-10"
+                      />
+                      <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          Notifications
+                        </h1>
+                      </div>
                     </div>
+                    
+                    {/* Mark All as Read Button */}
+                    {notifications.length > 0 && notifications.some(n => !n.is_read) && (
+                      <button
+                        onClick={markAllNotificationsAsRead}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Mark All as Read</span>
+                      </button>
+                    )}
                   </div>
                   
                   <div className="space-y-4">

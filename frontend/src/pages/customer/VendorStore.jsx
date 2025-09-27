@@ -16,6 +16,7 @@ export const VendorStore = () => {
   const [vendor, setVendor] = useState(null);
   const [flavors, setFlavors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showContactModal, setShowContactModal] = useState(false);
   
   // Notification state
   const [notifications, setNotifications] = useState([]);
@@ -220,7 +221,7 @@ export const VendorStore = () => {
 
                 {/* Cart Icon */}
                 <button 
-                  onClick={() => navigate("/customer?view=cart")}
+                  onClick={() => navigate("/cart")}
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
@@ -265,6 +266,16 @@ export const VendorStore = () => {
               <p className="text-lg text-gray-600">
                 ID: {vendor.vendor_id}
               </p>
+            </div>
+
+            {/* Contact Shop Button */}
+            <div className="flex-shrink-0">
+              <button 
+                onClick={() => setShowContactModal(true)}
+                className="px-6 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors shadow-lg"
+              >
+                Contact Shop
+              </button>
             </div>
           </div>
         </div>
@@ -339,7 +350,7 @@ export const VendorStore = () => {
 
                         {/* Location */}
                         <div className="text-sm text-gray-600">
-                          {vendor.location || 'Location not specified'}
+                          {flavor.location || 'Location not specified'}
                         </div>
 
                         {/* Rating and Sold Count */}
@@ -366,6 +377,125 @@ export const VendorStore = () => {
           )}
         </div>
       </div>
+
+      {/* Contact Shop Modal */}
+      {showContactModal && vendor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Contact {vendor.store_name}</h2>
+                <button 
+                  onClick={() => setShowContactModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Vendor Info */}
+              <div className="mb-6">
+                <div className="flex items-center space-x-4 mb-4">
+                  {vendor.profile_image_url ? (
+                    <img 
+                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`}
+                      alt={vendor.store_name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{vendor.store_name}</h3>
+                    <p className="text-sm text-gray-600">{vendor.fname} {vendor.lname}</p>
+                    <p className="text-sm text-gray-500">{vendor.location}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4 mb-6">
+                <h4 className="font-semibold text-gray-900">Contact Information</h4>
+                
+                {/* Phone Number */}
+                {vendor.contact_no && (
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">Phone Number</p>
+                      <p className="font-medium text-gray-900">{vendor.contact_no}</p>
+                    </div>
+                    <a 
+                      href={`tel:${vendor.contact_no}`}
+                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Call
+                    </a>
+                  </div>
+                )}
+
+                {/* Email */}
+                {vendor.email && (
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">Email Address</p>
+                      <p className="font-medium text-gray-900">{vendor.email}</p>
+                    </div>
+                    <a 
+                      href={`mailto:${vendor.email}`}
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Email
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Business Hours Note */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Business Hours</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Please contact during business hours for the best response time. 
+                      Most vendors respond within 24 hours.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="mt-6 flex justify-end">
+                <button 
+                  onClick={() => setShowContactModal(false)}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

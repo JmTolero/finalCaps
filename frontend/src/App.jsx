@@ -1,6 +1,7 @@
     import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
     import { useState, useEffect } from 'react';
     import './App.css';
+    import { CartProvider } from './contexts/CartContext';
     import { LandingPage } from './pages/shared/landingpage';
     import { Login } from "./pages/shared/login.jsx";
     import { UserRegister } from "./pages/shared/userRegister.jsx";
@@ -13,6 +14,7 @@
     import { Admin } from "./pages/admin/admin.jsx";
     import { Vendor } from "./pages/vendor/vendor.jsx";
     import { Customer } from "./pages/customer/customer.jsx";
+import { Cart } from "./pages/customer/Cart.jsx";
 import { FindNearbyVendors } from "./pages/customer/FindNearbyVendors.jsx";
 import { AllVendorStores } from "./pages/customer/AllVendorStores.jsx";
 import { VendorStore } from "./pages/customer/VendorStore.jsx";
@@ -92,6 +94,7 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
 
   return (
     <>
+    <CartProvider>
     <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />        
@@ -106,6 +109,7 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />
           <Route path="/vendor-redirect" element={<VendorRedirect />} />
           <Route path="/customer" element={requireRole('customer', <Customer />)} />
+          <Route path="/cart" element={requireRole('customer', <Cart />)} />
           <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
           <Route path="/customer/payment/:orderId" element={requireRole('customer', <PaymentPage />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
@@ -116,10 +120,8 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
           <Route path="/login-test" element={<LoginTest />} />
         </Routes>
       </Router>
+    </CartProvider>
     </>
-      
-   
-      
   );
 }
 

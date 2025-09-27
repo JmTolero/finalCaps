@@ -77,7 +77,7 @@ const createOrder = async (req, res) => {
                 user_id: customer_id,
                 user_type: 'customer',
                 title: 'Order Placed Successfully',
-                message: `Your order #${orderId} has been placed and is waiting for vendor approval.`,
+                message: `Your order #${orderId} has been placed and is waiting for vendor approval. Once approved, you'll need to pay first before the vendor starts preparing your order.`,
                 notification_type: 'order_placed',
                 related_order_id: orderId,
                 related_vendor_id: vendor_id,
@@ -102,8 +102,76 @@ const createOrder = async (req, res) => {
             // Don't fail the order creation if notification creation fails
         }
 
-        // TODO: Insert order items if provided
-        // For now, we'll store order items info in a separate table if needed
+        // Insert order items if provided
+        if (items && items.length > 0) {
+            console.log('Inserting order items:', items);
+            
+            for (const item of items) {
+                // Get the product_id for this flavor and size, or create a basic one
+                const [products] = await pool.query(`
+                    SELECT p.product_id, cd.drum_id
+                    FROM products p
+                    JOIN flavors f ON p.flavor_id = f.flavor_id
+                    JOIN container_drum cd ON p.drum_id = cd.drum_id
+                    WHERE f.flavor_id = ? AND cd.size = ? AND p.vendor_id = ?
+                `, [item.flavor_id, item.size, vendor_id]);
+                
+                let productId, drumId;
+                
+                if (products.length > 0) {
+                    const product = products[0];
+                    productId = product.product_id;
+                    drumId = product.drum_id;
+                } else {
+                    // If no product exists, get drum_id for the size and create a basic product
+                    const [drums] = await pool.query(`
+                        SELECT drum_id FROM container_drum WHERE size = ?
+                    `, [item.size]);
+                    
+                    if (drums.length > 0) {
+                        drumId = drums[0].drum_id;
+                        
+                        // Create a basic product for this flavor and size
+                        const [productResult] = await pool.query(`
+                            INSERT INTO products (name, description, flavor_id, drum_id, vendor_id, created_at)
+                            VALUES (?, ?, ?, ?, ?, NOW())
+                        `, [
+                            `${item.name} - ${item.size}`,
+                            `${item.name} ice cream`,
+                            item.flavor_id,
+                            drumId,
+                            vendor_id
+                        ]);
+                        
+                        productId = productResult.insertId;
+                        console.log(`Created product: ${item.name} - ${item.size} with ID: ${productId}`);
+                    } else {
+                        console.warn(`No drum found for size: ${item.size}`);
+                        continue;
+                    }
+                }
+                
+                // Insert order item
+                await pool.query(`
+                    INSERT INTO order_items (
+                        order_id, 
+                        product_id, 
+                        containerDrum_id, 
+                        quantity, 
+                        price,
+                        drum_status_id
+                    ) VALUES (?, ?, ?, ?, ?, 1)
+                `, [
+                    orderId,
+                    productId,
+                    drumId,
+                    item.quantity,
+                    item.price
+                ]);
+                
+                console.log(`Inserted order item: ${item.name} (${item.size}) x${item.quantity}`);
+            }
+        }
 
         res.json({
             success: true,
@@ -146,11 +214,29 @@ const getCustomerOrders = async (req, res) => {
                 u.lname as customer_lname,
                 ds.status_name as drum_status,
                 oi.return_requested_at,
-                o.decline_reason
+                o.decline_reason,
+                GROUP_CONCAT(
+                    CONCAT(
+                        f.flavor_name, 
+                        ' (', 
+                        cd.size, 
+                        ' - ', 
+                        cd.gallons, 
+                        ' gallons) x', 
+                        oi.quantity
+                    ) 
+                    SEPARATOR ', '
+                ) as order_items_details,
+                GROUP_CONCAT(f.flavor_name SEPARATOR ', ') as flavors,
+                GROUP_CONCAT(cd.size SEPARATOR ', ') as sizes,
+                GROUP_CONCAT(oi.quantity SEPARATOR ', ') as quantities
             FROM orders o
             LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
             LEFT JOIN users u ON o.customer_id = u.user_id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            LEFT JOIN products p ON oi.product_id = p.product_id
+            LEFT JOIN flavors f ON p.flavor_id = f.flavor_id
+            LEFT JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
             LEFT JOIN drum_stats ds ON oi.drum_status_id = ds.drum_status_id
             WHERE o.customer_id = ?
             GROUP BY o.order_id
@@ -189,10 +275,28 @@ const getVendorOrders = async (req, res) => {
                 u.contact_no as customer_contact,
                 ds.status_name as drum_status,
                 oi.return_requested_at,
-                o.decline_reason
+                o.decline_reason,
+                GROUP_CONCAT(
+                    CONCAT(
+                        f.flavor_name, 
+                        ' (', 
+                        cd.size, 
+                        ' - ', 
+                        cd.gallons, 
+                        ' gallons) x', 
+                        oi.quantity
+                    ) 
+                    SEPARATOR ', '
+                ) as order_items_details,
+                GROUP_CONCAT(f.flavor_name SEPARATOR ', ') as flavors,
+                GROUP_CONCAT(cd.size SEPARATOR ', ') as sizes,
+                GROUP_CONCAT(oi.quantity SEPARATOR ', ') as quantities
             FROM orders o
             LEFT JOIN users u ON o.customer_id = u.user_id
             LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            LEFT JOIN products p ON oi.product_id = p.product_id
+            LEFT JOIN flavors f ON p.flavor_id = f.flavor_id
+            LEFT JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
             LEFT JOIN drum_stats ds ON oi.drum_status_id = ds.drum_status_id
             WHERE o.vendor_id = ?
             GROUP BY o.order_id
@@ -281,7 +385,7 @@ const updateOrderStatus = async (req, res) => {
                     case 'confirmed':
                         notificationType = 'order_accepted';
                         title = 'Order Confirmed';
-                        message = `Great news! Your order #${order_id} has been confirmed by the vendor and is being prepared.`;
+                        message = `Great news! Your order #${order_id} has been confirmed by the vendor. Please complete your payment first, then the vendor will start preparing your order.`;
                         break;
                     case 'preparing':
                         notificationType = 'order_preparing';
@@ -391,7 +495,7 @@ const updatePaymentStatus = async (req, res) => {
                     case 'paid':
                         notificationType = 'payment_confirmed';
                         title = 'Payment Confirmed';
-                        message = `Your payment for order #${order_id} has been confirmed. The vendor will start preparing your order.`;
+                        message = `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`;
                         
                         // Create notification for customer
                         await createNotification({
@@ -549,20 +653,89 @@ const updateDrumReturnStatus = async (req, res) => {
             WHERE order_id = ?
         `, [drum_status_id, return_requested_at, order_id]);
 
+        // If no order items exist, create a basic one for drum return tracking
         if (result.affectedRows === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'No order items found for this order'
-            });
+            console.log(`No order items found for order ${order_id}, creating basic order item for drum return tracking`);
+            
+            // Get order details to create a basic order item
+            const [orderDetails] = await pool.query(`
+                SELECT customer_id, vendor_id, total_amount, created_at
+                FROM orders 
+                WHERE order_id = ?
+            `, [order_id]);
+            
+            if (orderDetails.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Order not found'
+                });
+            }
+            
+            const order = orderDetails[0];
+            
+            // Get a default drum_id (small size)
+            const [drums] = await pool.query(`
+                SELECT drum_id FROM container_drum WHERE size = 'small' LIMIT 1
+            `);
+            
+            if (drums.length === 0) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'No drum sizes available'
+                });
+            }
+            
+            const drumId = drums[0].drum_id;
+            
+            // Create a basic product for this order if it doesn't exist
+            const [products] = await pool.query(`
+                SELECT product_id FROM products 
+                WHERE vendor_id = ? AND flavor_id IS NULL 
+                LIMIT 1
+            `, [order.vendor_id]);
+            
+            let productId;
+            if (products.length > 0) {
+                productId = products[0].product_id;
+            } else {
+                // Create a basic product for drum return tracking
+                const [productResult] = await pool.query(`
+                    INSERT INTO products (name, description, flavor_id, drum_id, vendor_id, created_at)
+                    VALUES (?, ?, NULL, ?, ?, NOW())
+                `, ['Ice Cream Order', 'Ice cream order', drumId, order.vendor_id]);
+                productId = productResult.insertId;
+            }
+            
+            // Create order item for drum return tracking
+            await pool.query(`
+                INSERT INTO order_items (
+                    order_id, 
+                    product_id, 
+                    containerDrum_id, 
+                    quantity, 
+                    price,
+                    drum_status_id,
+                    return_requested_at
+                ) VALUES (?, ?, ?, 1, ?, ?, ?)
+            `, [
+                order_id,
+                productId,
+                drumId,
+                order.total_amount,
+                drum_status_id,
+                return_requested_at
+            ]);
+            
+            console.log(`Created order item for drum return tracking for order ${order_id}`);
         }
 
-        console.log(`Updated ${result.affectedRows} order items with drum status: ${drum_status}`);
+        console.log(`Updated drum return status for order ${order_id}: ${drum_status}`);
 
         res.json({
             success: true,
             message: 'Drum return status updated successfully',
             drum_status: drum_status,
-            items_updated: result.affectedRows
+            items_updated: result.affectedRows || 1
         });
 
     } catch (error) {

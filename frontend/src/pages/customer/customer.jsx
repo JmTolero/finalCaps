@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
+import { useCart } from '../../contexts/CartContext';
 import axios from 'axios';
 
 // Import customer icons
@@ -14,6 +15,7 @@ import shopsIcon from '../../assets/images/customerIcon/shops.png';
 export const Customer = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   const [activeView, setActiveView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('profile');
   const [settingsKey, setSettingsKey] = useState(0);
@@ -115,6 +117,7 @@ export const Customer = () => {
     } else if (view === 'orders') {
       setActiveView('orders');
     }
+    // Removed cart view handling - now using dedicated /cart route
   }, [searchParams]);
 
   // Force data refresh when settings view becomes active
@@ -790,15 +793,28 @@ export const Customer = () => {
                                       {order.vendor_name} • {new Date(order.created_at).toLocaleDateString()}
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                      🕒 Delivery: {order.delivery_datetime ? 
-                                        new Date(order.delivery_datetime).toLocaleDateString('en-US', {
+                                      🕒 Delivery: {order.delivery_datetime ? (() => {
+                                        const deliveryDate = new Date(order.delivery_datetime);
+                                        console.log('🕒 Customer order display:', {
+                                          orderId: order.order_id,
+                                          rawDatetime: order.delivery_datetime,
+                                          parsedDate: deliveryDate,
+                                          formatted: deliveryDate.toLocaleString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          })
+                                        });
+                                        return deliveryDate.toLocaleString('en-US', {
                                           month: 'short',
                                           day: 'numeric',
                                           hour: '2-digit',
                                           minute: '2-digit',
                                           hour12: true
-                                        }) : 'Not scheduled'
-                                      }
+                                        });
+                                      })() : 'Not scheduled'}
                                     </p>
                             </div>
                             <div className="text-right">
@@ -925,6 +941,16 @@ export const Customer = () => {
                           <p className="text-lg font-semibold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
                         </div>
                       </div>
+                      
+                      {/* Order Items Details */}
+                      {order.order_items_details && (
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">Order Items</h4>
+                          <div className="bg-pink-50 rounded-lg p-4">
+                            <p className="text-gray-800 font-medium">{order.order_items_details}</p>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="mb-4">
                         <h4 className="font-medium text-gray-900 mb-2">Delivery Details</h4>
@@ -1072,16 +1098,16 @@ export const Customer = () => {
       <>
         <NavWithLogo />
         {/* Header Section */}
-        <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="flex items-center justify-end mb-6">
-              <div className="flex items-center space-x-4">
-                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+        <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+            <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+              <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
+                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                   Find nearby Vendors
                 </Link>
                 
                 {/* Navigation Icons */}
-                <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+                <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                   {/* Products/Flavors Icon */}
                   <button 
                     onClick={() => {
@@ -1089,38 +1115,57 @@ export const Customer = () => {
                       setActiveView('dashboard');
                       navigate('/customer');
                     }}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
                     title="Browse Products"
                   >
-                    <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                    <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   
                   {/* Shops Icon */}
-                  <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                  <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                    <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Link>
                   
                   {/* Notification Bell */}
                   <button 
                     onClick={() => navigate('/customer/notifications')}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
                   >
-                    <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                    <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     )}
                   </button>
                   
                   {/* Cart Icon */}
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                  <button 
+                    onClick={() => navigate('/cart')}
+                    className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
+                      totalItems > 0 
+                        ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  >
+                    <img 
+                      src={cartIcon} 
+                      alt="Cart" 
+                      className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
+                        totalItems > 0 ? 'scale-110' : ''
+                      }`} 
+                    />
+                    {totalItems > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                        {totalItems > 9 ? '9+' : totalItems}
+                      </span>
+                    )}
                   </button>
                   
                   {/* Feedback Icon */}
-                  <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
               </div>
@@ -1128,8 +1173,8 @@ export const Customer = () => {
           </div>
         </div>
 
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8" key={`settings-${settingsKey}`}>
-          <div className="max-w-6xl mx-auto px-4">
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8" key={`settings-${settingsKey}`}>
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
 
             {/* Status Messages */}
             {status.type && (
@@ -1141,22 +1186,22 @@ export const Customer = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
               {/* Sidebar Navigation */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg shadow-sm p-4">
-                  <nav className="space-y-2">
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+                  <nav className="space-y-1 sm:space-y-2">
                     {settingsTabs.map((tab) => (
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                        className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg transition-colors text-sm sm:text-base ${
                           activeTab === tab.id
                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : 'text-gray-600 hover:bg-gray-50'
                         }`}
                       >
-                        <span className="mr-3">{tab.icon}</span>
+                        <span className="mr-2 sm:mr-3">{tab.icon}</span>
                         {tab.label}
                       </button>
                     ))}
@@ -1166,61 +1211,61 @@ export const Customer = () => {
 
               {/* Main Content */}
               <div className="lg:col-span-3">
-                <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
                   
                   {/* Profile Tab */}
                   {activeTab === 'profile' && (
                     <div>
-                      <h2 className="text-2xl font-semibold mb-6">Profile Information</h2>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Profile Information</h2>
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               First Name
                             </label>
                             <input
                               type="text"
                               value={customerData.fname || ''}
                               onChange={(e) => setCustomerData({...customerData, fname: e.target.value})}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                               placeholder="Your first name"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Last Name
                             </label>
                             <input
                               type="text"
                               value={customerData.lname || ''}
                               onChange={(e) => setCustomerData({...customerData, lname: e.target.value})}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                               placeholder="Your last name"
                             />
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Email Address
                             </label>
                             <input
                               type="email"
                               value={customerData.email || ''}
                               onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                               placeholder="your@email.com"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Contact Number
                             </label>
                             <input
                               type="text"
                               value={customerData.contact_no || ''}
                               onChange={(e) => setCustomerData({...customerData, contact_no: e.target.value})}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                               placeholder="09123456789"
                             />
                           </div>
@@ -1228,7 +1273,7 @@ export const Customer = () => {
                         <div className="flex justify-end">
                           <button 
                             onClick={saveProfile}
-                            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                            className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                           >
                             Save Profile
                           </button>
@@ -1426,68 +1471,87 @@ export const Customer = () => {
       <NavWithLogo />
       
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1 max-w-md">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-3 sm:gap-4 lg:gap-6">
+            <div className="w-full sm:flex-1 sm:max-w-md">
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search ice cream flavors..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-10 pr-4 text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 sm:px-4 sm:py-3 sm:pl-10 sm:text-base"
                 />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none sm:pl-3">
+                  <svg className="h-4 w-4 text-gray-400 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4 ml-6">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+            <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                 Find nearby Vendors
               </Link>
               
               {/* Navigation Icons */}
-              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                 {/* Products/Flavors Icon - Navigate to customer main dashboard */}
                 <button 
                   onClick={() => navigate('/customer')}
-                  className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors"
+                  className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors sm:p-2"
                   title="Browse Products"
                 >
-                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
                 
                 {/* Notification Bell */}
                 <button 
                   onClick={() => navigate('/customer/notifications')}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
                 >
-                  <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                  <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
                 
                 {/* Cart Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                <button 
+                  onClick={() => navigate('/cart')}
+                  className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
+                    totalItems > 0 
+                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                >
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
+                      totalItems > 0 ? 'scale-110' : ''
+                    }`} 
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
                 </button>
                 
                 {/* Feedback Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -1496,10 +1560,10 @@ export const Customer = () => {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">DISCOVER FLAVORS</h1>
-          <p className="text-gray-600">Explore delicious ice cream from local vendors</p>
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">DISCOVER FLAVORS</h1>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600">Explore delicious ice cream from local vendors</p>
         </div>
 
         {loading ? (
@@ -1508,7 +1572,7 @@ export const Customer = () => {
             <span className="ml-3 text-gray-600">Loading flavors...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {filteredFlavors.map((flavor) => {
               // Parse image URLs (stored as JSON array)
               let imageUrls = [];
@@ -1523,53 +1587,64 @@ export const Customer = () => {
               return (
                 <div 
                   key={`${flavor.vendor_id}-${flavor.flavor_id}`} 
-                  className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                  className="bg-sky-100 rounded-lg p-3 hover:shadow-md transition-shadow duration-200 cursor-pointer"
                   onClick={() => navigate(`/flavor/${flavor.flavor_id}`)}
                 >
                   {/* Flavor Image */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     {imageUrls.length > 0 ? (
                       <img
                         src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
                         alt={flavor.flavor_name}
-                        className="w-full h-48 object-cover rounded-xl"
+                        className="w-full h-32 object-cover rounded-md"
                       />
                     ) : (
-                      <div className="w-full h-48 bg-white rounded-xl flex items-center justify-center">
+                      <div className="w-full h-32 bg-gray-100 rounded-md flex items-center justify-center">
                         <div className="text-center">
-                          <div className="text-4xl mb-2">🍦</div>
-                          <div className="text-sm text-gray-600">No Image</div>
+                          <div className="text-2xl mb-1">🍦</div>
+                          <div className="text-xs text-gray-500">No Image</div>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Flavor Info */}
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-gray-900 text-left">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold text-gray-900 text-left line-clamp-1">
                       {flavor.flavor_name}
                     </h3>
 
-                    <p className="text-gray-700 text-left text-sm line-clamp-2">
+                    <p className="text-gray-700 text-left text-xs line-clamp-2">
                       {flavor.flavor_description}
                     </p>
 
                     {/* Price Range */}
                     <div className="text-left">
-                      <span className="text-lg font-bold text-gray-900">
-                        {flavor.small_price && flavor.large_price 
-                          ? `₱${parseInt(flavor.small_price)} - ₱${parseInt(flavor.large_price)}`
-                          : flavor.small_price 
-                            ? `₱${parseInt(flavor.small_price)}`
-                            : 'Price not available'
-                        }
+                      <span className="text-sm font-bold text-gray-900">
+                        {(() => {
+                          const smallPrice = parseFloat(flavor.small_price || 0);
+                          const largePrice = parseFloat(flavor.large_price || 0);
+                          
+                          if (smallPrice > 0 && largePrice > 0 && smallPrice !== largePrice) {
+                            return `₱${smallPrice} - ₱${largePrice}`;
+                          } else if (smallPrice > 0) {
+                            return `₱${smallPrice}`;
+                          } else if (largePrice > 0) {
+                            return `₱${largePrice}`;
+                          } else {
+                            return 'Price not available';
+                          }
+                        })()}
                       </span>
                     </div>
 
                     {/* Location */}
                     <div className="text-left">
-                      <span className="text-sm text-gray-600">
-                        {flavor.location}
+                      <span className="text-xs text-gray-600">
+                        {flavor.location && flavor.location !== 'Location not specified' 
+                          ? flavor.location 
+                          : 'Location not specified'
+                        }
                       </span>
                     </div>
 
@@ -1578,13 +1653,13 @@ export const Customer = () => {
                       <div className="flex items-center">
                         <div className="flex text-yellow-400">
                           {[...Array(5)].map((_, i) => (
-                            <svg key={i} className="w-4 h-4" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                            <svg key={i} className="w-3 h-3" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                             </svg>
                           ))}
                         </div>
                       </div>
-                      <span className="text-sm text-gray-600 font-medium">
+                      <span className="text-xs text-gray-600 font-medium">
                         {flavor.sold_count || 0} sold
                       </span>
                     </div>

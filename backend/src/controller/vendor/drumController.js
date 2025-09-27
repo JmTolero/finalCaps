@@ -85,20 +85,26 @@ const updateDrumPrices = async (req, res) => {
       });
     }
 
-    // Update vendor-specific drum prices
+    // Update vendor-specific drum prices (INSERT or UPDATE)
     await pool.query(
-      'UPDATE vendor_drum_pricing SET price = ? WHERE vendor_id = ? AND drum_size = ?',
-      [small, vendor_id, 'small']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons) 
+       VALUES (?, 'small', ?, 0, 3)
+       ON DUPLICATE KEY UPDATE price = VALUES(price)`,
+      [vendor_id, small]
     );
     
     await pool.query(
-      'UPDATE vendor_drum_pricing SET price = ? WHERE vendor_id = ? AND drum_size = ?',
-      [medium, vendor_id, 'medium']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons) 
+       VALUES (?, 'medium', ?, 0, 5)
+       ON DUPLICATE KEY UPDATE price = VALUES(price)`,
+      [vendor_id, medium]
     );
     
     await pool.query(
-      'UPDATE vendor_drum_pricing SET price = ? WHERE vendor_id = ? AND drum_size = ?',
-      [large, vendor_id, 'large']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons) 
+       VALUES (?, 'large', ?, 0, 8)
+       ON DUPLICATE KEY UPDATE price = VALUES(price)`,
+      [vendor_id, large]
     );
 
     res.json({
