@@ -340,13 +340,59 @@ export const VendorPending = () => {
               <button
                 onClick={handleRefreshStatus}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-6 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center justify-center space-x-2">
                   <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   <span>{loading ? 'Checking...' : 'Refresh Status'}</span>
+                </div>
+              </button>
+
+              {/* Go to Customer Page Button - Always show for rejected vendors */}
+              <button
+                onClick={async () => {
+                  console.log('Go to Customer Page button clicked');
+                  console.log('Current user data:', vendorData);
+                  
+                  // Refresh user session data to get updated role
+                  try {
+                    const userRaw = sessionStorage.getItem('user');
+                    if (userRaw) {
+                      const user = JSON.parse(userRaw);
+                      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                      
+                      // Fetch updated user data from backend
+                      const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`);
+                      if (response.data.success) {
+                        const updatedUser = response.data.user;
+                        // Update session storage with new role
+                        const updatedUserData = {
+                          ...user,
+                          role: updatedUser.role
+                        };
+                        sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                        console.log('Updated user role in session:', updatedUser.role);
+                        
+                        // Trigger user change event to update app state
+                        window.dispatchEvent(new Event('userChanged'));
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error refreshing user data:', error);
+                  }
+                  
+                  console.log('Navigating to /customer');
+                  navigate('/customer');
+                }}
+                className="w-full bg-green-600 text-white py-3 px-6 rounded-xl hover:bg-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span>Go to Customer Page</span>
                 </div>
               </button>
               

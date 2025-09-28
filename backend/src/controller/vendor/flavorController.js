@@ -98,7 +98,7 @@ const getVendorFlavors = async (req, res) => {
       LEFT JOIN order_items oi ON p.product_id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.order_id
       WHERE f.vendor_id = ?
-      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a2.unit_number, a2.street_name, a2.barangay, a2.cityVillage, a2.province, a2.region, a2.postal_code
+      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, a.address_id, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a2.address_id, a2.unit_number, a2.street_name, a2.barangay, a2.cityVillage, a2.province, a2.region, a2.postal_code
       ORDER BY f.created_at DESC
     `, [vendor_id]);
     

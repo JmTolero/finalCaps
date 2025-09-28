@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { NavWithLogo } from '../../components/shared/nav';
+import StarRating from '../../components/shared/StarRating';
 import { useCart } from '../../contexts/CartContext';
 
 // Import customer icons
@@ -26,6 +27,14 @@ export const FlavorDetail = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
   
+  // Rating state
+  const [ratings, setRatings] = useState([]);
+  const [userRating, setUserRating] = useState(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [newRating, setNewRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  
   // Notification state
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -33,6 +42,8 @@ export const FlavorDetail = () => {
 
   useEffect(() => {
     fetchFlavorDetails();
+    fetchRatings();
+    fetchUserRating();
   }, [flavorId]);
 
   // Fetch notifications for customer
@@ -134,6 +145,81 @@ export const FlavorDetail = () => {
     }
   };
 
+  // Rating functions
+  const fetchRatings = async () => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/ratings`);
+      
+      if (response.data.success) {
+        setRatings(response.data.ratings);
+      }
+    } catch (error) {
+      console.error('Error fetching ratings:', error);
+    }
+  };
+
+  const fetchUserRating = async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const token = sessionStorage.getItem('token');
+      
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/my-rating`, {
+        headers: { Authorization: `Bearer ${token || userRaw}` }
+      });
+      
+      if (response.data.success) {
+        setUserRating(response.data.rating);
+        if (response.data.rating) {
+          setNewRating(response.data.rating.rating);
+          setReviewText(response.data.rating.review_text || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user rating:', error);
+    }
+  };
+
+  const handleRateFlavor = async () => {
+    if (newRating === 0) {
+      alert('Please select a rating');
+      return;
+    }
+
+    try {
+      setRatingLoading(true);
+      const userRaw = sessionStorage.getItem('user');
+      const user = JSON.parse(userRaw);
+      const token = sessionStorage.getItem('token');
+      
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.post(`${apiBase}/api/ratings/flavors/${flavorId}/rate`, {
+        rating: newRating,
+        review_text: reviewText
+      }, {
+        headers: { Authorization: `Bearer ${token || userRaw}` }
+      });
+      
+      if (response.data.success) {
+        // Refresh ratings and flavor details
+        await fetchRatings();
+        await fetchUserRating();
+        await fetchFlavorDetails();
+        setShowRatingModal(false);
+        alert('Rating submitted successfully!');
+      }
+    } catch (error) {
+      console.error('Error rating flavor:', error);
+      alert('Failed to submit rating');
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
   const handleSizeChange = (size) => {
     setSelectedSize(size);
   };
@@ -184,7 +270,7 @@ export const FlavorDetail = () => {
     navigate('/checkout', { state: orderData });
   };
 
-  const handleReserve = () => {
+  const handleReserve = async () => {
     if (!flavor) return;
 
     const cartItem = {
@@ -199,7 +285,7 @@ export const FlavorDetail = () => {
       location: flavor.location
     };
 
-    addToCart(cartItem);
+    await addToCart(cartItem);
     alert(`Added ${quantity} ${selectedSize} ${flavor.flavor_name} to your cart!`);
   };
 
@@ -431,8 +517,12 @@ export const FlavorDetail = () => {
                        {flavor.flavor_name}
                      </h1>
                      <div className="flex items-center space-x-2 mb-3">
-                       <span className="text-yellow-500 text-lg">★★★★★</span>
-                       <span className="text-gray-600">4.4</span>
+                       <StarRating 
+                         rating={parseFloat(flavor.average_rating) || 0}
+                         size="md"
+                         showCount={true}
+                         totalRatings={flavor.total_ratings || 0}
+                       />
                      </div>
                      {/* Flavor Description */}
                      {flavor.flavor_description && (
@@ -733,6 +823,126 @@ export const FlavorDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Rate {flavor?.flavor_name}</h2>
+                <button 
+                  onClick={() => setShowRatingModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Rating Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Your Rating
+                </label>
+                <StarRating 
+                  rating={newRating}
+                  onRatingChange={setNewRating}
+                  interactive={true}
+                  size="lg"
+                />
+              </div>
+
+              {/* Review Text */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Review (Optional)
+                </label>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Share your experience with this flavor..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={4}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button 
+                  onClick={() => setShowRatingModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRateFlavor}
+                  disabled={ratingLoading || newRating === 0}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                    ratingLoading || newRating === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {ratingLoading ? 'Submitting...' : 'Submit Rating'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Section */}
+      <div className="max-w-6xl mx-auto px-6 mb-8">
+        <div className="bg-sky-100 rounded-2xl shadow-xl p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Customer Reviews</h2>
+            <button 
+              onClick={() => setShowRatingModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Rate This Flavor
+            </button>
+          </div>
+          
+          {ratings.length > 0 ? (
+            <div className="space-y-4">
+              {ratings.map((rating) => (
+                <div key={rating.rating_id} className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-800">
+                        {rating.fname} {rating.lname}
+                      </span>
+                      <StarRating rating={rating.rating} size="sm" />
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(rating.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {rating.review_text && (
+                    <p className="text-gray-600 text-sm">{rating.review_text}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">⭐</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
+              <p className="text-gray-600 mb-4">Be the first to rate this flavor!</p>
+              <button 
+                onClick={() => setShowRatingModal(true)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Rate This Flavor
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </>
   );
 };

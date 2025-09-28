@@ -1,5 +1,6 @@
 const pool = require('../../db/config');
 const { validateRequiredFields, trimObjectStrings } = require('../../utils/validation');
+const { generateToken } = require('../../utils/jwt');
 
 // Register new customer
 const registerCustomer = async (req, res) => {
@@ -94,15 +95,20 @@ const userLogin = async (req, res) => {
         const envUser = adminUsername ? String(adminUsername).trim() : null;
         const envPass = adminPassword ? String(adminPassword) : null;
         if (envUser && envPass && inputUser === envUser && inputPass === envPass) {
+            const adminUser = {
+                id: 0,
+                username: envUser,
+                firstName: 'Admin',
+                lastName: '',
+                role: 'admin'
+            };
+            
+            const token = generateToken(adminUser);
+            
             return res.json({
                 message: 'Login successful',
-                user: {
-                    id: 0,
-                    username: envUser,
-                    firstName: 'Admin',
-                    lastName: '',
-                    role: 'admin'
-                }
+                user: adminUser,
+                token: token
             });
         }
 
@@ -128,17 +134,22 @@ const userLogin = async (req, res) => {
         }
 
         const resolvedRole = user.role || user.user_role || null; // support various schemas
+        const userData = {
+            id: user.user_id,
+            username: user.username,
+            firstName: user.fname,
+            lastName: user.lname,
+            email: user.email,
+            contact_no: user.contact_no,
+            role: resolvedRole || 'customer'
+        };
+        
+        const token = generateToken(userData);
+        
         return res.json({
             message: 'Login successful',
-            user: {
-                id: user.user_id,
-                username: user.username,
-                firstName: user.fname,
-                lastName: user.lname,
-                email: user.email,
-                contact_no: user.contact_no,
-                role: resolvedRole || 'customer'
-            }
+            user: userData,
+            token: token
         });
     } catch (err) {
         console.error('POST /login failed:', err.code, err.message);

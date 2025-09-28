@@ -62,6 +62,9 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
   }, []);
 
   const requireRole = (role, element) => {
+    console.log('requireRole called with role:', role);
+    console.log('Current user:', user);
+    
     // If user is still loading (null), don't redirect yet
     if (user === null) {
       // Check if there's a user in sessionStorage while loading
@@ -77,7 +80,14 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
     }
     
     const currentRole = (user?.role || 'customer').toLowerCase();
-    if (currentRole !== role) return <Navigate to="/login" replace />;
+    console.log('Current role:', currentRole, 'Required role:', role);
+    
+    if (currentRole !== role) {
+      console.log('Role mismatch, redirecting to login');
+      return <Navigate to="/login" replace />;
+    }
+    
+    console.log('Role check passed, rendering element');
     return element;
   };
   // Redirect logged-in users away from login page

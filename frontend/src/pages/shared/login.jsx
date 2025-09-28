@@ -59,8 +59,11 @@ export const Login = () => {
           throw new Error(data?.error || "Login failed");
         } 
 
-        // Save user info in sessionStorage
+        // Save user info and JWT token in sessionStorage
         sessionStorage.setItem("user", JSON.stringify(data.user));
+        if (data.token) {
+          sessionStorage.setItem("token", data.token);
+        }
 
         // Dispatch custom event to notify App component of user change
         window.dispatchEvent(new Event('userChanged'));
@@ -133,7 +136,25 @@ export const Login = () => {
           console.log('Default fallback: redirecting to vendor dashboard');
           navigate("/vendor");
         } else {
-          // Customers go to marketplace (customer page)
+          // Check if this customer has a rejected vendor application
+          // Only redirect to vendor-pending if they still have vendor role
+          if (data.user.role === 'vendor') {
+            try {
+              const vendorStatusRes = await axios.get(`${apiBase}/api/admin/users/${data.user.id}`);
+              if (vendorStatusRes.data.success) {
+                const userData = vendorStatusRes.data.user;
+                if (userData.vendor_status === 'rejected') {
+                  console.log('Customer has rejected vendor application, redirecting to pending page');
+                  navigate("/vendor-pending");
+                  return;
+                }
+              }
+            } catch (error) {
+              console.log('Could not check vendor status for customer, proceeding to customer page');
+            }
+          }
+          
+          // Regular customer login
           console.log('Customer login, redirecting to marketplace');
           navigate("/customer");
         }

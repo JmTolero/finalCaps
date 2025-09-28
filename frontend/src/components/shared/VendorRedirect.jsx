@@ -45,7 +45,13 @@ export const VendorRedirect = () => {
             setRedirectPath('/vendor-pending');
           }
         } else if (userData.vendor_status === 'rejected') {
-          setRedirectPath('/vendor-register');
+          // If user role is customer (changed after rejection), go to customer page
+          // Otherwise, redirect to vendor registration
+          if (user.role === 'customer') {
+            setRedirectPath('/customer');
+          } else {
+            setRedirectPath('/vendor-register');
+          }
         } else if (userData.vendor_status === 'approved') {
           // Check if setup is complete
           const setupResponse = await axios.get(`${apiBase}/api/vendor/setup-status/${user.id}`);

@@ -163,6 +163,12 @@ const updateVendorStatus = async (req, res) => {
                 [vendor_id, vendor.user_id, autoReturnDate]
             );
             
+            // Change user role back to customer when vendor is rejected
+            await pool.query(
+                'UPDATE users SET role = "customer" WHERE user_id = ?',
+                [vendor.user_id]
+            );
+            
             await createNotification({
                 user_id: vendor.user_id,
                 user_type: 'vendor',
