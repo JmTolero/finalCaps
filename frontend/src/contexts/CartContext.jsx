@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 // Cart context for managing cart state across the application
@@ -122,6 +122,8 @@ const getApiBase = () => {
 // Cart provider component
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const hasLoadedCart = useRef(false);
+  const isLoadingCart = useRef(false);
 
   // Load cart from database on mount
   const loadCartFromDatabase = async () => {
@@ -131,8 +133,15 @@ export const CartProvider = ({ children }) => {
       return;
     }
 
+    // Prevent multiple simultaneous loads
+    if (isLoadingCart.current) {
+      console.log('🛒 CartContext: Already loading cart, skipping duplicate request');
+      return;
+    }
+
     try {
       console.log('🛒 CartContext: Loading cart from database for user:', user.id);
+      isLoadingCart.current = true;
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       
       const apiBase = getApiBase();
@@ -154,6 +163,7 @@ export const CartProvider = ({ children }) => {
         }));
         
         dispatch({ type: CART_ACTIONS.LOAD_CART, payload: cartItems });
+        hasLoadedCart.current = true;
         console.log('🛒 CartContext: Cart loaded from database with', cartItems.length, 'items');
         
         // Also save to localStorage as backup
@@ -178,6 +188,7 @@ export const CartProvider = ({ children }) => {
         }
       }
     } finally {
+      isLoadingCart.current = false;
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
     }
   };
@@ -192,6 +203,7 @@ export const CartProvider = ({ children }) => {
     // Listen for user session changes
     const handleUserChange = () => {
       console.log('🛒 CartContext: User session changed, reloading cart...');
+      hasLoadedCart.current = false; // Reset loaded flag for new user
       // Add a small delay to ensure session is fully updated
       setTimeout(() => {
         loadCartFromDatabase();
@@ -225,23 +237,34 @@ export const CartProvider = ({ children }) => {
 
     window.addEventListener('focus', handleFocus);
 
-    // Periodic check to ensure cart is loaded (fallback)
-    const interval = setInterval(() => {
-      const user = getCurrentUser();
-      if (user && user.id && state.items.length === 0 && !state.loading && !state.syncing) {
-        console.log('🛒 CartContext: Periodic check - reloading cart...');
-        loadCartFromDatabase();
-      }
-    }, 3000); // Check every 3 seconds
-
     return () => {
       clearTimeout(timer);
-      clearInterval(interval);
       window.removeEventListener('userChanged', handleUserChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [state.items.length, state.loading, state.syncing]);
+  }, []); // Empty dependency array - only run on mount
+
+  // Separate effect for periodic cart check (only when cart is empty and not loaded yet)
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user || !user.id || state.items.length > 0 || state.loading || state.syncing || hasLoadedCart.current || isLoadingCart.current) {
+      return; // Don't run if user not logged in, cart has items, already loaded, or already loading/syncing
+    }
+
+    // Only run periodic check if cart is empty and not loaded yet
+    const interval = setInterval(() => {
+      const currentUser = getCurrentUser();
+      if (currentUser && currentUser.id && state.items.length === 0 && !state.loading && !state.syncing && !hasLoadedCart.current && !isLoadingCart.current) {
+        console.log('🛒 CartContext: Periodic check - reloading cart...');
+        loadCartFromDatabase();
+      }
+    }, 15000); // Check every 15 seconds
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [state.items.length, state.loading, state.syncing]); // Only re-run when these specific values change
 
   // Save cart to localStorage whenever items change
   useEffect(() => {
