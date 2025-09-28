@@ -159,6 +159,7 @@ export const CartProvider = ({ children }) => {
           price: parseFloat(item.price),
           flavor_name: item.flavor_name,
           vendor_name: item.vendor_name,
+          vendor_id: item.vendor_id,
           cart_item_id: item.cart_item_id
         }));
         
@@ -311,6 +312,7 @@ export const CartProvider = ({ children }) => {
           price: parseFloat(dbItem.price),
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
+          vendor_id: dbItem.vendor_id,
           cart_item_id: dbItem.cart_item_id
         }));
         
@@ -364,6 +366,7 @@ export const CartProvider = ({ children }) => {
           price: parseFloat(dbItem.price),
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
+          vendor_id: dbItem.vendor_id,
           cart_item_id: dbItem.cart_item_id
         }));
         
@@ -421,6 +424,7 @@ export const CartProvider = ({ children }) => {
           price: parseFloat(dbItem.price),
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
+          vendor_id: dbItem.vendor_id,
           cart_item_id: dbItem.cart_item_id
         }));
         
@@ -501,6 +505,7 @@ export const CartProvider = ({ children }) => {
           price: parseFloat(dbItem.price),
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
+          vendor_id: dbItem.vendor_id,
           cart_item_id: dbItem.cart_item_id
         }));
         

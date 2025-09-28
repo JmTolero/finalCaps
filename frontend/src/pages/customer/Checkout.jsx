@@ -33,65 +33,28 @@ export const Checkout = () => {
     console.log('🔍 Receipt state changed:', showReceipt);
   }, [showReceipt]);
 
-  // Separate delivery calculation service - runs independently with immediate fallback
-  const calculateDeliveryFees = useCallback(async (vendors, city, province) => {
-    console.log('🚀 Starting independent delivery calculation for vendors:', vendors.map(v => v.vendor_id));
-    
-    // Prevent multiple simultaneous calls
-    if (deliveryCalculationStarted) {
-      console.log('⚠️ Delivery calculation already in progress, skipping...');
-      return {};
-    }
-    
-      // Removed immediate fallback to allow API calls to complete properly
-    
-    const results = {};
-    const promises = vendors.map(async (vendor) => {
-      const vendorId = vendor.vendor_id;
-      try {
-        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-        const url = `${apiBase}/api/vendor/delivery/${vendorId}/price?city=${encodeURIComponent(city)}&province=${encodeURIComponent(province)}`;
-        
-        console.log(`🌐 Fetching delivery for vendor ${vendorId} from:`, url);
-        console.log(`📍 Location: ${city}, ${province}`);
-        console.log(`🔍 Vendor ID type:`, typeof vendorId, 'Value:', vendorId);
-        const response = await axios.get(url, { timeout: 3000 });
-        
-        console.log(`📦 Response for vendor ${vendorId}:`, response.data);
-        console.log(`🔍 Full response:`, JSON.stringify(response.data, null, 2));
-        console.log(`💰 Delivery price from API:`, response.data.delivery_price);
-        
-        if (response.data && response.data.success) {
-          // Use the actual delivery price from API (0 means free delivery)
-          const fee = response.data.delivery_price || 0;
-          results[vendorId] = fee;
-          console.log(`✅ Vendor ${vendorId} delivery fee: ₱${fee} (${fee === 0 ? 'FREE' : 'PAID'})`);
-        } else {
-          results[vendorId] = 0; // Default to free delivery if API fails
-          console.log(`❌ Vendor ${vendorId} API failed, using free delivery: ₱0`);
-        }
-      } catch (error) {
-        results[vendorId] = 0; // Default to free delivery on error
-        console.log(`💥 Error for vendor ${vendorId}:`, error.message, 'using free delivery: ₱0');
-      }
-    });
-
+  // Get delivery price for a specific vendor and location
+  const getVendorDeliveryPrice = async (vendorId, city, province) => {
     try {
-      // Wait for all promises to complete
-      await Promise.allSettled(promises);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const url = `${apiBase}/api/vendor/delivery/${vendorId}/price?city=${encodeURIComponent(city)}&province=${encodeURIComponent(province)}`;
       
-      console.log('🏁 All delivery calculations completed:', results);
-      return results;
+      console.log(`🌐 Fetching delivery price for vendor ${vendorId}:`, url);
+      const response = await axios.get(url, { timeout: 5000 });
+      
+      if (response.data && response.data.success) {
+        const price = response.data.delivery_price || 0;
+        console.log(`✅ Vendor ${vendorId} delivery price: ₱${price}`);
+        return price;
+      } else {
+        console.log(`❌ Vendor ${vendorId} delivery not available, using ₱0`);
+        return 0;
+      }
     } catch (error) {
-      console.error('💥 Delivery calculation service failed:', error);
-      
-        const defaultResults = {};
-        vendors.forEach(vendor => {
-          defaultResults[vendor.vendor_id] = 0; // Default to free delivery
-        });
-        return defaultResults;
+      console.log(`💥 Error getting delivery price for vendor ${vendorId}:`, error.message);
+      return 0; // Free delivery on error
     }
-  }, [deliveryCalculationStarted]);
+  };
 
   const fetchUserAddress = useCallback(async () => {
     // Prevent multiple calls
@@ -165,36 +128,25 @@ export const Checkout = () => {
     }
   }, [addressFetchStarted]);
 
-  // Separate useEffect to handle delivery calculation when both address and orderData are available
+  // Delivery calculation with actual vendor API calls
   useEffect(() => {
-    if (orderData && userAddress && !deliveryCalculationStarted) {
-      console.log('🚀 Starting delivery calculation with orderData and address');
-      console.log('📦 OrderData:', orderData);
-      console.log('📍 UserAddress:', userAddress);
+    if (orderData && userAddress && !deliveryCalculationComplete) {
+      console.log('🚀 Starting delivery calculation with vendor API calls');
       
       // Extract city and province from the address
       const addressParts = userAddress.split(', ');
-      const city = addressParts[addressParts.length - 4] || ''; // Cordova (4th from end)
-      const province = addressParts[addressParts.length - 3] || ''; // Cebu (3rd from end)
-      
-      console.log('🏙️ Extracted location:', { city, province });
+      const city = addressParts[addressParts.length - 2] || '';
+      const province = addressParts[addressParts.length - 1] || '';
       
       if (city && province) {
-        setDeliveryCalculationStarted(true);
+        setDeliveryCalculationComplete(true); // Prevent multiple runs
         
         if (orderData?.fromCart && orderData?.items) {
-          console.log('🛒 Cart checkout detected, items:', orderData.items.length);
-          // Handle cart checkout - use independent delivery calculation
+          // Cart checkout - get delivery prices for each vendor
           const vendorGroups = groupItemsByVendor(orderData.items);
           const vendors = Object.values(vendorGroups);
           
-          console.log('🏪 Vendors in cart:', vendors.map(v => ({
-            vendorId: v.vendor_id,
-            vendorName: v.vendor_name,
-            itemCount: v.items?.length
-          })));
-          console.log('🔍 Full vendor data:', JSON.stringify(vendors, null, 2));
-          console.log('🔍 Vendor IDs being processed:', vendors.map(v => ({ id: v.vendor_id, type: typeof v.vendor_id, name: v.vendor_name })));
+          console.log('🛒 Getting delivery prices for vendors:', vendors.map(v => v.vendor_id));
           
           // Set loading state for all vendors
           const loadingState = {};
@@ -202,66 +154,68 @@ export const Checkout = () => {
             loadingState[vendor.vendor_id] = true;
           });
           setDeliveryLoading(loadingState);
-          setIsDeliveryInitialized(true);
           
-          // Use independent delivery calculation service
-          calculateDeliveryFees(vendors, city, province)
-            .then(results => {
-              console.log('🎉 Delivery calculation completed:', results);
-              console.log('💰 Final delivery fees:', JSON.stringify(results, null, 2));
-              setVendorDeliveryFees(results);
-              setDeliveryLoading({}); // Clear all loading states
-              setDeliveryCalculationComplete(true);
-            })
-            .catch(error => {
-              console.error('💥 Delivery calculation failed:', error);
-              // Set default fees for all vendors
-              const defaultFees = {};
-              vendors.forEach(vendor => {
-                defaultFees[vendor.vendor_id] = 50;
-              });
-              setVendorDeliveryFees(defaultFees);
-              setDeliveryLoading({});
-              setDeliveryCalculationComplete(true);
-            });
+          // Get delivery prices for all vendors
+          const getDeliveryPrices = async () => {
+            const deliveryFees = {};
             
-        } else if (orderData?.vendorId) {
-          console.log('🛍️ Single item checkout for vendor:', orderData.vendorId);
-          // Handle single item checkout
-          const vendor = { vendor_id: orderData.vendorId, vendor_name: orderData.vendorName };
-          setDeliveryLoading({ [orderData.vendorId]: true });
-          setIsDeliveryInitialized(true);
+            for (const vendor of vendors) {
+              try {
+                const price = await getVendorDeliveryPrice(vendor.vendor_id, city, province);
+                deliveryFees[vendor.vendor_id] = price;
+                console.log(`💰 Vendor ${vendor.vendor_id} (${vendor.vendor_name}): ₱${price}`);
+              } catch (error) {
+                console.log(`❌ Failed to get delivery price for vendor ${vendor.vendor_id}:`, error.message);
+                deliveryFees[vendor.vendor_id] = 0; // Free delivery on error
+              }
+            }
+            
+            console.log('🎉 All delivery prices collected:', deliveryFees);
+            setVendorDeliveryFees(deliveryFees);
+            setDeliveryLoading({}); // Clear loading states
+          };
           
-          // Use independent delivery calculation service
-          calculateDeliveryFees([vendor], city, province)
-            .then(results => {
-              console.log('🎉 Single vendor delivery calculation completed:', results);
-              setVendorDeliveryFees(results);
-              setDeliveryPrice(results[orderData.vendorId] || 0);
-              setDeliveryLoading({});
-              setDeliveryCalculationComplete(true);
-            })
-            .catch(error => {
-              console.error('💥 Single vendor delivery calculation failed:', error);
-              setVendorDeliveryFees({ [orderData.vendorId]: 0 }); // Default to free delivery
+          getDeliveryPrices();
+          
+        } else if (orderData?.vendorId) {
+          // Single item checkout - get delivery price for this vendor
+          console.log('🛍️ Getting delivery price for single vendor:', orderData.vendorId);
+          setDeliveryLoading({ [orderData.vendorId]: true });
+          
+          const getSingleDeliveryPrice = async () => {
+            try {
+              const price = await getVendorDeliveryPrice(orderData.vendorId, city, province);
+              setVendorDeliveryFees({ [orderData.vendorId]: price });
+              setDeliveryPrice(price);
+              console.log(`💰 Single vendor ${orderData.vendorId} delivery price: ₱${price}`);
+            } catch (error) {
+              console.log(`❌ Failed to get delivery price for vendor ${orderData.vendorId}:`, error.message);
+              setVendorDeliveryFees({ [orderData.vendorId]: 0 });
               setDeliveryPrice(0);
-              setDeliveryLoading({});
-              setDeliveryCalculationComplete(true);
-            });
+            }
+            setDeliveryLoading({});
+          };
+          
+          getSingleDeliveryPrice();
         }
-        
-        // Mark delivery as initialized
-        setIsDeliveryInitialized(true);
-      } else {
-        console.log('⚠️ Missing city/province data for delivery calculation');
       }
     }
-  }, [orderData, userAddress, deliveryCalculationStarted]);
+  }, [orderData, userAddress, deliveryCalculationComplete]);
+
+  // Reset delivery state when order data changes
+  useEffect(() => {
+    if (orderData) {
+      console.log('🔄 Resetting delivery state for new order');
+      setDeliveryCalculationComplete(false);
+      setVendorDeliveryFees({});
+      setDeliveryLoading({});
+    }
+  }, [orderData?.fromCart, orderData?.items?.length]);
 
   useEffect(() => {
     console.log('🔄 Main useEffect triggered');
     // Get order data from location state
-    if (location.state) {
+    if (location.state && !orderData) { // Only process if we don't already have order data
       if (location.state.fromCart && location.state.items && location.state.items.length > 0) {
         // Handle cart checkout
         const cartOrderData = {
@@ -273,10 +227,12 @@ export const Checkout = () => {
           deliveryDate: location.state.deliveryDate,
           deliveryTime: location.state.deliveryTime
         };
+        console.log('🛒 Setting cart order data:', cartOrderData);
         setOrderData(cartOrderData);
       } else {
         // Handle single item checkout
-      setOrderData(location.state);
+        console.log('🛍️ Setting single item order data:', location.state);
+        setOrderData(location.state);
       }
       
       // Format delivery date and time
@@ -347,7 +303,9 @@ export const Checkout = () => {
 
   // Helper function to get vendor delivery fee
   const getVendorDeliveryFee = (vendorId) => {
-    return vendorDeliveryFees[vendorId] || 0;
+    const fee = vendorDeliveryFees[vendorId] || 0;
+    console.log(`🔍 getVendorDeliveryFee(${vendorId}):`, fee, 'type:', typeof fee);
+    return fee;
   };
 
   // Helper function to get total amount including delivery fees
@@ -1274,3 +1232,4 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
     </>
   );
 };
+
