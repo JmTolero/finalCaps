@@ -212,8 +212,8 @@ const getCustomerOrders = async (req, res) => {
                 v.store_name as vendor_name,
                 u.fname as customer_fname,
                 u.lname as customer_lname,
-                ds.status_name as drum_status,
-                oi.return_requested_at,
+                GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') as drum_status,
+                MAX(oi.return_requested_at) as return_requested_at,
                 o.decline_reason,
                 COALESCE(
                     GROUP_CONCAT(
@@ -289,8 +289,8 @@ const getVendorOrders = async (req, res) => {
                 u.fname as customer_fname,
                 u.lname as customer_lname,
                 u.contact_no as customer_contact,
-                ds.status_name as drum_status,
-                oi.return_requested_at,
+                GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') as drum_status,
+                MAX(oi.return_requested_at) as return_requested_at,
                 o.decline_reason,
                 GROUP_CONCAT(
                     CONCAT(
