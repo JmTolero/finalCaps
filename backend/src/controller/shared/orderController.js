@@ -215,21 +215,24 @@ const getCustomerOrders = async (req, res) => {
                 ds.status_name as drum_status,
                 oi.return_requested_at,
                 o.decline_reason,
-                GROUP_CONCAT(
-                    CONCAT(
-                        f.flavor_name, 
-                        ' (', 
-                        cd.size, 
-                        ' - ', 
-                        cd.gallons, 
-                        ' gallons) x', 
-                        oi.quantity
-                    ) 
-                    SEPARATOR ', '
+                COALESCE(
+                    GROUP_CONCAT(
+                        CONCAT(
+                            COALESCE(f.flavor_name, 'Unknown Flavor'), 
+                            ' (', 
+                            COALESCE(cd.size, 'Unknown'), 
+                            ' - ', 
+                            COALESCE(cd.gallons, '0'), 
+                            ' gallons) x', 
+                            oi.quantity
+                        ) 
+                        SEPARATOR ', '
+                    ), 
+                    'No items found'
                 ) as order_items_details,
-                GROUP_CONCAT(f.flavor_name SEPARATOR ', ') as flavors,
-                GROUP_CONCAT(cd.size SEPARATOR ', ') as sizes,
-                GROUP_CONCAT(oi.quantity SEPARATOR ', ') as quantities
+                COALESCE(GROUP_CONCAT(f.flavor_name SEPARATOR ', '), 'Unknown') as flavors,
+                COALESCE(GROUP_CONCAT(cd.size SEPARATOR ', '), 'Unknown') as sizes,
+                COALESCE(GROUP_CONCAT(oi.quantity SEPARATOR ', '), 'Unknown') as quantities
             FROM orders o
             LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
             LEFT JOIN users u ON o.customer_id = u.user_id
@@ -244,6 +247,19 @@ const getCustomerOrders = async (req, res) => {
         `, [customer_id]);
 
         console.log('Found orders for customer:', orders.length);
+        
+        // Debug: Log order items details for first few orders
+        if (orders.length > 0) {
+            console.log('Sample order data:');
+            orders.slice(0, 2).forEach((order, index) => {
+                console.log(`Order ${index + 1} (ID: ${order.order_id}):`, {
+                    vendor_name: order.vendor_name,
+                    order_items_details: order.order_items_details,
+                    flavors: order.flavors,
+                    total_amount: order.total_amount
+                });
+            });
+        }
 
         res.json({
             success: true,

@@ -5,10 +5,10 @@ async function testConnection() {
     try {
         console.log('Testing database connection...');
         console.log('Environment variables:');
-        console.log('host:', process.env.host || 'localhost');
-        console.log('user:', process.env.user || 'root');
-        console.log('password:', process.env.password ? '***' : '(empty)');
-        console.log('database:', process.env.db_name || 'chill_db');
+        console.log('DB_HOST:', process.env.DB_HOST || 'localhost');
+        console.log('DB_USER:', process.env.DB_USER || 'root');
+        console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***' : '(empty)');
+        console.log('DB_NAME:', process.env.DB_NAME || 'chill_db');
         
         // Test basic connection
         const connection = await pool.getConnection();
