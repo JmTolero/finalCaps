@@ -31,9 +31,9 @@ const getDrumPricing = async (req, res) => {
 
     // Format the data for frontend
     const drumData = {
-      small: { gallons: 3, price: 500, stock: 0 },
-      medium: { gallons: 5, price: 800, stock: 0 },
-      large: { gallons: 8, price: 1200, stock: 0 }
+      small: { gallons: 3, price: 0, stock: 0 },
+      medium: { gallons: 5, price: 0, stock: 0 },
+      large: { gallons: 8, price: 0, stock: 0 }
     };
 
     vendorDrums.forEach(drum => {

@@ -55,8 +55,9 @@ const createOrder = async (req, res) => {
                 total_amount, 
                 status, 
                 payment_status,
+                payment_method,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             customer_id,
             vendor_id,
@@ -64,7 +65,8 @@ const createOrder = async (req, res) => {
             delivery_address,
             total_amount,
             status,
-            payment_status
+            payment_status,
+            payment_method
         ]);
 
         const orderId = orderResult.insertId;
@@ -212,7 +214,12 @@ const getCustomerOrders = async (req, res) => {
                 v.store_name as vendor_name,
                 u.fname as customer_fname,
                 u.lname as customer_lname,
-                GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') as drum_status,
+                CASE 
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%not returned%' THEN 'return_requested'
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%returned%' THEN 'returned'
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%in use%' THEN 'in_use'
+                    ELSE 'in_use'
+                END as drum_status,
                 MAX(oi.return_requested_at) as return_requested_at,
                 o.decline_reason,
                 COALESCE(
@@ -288,8 +295,14 @@ const getVendorOrders = async (req, res) => {
                 o.*,
                 u.fname as customer_fname,
                 u.lname as customer_lname,
+                u.email as customer_email,
                 u.contact_no as customer_contact,
-                GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') as drum_status,
+                CASE 
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%not returned%' THEN 'return_requested'
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%returned%' THEN 'returned'
+                    WHEN GROUP_CONCAT(DISTINCT ds.status_name SEPARATOR ', ') LIKE '%in use%' THEN 'in_use'
+                    ELSE 'in_use'
+                END as drum_status,
                 MAX(oi.return_requested_at) as return_requested_at,
                 o.decline_reason,
                 GROUP_CONCAT(
@@ -661,13 +674,18 @@ const updateDrumReturnStatus = async (req, res) => {
             });
         }
 
+        // Convert ISO datetime to MySQL format
+        const mysqlDateTime = return_requested_at ? 
+            new Date(return_requested_at).toISOString().slice(0, 19).replace('T', ' ') : 
+            null;
+
         // Update drum status in order_items table for all items in this order
         const [result] = await pool.query(`
             UPDATE order_items 
             SET drum_status_id = ?, 
                 return_requested_at = ?
             WHERE order_id = ?
-        `, [drum_status_id, return_requested_at, order_id]);
+        `, [drum_status_id, mysqlDateTime, order_id]);
 
         // If no order items exist, create a basic one for drum return tracking
         if (result.affectedRows === 0) {
@@ -739,13 +757,53 @@ const updateDrumReturnStatus = async (req, res) => {
                 drumId,
                 order.total_amount,
                 drum_status_id,
-                return_requested_at
+                mysqlDateTime
             ]);
             
             console.log(`Created order item for drum return tracking for order ${order_id}`);
         }
 
         console.log(`Updated drum return status for order ${order_id}: ${drum_status}`);
+
+        // If this is a drum return request, notify the vendor
+        if (drum_status === 'return_requested') {
+            // Get order details to find vendor and customer info
+            const [orderDetails] = await pool.query(`
+                SELECT 
+                    o.customer_id, 
+                    o.vendor_id,
+                    u.fname as customer_fname,
+                    u.lname as customer_lname,
+                    v.store_name
+                FROM orders o
+                LEFT JOIN users u ON o.customer_id = u.user_id
+                LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+                WHERE o.order_id = ?
+            `, [order_id]);
+
+            if (orderDetails.length > 0) {
+                const { customer_id, vendor_id, customer_fname, customer_lname, store_name } = orderDetails[0];
+                
+                try {
+                    // Create notification for vendor
+                    await createNotification({
+                        user_id: vendor_id,
+                        user_type: 'vendor',
+                        title: 'Drum Return Requested 📦',
+                        message: `Customer ${customer_fname} ${customer_lname} has requested to return the drum for order #${order_id}. Please arrange to pick up the drum from the customer.`,
+                        notification_type: 'drum_return_requested',
+                        related_order_id: parseInt(order_id),
+                        related_vendor_id: vendor_id,
+                        related_customer_id: customer_id
+                    });
+                    
+                    console.log(`Drum return notification sent to vendor ${vendor_id} for order ${order_id}`);
+                } catch (notificationError) {
+                    console.error('Error creating drum return notification:', notificationError);
+                    // Don't fail the entire request if notification fails
+                }
+            }
+        }
 
         res.json({
             success: true,

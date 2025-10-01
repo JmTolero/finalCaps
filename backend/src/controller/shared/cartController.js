@@ -98,7 +98,8 @@ const addToCart = async (req, res) => {
                 ci.quantity,
                 ci.price,
                 f.flavor_name,
-                v.store_name as vendor_name
+                v.store_name as vendor_name,
+                v.vendor_id
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
@@ -157,7 +158,8 @@ const updateCartItem = async (req, res) => {
                 ci.quantity,
                 ci.price,
                 f.flavor_name,
-                v.store_name as vendor_name
+                v.store_name as vendor_name,
+                v.vendor_id
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
@@ -206,7 +208,8 @@ const removeFromCart = async (req, res) => {
                 ci.quantity,
                 ci.price,
                 f.flavor_name,
-                v.store_name as vendor_name
+                v.store_name as vendor_name,
+                v.vendor_id
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id

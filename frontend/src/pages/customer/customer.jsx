@@ -56,6 +56,11 @@ export const Customer = () => {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
   const [drumReturnLoading, setDrumReturnLoading] = useState(null);
+  const [showDrumReturnModal, setShowDrumReturnModal] = useState(false);
+  const [showDrumReturnSuccessModal, setShowDrumReturnSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -113,13 +118,26 @@ export const Customer = () => {
   // Check URL parameters for view
   useEffect(() => {
     const view = searchParams.get('view');
+    const tab = searchParams.get('tab');
+    
     if (view === 'settings') {
       setActiveView('settings');
+      if (tab === 'addresses') {
+        setActiveTab('addresses');
+      }
     } else if (view === 'orders') {
       setActiveView('orders');
     }
     // Removed cart view handling - now using dedicated /cart route
   }, [searchParams]);
+
+  // Reset modal states when component mounts or view changes
+  useEffect(() => {
+    setShowDrumReturnModal(false);
+    setShowDrumReturnSuccessModal(false);
+    setShowErrorModal(false);
+    setSelectedOrderForReturn(null);
+  }, [activeView]);
 
   // Force data refresh when settings view becomes active
   useEffect(() => {
@@ -199,6 +217,14 @@ export const Customer = () => {
       }
     };
   }, [activeView]);
+
+  // Refresh orders when filter changes to get latest data
+  useEffect(() => {
+    if (activeView === 'orders' && orderFilter) {
+      console.log('🔄 Refreshing orders due to filter change:', orderFilter);
+      fetchCustomerOrders();
+    }
+  }, [orderFilter, activeView]);
 
   // Auto-refresh customer dashboard every 1:30 minutes when on dashboard view
   useEffect(() => {
@@ -395,13 +421,13 @@ export const Customer = () => {
         // Refresh orders to show updated status
         fetchCustomerOrders();
         
-        alert('Payment successful! The vendor has been notified and will start preparing your ice cream. You can track the progress in your orders.');
+        console.log('Payment successful! The vendor has been notified and will start preparing your ice cream.');
       } else {
         throw new Error(response.data.error || 'Failed to update payment status');
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert('Payment completed, but failed to update status. Please contact support.');
+      showError('Payment completed, but failed to update status. Please contact support.');
     }
   };
 
@@ -430,16 +456,24 @@ export const Customer = () => {
     }
   };
 
-  const handleDrumReturn = async (order) => {
-    if (!window.confirm('Are you sure you want to request drum return for this order? The vendor will be notified to pick up the drum.')) {
-      return;
-    }
+  const showError = (message) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
 
-    setDrumReturnLoading(order.order_id);
+  const handleDrumReturn = (order) => {
+    setSelectedOrderForReturn(order);
+    setShowDrumReturnModal(true);
+  };
+
+  const confirmDrumReturn = async () => {
+    if (!selectedOrderForReturn) return;
+
+    setDrumReturnLoading(selectedOrderForReturn.order_id);
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.post(`${apiBase}/api/orders/${order.order_id}/drum-return`, {
+      const response = await axios.post(`${apiBase}/api/orders/${selectedOrderForReturn.order_id}/drum-return`, {
         drum_status: 'return_requested',
         return_requested_at: new Date().toISOString()
       });
@@ -448,20 +482,22 @@ export const Customer = () => {
         // Update local state
         setOrders(prevOrders => 
           prevOrders.map(o => 
-            o.order_id === order.order_id 
+            o.order_id === selectedOrderForReturn.order_id 
               ? { ...o, drum_status: 'return_requested', return_requested_at: new Date().toISOString() }
               : o
           )
         );
-        alert('Drum return requested successfully! The vendor will be notified to pick up the drum.');
+        setShowDrumReturnSuccessModal(true);
       } else {
-        alert('Failed to request drum return. Please try again.');
+        showError('Failed to request drum return. Please try again.');
       }
     } catch (error) {
       console.error('Error requesting drum return:', error);
-      alert('Failed to request drum return. Please try again.');
+      showError('Failed to request drum return. Please try again.');
     } finally {
       setDrumReturnLoading(null);
+      setShowDrumReturnModal(false);
+      // Don't reset selectedOrderForReturn here - keep it for the success modal
     }
   };
 
@@ -624,9 +660,7 @@ export const Customer = () => {
 
   const settingsTabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'addresses', label: 'Delivery Addresses', icon: '📍' },
-    { id: 'orders', label: 'Order History', icon: '📦' },
-    { id: 'preferences', label: 'Preferences', icon: '⚙️' }
+    { id: 'addresses', label: 'Delivery Addresses', icon: '📍' }
   ];
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
@@ -636,7 +670,7 @@ export const Customer = () => {
     try {
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) {
-        alert('User not found. Please log in again.');
+        showError('User not found. Please log in again.');
         return;
       }
 
@@ -666,16 +700,16 @@ export const Customer = () => {
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('userChanged'));
         
-        alert('Profile updated successfully!');
+        console.log('Profile updated successfully!');
       } else {
-        alert('Failed to update profile. Please try again.');
+        showError('Failed to update profile. Please try again.');
       }
     } catch (error) {
       console.error('Error saving profile:', error);
       if (error.response?.data?.error) {
-        alert(`Error: ${error.response.data.error}`);
+        showError(`Error: ${error.response.data.error}`);
       } else {
-        alert('Failed to update profile. Please try again.');
+        showError('Failed to update profile. Please try again.');
       }
     }
   };
@@ -717,7 +751,10 @@ export const Customer = () => {
                 ].map((filter) => (
                   <button
                     key={filter.value}
-                    onClick={() => setOrderFilter(filter.value)}
+                    onClick={() => {
+                      console.log('🔍 Filter button clicked:', filter.value);
+                      setOrderFilter(filter.value);
+                    }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       orderFilter === filter.value
                         ? 'bg-blue-600 text-white'
@@ -983,7 +1020,7 @@ export const Customer = () => {
                         <h4 className="font-medium text-gray-900 mb-2">Payment</h4>
                         <div className="flex items-center space-x-2">
                           <span className="text-gray-600">Method:</span>
-                          <span className="font-medium">{order.payment_method?.toUpperCase() || 'N/A'}</span>
+                          <span className="font-medium">{order.payment_method?.toLowerCase() === 'gcash' || order.payment_method?.toLowerCase() === 'gcaash' ? 'GCash' : order.payment_method?.toUpperCase() || 'N/A'}</span>
                           {order.payment_type && (
                             <>
                               <span className="text-gray-400">•</span>
@@ -1089,6 +1126,109 @@ export const Customer = () => {
             </div>
           </div>
         </div>
+
+        {/* Drum Return Confirmation Modal */}
+        {showDrumReturnModal && selectedOrderForReturn && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Request Drum Return
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to request drum return for Order #{selectedOrderForReturn.order_id}? 
+                  The vendor will be notified to pick up the drum.
+                </p>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDrumReturnModal(false);
+                      setSelectedOrderForReturn(null);
+                    }}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDrumReturn}
+                    disabled={drumReturnLoading === selectedOrderForReturn.order_id}
+                    className="flex-1 bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {drumReturnLoading === selectedOrderForReturn.order_id ? 'Processing...' : 'Confirm Return'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Drum Return Success Modal */}
+        {showDrumReturnSuccessModal && selectedOrderForReturn && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                  <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Drum Return Requested Successfully! ✅
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Your drum return request for Order #{selectedOrderForReturn.order_id} has been submitted. 
+                  The vendor will be notified to pick up the drum and will contact you to schedule the pickup.
+                </p>
+                
+                <button
+                  onClick={() => {
+                    setShowDrumReturnSuccessModal(false);
+                    setSelectedOrderForReturn(null);
+                    // Refresh orders to ensure UI is up to date
+                    fetchCustomerOrders();
+                  }}
+                  className="w-full bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+         )}
+
+        {/* Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Error
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  {errorMessage}
+                </p>
+                
+                <button
+                  onClick={() => setShowErrorModal(false)}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -1437,27 +1577,6 @@ export const Customer = () => {
                     </div>
                   )}
 
-                  {/* Orders Tab */}
-                  {activeTab === 'orders' && (
-                    <div>
-                      <h2 className="text-2xl font-semibold mb-6">Order History</h2>
-                      <div className="text-center py-8 text-gray-500">
-                        <div className="text-4xl mb-4">📦</div>
-                        <p>Order history coming soon...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Preferences Tab */}
-                  {activeTab === 'preferences' && (
-                    <div>
-                      <h2 className="text-2xl font-semibold mb-6">Preferences</h2>
-                      <div className="text-center py-8 text-gray-500">
-                        <div className="text-4xl mb-4">⚙️</div>
-                        <p>Preference settings coming soon...</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1679,6 +1798,47 @@ export const Customer = () => {
           </div>
         )}
       </main>
+
+      {/* Drum Return Confirmation Modal */}
+      {showDrumReturnModal && selectedOrderForReturn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Request Drum Return
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to request drum return for Order #{selectedOrderForReturn.order_id}? 
+                The vendor will be notified to pick up the drum.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDrumReturnModal(false);
+                    setSelectedOrderForReturn(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDrumReturn}
+                  disabled={drumReturnLoading === selectedOrderForReturn.order_id}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                >
+                  {drumReturnLoading === selectedOrderForReturn.order_id ? 'Processing...' : 'Confirm Return'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   );

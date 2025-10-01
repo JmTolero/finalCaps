@@ -20,6 +20,7 @@ import { AllVendorStores } from "./pages/customer/AllVendorStores.jsx";
 import { VendorStore } from "./pages/customer/VendorStore.jsx";
 import { FlavorDetail } from "./pages/customer/FlavorDetail.jsx";
 import { Checkout } from "./pages/customer/Checkout.jsx";
+import { OrderConfirmation } from "./pages/customer/OrderConfirmation.jsx";
     import { Notifications } from "./pages/customer/Notifications.jsx";
 import PaymentPage from "./pages/customer/PaymentPage.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
@@ -127,6 +128,7 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
           <Route path="/vendor/:vendorId/store" element={requireRole('customer', <VendorStore />)} />
           <Route path="/flavor/:flavorId" element={requireRole('customer', <FlavorDetail />)} />
           <Route path="/checkout" element={requireRole('customer', <Checkout />)} />
+          <Route path="/order-confirmation" element={requireRole('customer', <OrderConfirmation />)} />
           <Route path="/login-test" element={<LoginTest />} />
         </Routes>
       </Router>

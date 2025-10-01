@@ -111,15 +111,15 @@ export const Vendor = () => {
 
   // Drum prices (editable by vendor)
   const [drumPrices, setDrumPrices] = useState({
-    small: 500, // ₱500 per small drum
-    medium: 800, // ₱800 per medium drum
-    large: 1200, // ₱1200 per large drum
+    small: 0, // Default to 0 - vendor must set prices
+    medium: 0, // Default to 0 - vendor must set prices
+    large: 0, // Default to 0 - vendor must set prices
   });
   const [isEditingPrices, setIsEditingPrices] = useState(false);
   const [tempPrices, setTempPrices] = useState({
-    small: 500,
-    medium: 800,
-    large: 1200,
+    small: 0,
+    medium: 0,
+    large: 0,
   });
 
   // Flavor form state
@@ -1024,9 +1024,6 @@ export const Vendor = () => {
                       <h1 className="text-3xl font-bold text-gray-900">
                         Vendor Settings
                       </h1>
-                      <p className="text-gray-600 mt-2">
-                        Manage your store information and preferences
-                      </p>
                       {currentVendor && (
                         <div className="mt-2">
                           <p className="text-sm text-blue-600">

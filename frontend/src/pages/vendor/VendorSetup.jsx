@@ -236,6 +236,24 @@ export const VendorSetup = () => {
           type: 'error', 
           message: 'Vendor data not found. Please try logging in again.' 
         });
+        setLoading(false);
+        return;
+      }
+
+      // Validate that all required address fields are filled before allowing completion
+      const missingAddressFields = [];
+      if (!addressData.street_name) missingAddressFields.push('Street Name');
+      if (!addressData.barangay) missingAddressFields.push('Barangay');
+      if (!addressData.cityVillage) missingAddressFields.push('City/Village');
+      if (!addressData.province) missingAddressFields.push('Province');
+      if (!addressData.region) missingAddressFields.push('Region');
+      
+      if (missingAddressFields.length > 0) {
+        setStatus({ 
+          type: 'error', 
+          message: `Please fill in the following required address fields first: ${missingAddressFields.join(', ')}` 
+        });
+        setLoading(false);
         return;
       }
 
@@ -262,19 +280,15 @@ export const VendorSetup = () => {
         }
       );
 
-      // Add address (now required)
-      if (addressData.street_name && addressData.barangay && addressData.cityVillage && addressData.province) {
-        console.log('Adding address:', addressData);
-        await axios.post(
-          `${apiBase}/api/addresses/user/${vendorData.user_id}/address`,
-          {
-            ...addressData,
-            address_label: 'Store Location'
-          }
-        );
-      } else {
-        throw new Error('Address is required. Please fill in all address fields.');
-      }
+      // Add address (now required - validation already done above)
+      console.log('Adding address:', addressData);
+      await axios.post(
+        `${apiBase}/api/addresses/user/${vendorData.user_id}/address`,
+        {
+          ...addressData,
+          address_label: 'Store Location'
+        }
+      );
 
       setStatus({ type: 'success', message: 'Store setup completed successfully! You can now add products to start selling.' });
       

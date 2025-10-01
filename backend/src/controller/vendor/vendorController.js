@@ -480,10 +480,10 @@ const getVendorDashboardData = async (req, res) => {
             LIMIT 10
         `, [vendor_id]);
 
-        // Get product count
+        // Get flavor count (products are auto-generated from orders, so we count flavors instead)
         const [productCount] = await pool.query(`
             SELECT COUNT(*) as product_count
-            FROM products
+            FROM flavors
             WHERE vendor_id = ?
         `, [vendor_id]);
 

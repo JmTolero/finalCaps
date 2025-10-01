@@ -84,7 +84,7 @@ const getVendorFlavors = async (req, res) => {
             COALESCE(NULLIF(a2.province, ''), NULL)
           )
         END as location,
-        COALESCE(SUM(CASE WHEN o.status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered') THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count,
+        COALESCE(SUM(CASE WHEN o.status = 'delivered' THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count,
         COALESCE(MIN(CASE WHEN vdp.drum_size = 'small' THEN vdp.price END), 0) as small_price,
         COALESCE(MIN(CASE WHEN vdp.drum_size = 'medium' THEN vdp.price END), 0) as medium_price,
         COALESCE(MIN(CASE WHEN vdp.drum_size = 'large' THEN vdp.price END), 0) as large_price
@@ -112,24 +112,25 @@ const getVendorFlavors = async (req, res) => {
 
     // Update sold_count in database if calculated count is different
     for (const flavor of flavors) {
-      // Get additional sold count from orders without order items
-      const [ordersWithoutItems] = await pool.query(`
-        SELECT COUNT(*) as count FROM orders 
-        WHERE vendor_id = ? 
-        AND status IN ('confirmed', 'preparing', 'out_for_delivery', 'delivered')
-        AND order_id NOT IN (SELECT DISTINCT order_id FROM order_items)
-      `, [flavor.vendor_id]);
+      // Calculate accurate sold count from order_items with proper status filtering
+      const [soldCountResult] = await pool.query(`
+        SELECT COALESCE(SUM(oi.quantity), 0) as total_sold
+        FROM order_items oi
+        LEFT JOIN orders o ON oi.order_id = o.order_id
+        LEFT JOIN products p ON oi.product_id = p.product_id
+        WHERE p.flavor_id = ?
+        AND o.status = 'delivered'
+      `, [flavor.flavor_id]);
       
-      const additionalSoldCount = ordersWithoutItems[0].count || 0;
-      const totalSoldCount = parseInt(flavor.calculated_sold_count) + parseInt(additionalSoldCount);
+      const accurateSoldCount = soldCountResult[0].total_sold || 0;
       
-      if (totalSoldCount !== flavor.sold_count) {
+      if (accurateSoldCount !== flavor.sold_count) {
         await pool.query(`
           UPDATE flavors 
           SET sold_count = ? 
           WHERE flavor_id = ?
-        `, [totalSoldCount, flavor.flavor_id]);
-        flavor.sold_count = totalSoldCount;
+        `, [accurateSoldCount, flavor.flavor_id]);
+        flavor.sold_count = accurateSoldCount;
       }
       // Remove the calculated_sold_count from response
       delete flavor.calculated_sold_count;

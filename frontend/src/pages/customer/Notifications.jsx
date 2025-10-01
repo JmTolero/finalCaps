@@ -29,6 +29,11 @@ export const Notifications = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [drumReturnLoading, setDrumReturnLoading] = useState(null);
+  const [showDrumReturnModal, setShowDrumReturnModal] = useState(false);
+  const [showDrumReturnSuccessModal, setShowDrumReturnSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
 
   useEffect(() => {
     // Load user data from session
@@ -45,6 +50,14 @@ export const Notifications = () => {
     }
     
     fetchNotifications();
+  }, []);
+
+  // Reset modal states when component mounts
+  useEffect(() => {
+    setShowDrumReturnModal(false);
+    setShowDrumReturnSuccessModal(false);
+    setShowErrorModal(false);
+    setSelectedOrderForReturn(null);
   }, []);
 
   const fetchNotifications = async () => {
@@ -254,16 +267,24 @@ export const Notifications = () => {
     setSelectedOrder(null);
   };
 
-  const handleDrumReturn = async (order) => {
-    if (!window.confirm('Are you sure you want to request drum return for this order? The vendor will be notified to pick up the drum.')) {
-      return;
-    }
+  const showError = (message) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
 
-    setDrumReturnLoading(order.order_id);
+  const handleDrumReturn = (order) => {
+    setSelectedOrderForReturn(order);
+    setShowDrumReturnModal(true);
+  };
+
+  const confirmDrumReturn = async () => {
+    if (!selectedOrderForReturn) return;
+
+    setDrumReturnLoading(selectedOrderForReturn.order_id);
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.post(`${apiBase}/api/orders/${order.order_id}/drum-return`, {
+      const response = await axios.post(`${apiBase}/api/orders/${selectedOrderForReturn.order_id}/drum-return`, {
         drum_status: 'return_requested',
         return_requested_at: new Date().toISOString()
       });
@@ -272,20 +293,22 @@ export const Notifications = () => {
         // Update local state
         setOrders(prevOrders => 
           prevOrders.map(o => 
-            o.order_id === order.order_id 
+            o.order_id === selectedOrderForReturn.order_id 
               ? { ...o, drum_status: 'return_requested', return_requested_at: new Date().toISOString() }
               : o
           )
         );
-        alert('Drum return requested successfully! The vendor will be notified to pick up the drum.');
+        setShowDrumReturnSuccessModal(true);
       } else {
-        alert('Failed to request drum return. Please try again.');
+        showError('Failed to request drum return. Please try again.');
       }
     } catch (error) {
       console.error('Error requesting drum return:', error);
-      alert('Failed to request drum return. Please try again.');
+      showError('Failed to request drum return. Please try again.');
     } finally {
       setDrumReturnLoading(null);
+      setShowDrumReturnModal(false);
+      // Don't reset selectedOrderForReturn here - keep it for the success modal
     }
   };
 
@@ -933,8 +956,111 @@ export const Notifications = () => {
           </div>
         </div>
       )}
-    </>
-  );
-};
+
+      {/* Drum Return Confirmation Modal */}
+      {showDrumReturnModal && selectedOrderForReturn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Request Drum Return
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to request drum return for Order #{selectedOrderForReturn.order_id}? 
+                The vendor will be notified to pick up the drum.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDrumReturnModal(false);
+                    setSelectedOrderForReturn(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDrumReturn}
+                  disabled={drumReturnLoading === selectedOrderForReturn.order_id}
+                  className="flex-1 bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                >
+                  {drumReturnLoading === selectedOrderForReturn.order_id ? 'Processing...' : 'Confirm Return'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Drum Return Success Modal */}
+      {showDrumReturnSuccessModal && selectedOrderForReturn && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Drum Return Requested Successfully! ✅
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Your drum return request for Order #{selectedOrderForReturn.order_id} has been submitted. 
+                The vendor will be notified to pick up the drum and will contact you to schedule the pickup.
+              </p>
+              
+                <button
+                  onClick={() => {
+                    setShowDrumReturnSuccessModal(false);
+                    setSelectedOrderForReturn(null);
+                    // Refresh orders to ensure UI is up to date
+                    fetchOrders();
+                  }}
+                  className="w-full bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  OK
+                </button>
+            </div>
+          </div>
+        </div>
+       )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Error
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {errorMessage}
+              </p>
+              
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+     </>
+   );
+ };
 
 export default Notifications;

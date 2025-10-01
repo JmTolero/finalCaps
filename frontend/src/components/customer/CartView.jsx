@@ -17,6 +17,9 @@ export const CartView = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [flavorImages, setFlavorImages] = useState({});
+  const [userAddress, setUserAddress] = useState('');
+  const [showAddressModal, setShowAddressModal] = useState(false);
   
   // Notification state
   const [notifications, setNotifications] = useState([]);
@@ -80,9 +83,115 @@ export const CartView = () => {
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
 
+  // Fetch flavor images for items that don't have image_url
+  const fetchFlavorImages = useCallback(async () => {
+    const itemsNeedingImages = items.filter(item => !item.image_url);
+    
+    if (itemsNeedingImages.length === 0) return;
+
+    console.log('🔍 Fetching images for', itemsNeedingImages.length, 'items without images');
+
+    for (const item of itemsNeedingImages) {
+      try {
+        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+        const response = await axios.get(`${apiBase}/api/flavors/${item.flavor_id}`);
+        
+        if (response.data.success && response.data.flavor.image_url) {
+          let imageUrl = response.data.flavor.image_url;
+          
+          // Parse JSON if it's a string
+          try {
+            const parsedImages = JSON.parse(imageUrl);
+            imageUrl = Array.isArray(parsedImages) ? parsedImages[0] : parsedImages;
+          } catch (e) {
+            // imageUrl is already a string, use as is
+          }
+          
+          setFlavorImages(prev => ({
+            ...prev,
+            [item.flavor_id]: imageUrl
+          }));
+          
+          console.log('🔍 Fetched image for flavor', item.flavor_id, ':', imageUrl);
+        }
+      } catch (error) {
+        console.error('🔍 Error fetching image for flavor', item.flavor_id, ':', error);
+      }
+    }
+  }, [items]);
+
+  useEffect(() => {
+    fetchFlavorImages();
+  }, [fetchFlavorImages]);
+
+  // Fetch user address
+  const fetchUserAddress = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      console.log('🔍 CartView: Fetching addresses for user:', user.id);
+      
+      const response = await axios.get(`${apiBase}/api/addresses/user/${user.id}/addresses`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      console.log('🔍 CartView: Address API response:', response.data);
+
+      if (response.data && response.data.length > 0) {
+        // Find primary address or first address
+        const primaryAddress = response.data.find(addr => addr.is_primary) || response.data[0];
+        
+        console.log('🔍 CartView: Primary address found:', primaryAddress);
+        
+        if (primaryAddress && primaryAddress.cityVillage && primaryAddress.province) {
+          const addressString = `${primaryAddress.cityVillage}, ${primaryAddress.province}`;
+          console.log('🔍 CartView: Setting user address:', addressString);
+          setUserAddress(addressString);
+        } else {
+          console.log('🔍 CartView: Address missing city/province');
+          setUserAddress('');
+        }
+      } else {
+        console.log('🔍 CartView: No addresses found');
+        setUserAddress('');
+      }
+    } catch (error) {
+      console.error('🔍 CartView: Error fetching user address:', error);
+      setUserAddress('');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserAddress();
+  }, [fetchUserAddress]);
+
   const handleCheckout = () => {
     if (items.length === 0) {
       alert('Your cart is empty!');
+      return;
+    }
+    
+    // Validate that all items have valid vendor_id
+    const invalidItems = items.filter(item => !item.vendor_id || item.vendor_id === null || item.vendor_id === undefined);
+    if (invalidItems.length > 0) {
+      console.error('Invalid cart items found:', invalidItems);
+      console.error('All cart items:', items);
+      alert(`Some items in your cart have missing vendor information:\n\n${invalidItems.map(item => `• ${item.name || 'Unknown Item'} (${item.size})`).join('\n')}\n\nPlease remove these items and re-add them from the product page.`);
+      return;
+    }
+    
+    console.log('🔍 CartView: handleCheckout - userAddress:', userAddress);
+    
+    // Validate delivery address
+    if (!userAddress || userAddress.trim() === '') {
+      console.log('🔍 CartView: No address found, showing modal');
+      setShowAddressModal(true);
       return;
     }
     
@@ -112,6 +221,15 @@ export const CartView = () => {
   const handleProceedToCheckout = () => {
     if (items.length === 0) {
       alert('Your cart is empty!');
+      return;
+    }
+    
+    console.log('🔍 CartView: handleProceedToCheckout - userAddress:', userAddress);
+    
+    // Validate delivery address
+    if (!userAddress || userAddress.trim() === '') {
+      console.log('🔍 CartView: No address found, showing modal');
+      setShowAddressModal(true);
       return;
     }
     
@@ -328,48 +446,63 @@ export const CartView = () => {
               
               {/* Item Image */}
               <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                {item.image_url ? (
-                  <img
-                    src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${item.image_url}`}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    🍦
-                  </div>
-                )}
+                {(() => {
+                  console.log('🔍 Cart item image debug:', {
+                    item: item,
+                    image_url: item.image_url,
+                    flavor_image_url: item.flavor_image_url,
+                    allKeys: Object.keys(item),
+                    allFields: Object.keys(item).map(key => `${key}: ${item[key]}`)
+                  });
+                  
+                  // Check multiple possible field names for the image
+                  const imageField = item.image_url || item.flavor_image_url || item.image || item.flavor_image || flavorImages[item.flavor_id];
+                  
+                  const imagePath = imageField ? `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageField}` : null;
+                  
+                  console.log('🔍 Image field found:', imageField);
+                  console.log('🔍 Image path:', imagePath);
+                  
+                  return imagePath ? (
+                    <img
+                      src={imagePath}
+                      alt={item.flavor_name || item.name || 'Flavor'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.log('🔍 Image failed to load:', imagePath);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100">
+                      🍦
+                    </div>
+                  );
+                })()}
+                <div className="w-full h-full flex items-center justify-center text-gray-400" style={{display: 'none'}}>
+                  🍦
+                </div>
               </div>
 
               {/* Item Details */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-800 truncate">
-                  {item.name}
-                </h3>
-                <p className="text-sm text-blue-600">
+                <h3 className="text-lg font-semibold text-blue-600 mb-1">
                   {item.vendor_name}
+                </h3>
+                <p className="text-sm text-gray-800 font-medium mb-2">
+                  {item.flavor_name || item.name || 'No flavor name'}
                 </p>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span className="text-sm text-gray-600">Size: {item.size}</span>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600 font-medium">Size: {item.size}</span>
                   <span className="text-sm text-gray-600">Unit Price: ₱{item.price.toFixed(2)}</span>
                 </div>
               </div>
 
-              {/* Quantity Controls */}
+              {/* Quantity Display */}
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleQuantityChange(item.flavor_id, item.size, item.quantity - 1)}
-                  className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center"
-                >
-                  -
-                </button>
+                <span className="text-sm text-gray-600">Qty:</span>
                 <span className="w-8 text-center font-medium">{item.quantity}</span>
-                <button
-                  onClick={() => handleQuantityChange(item.flavor_id, item.size, item.quantity + 1)}
-                  className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center"
-                >
-                  +
-                </button>
               </div>
 
               {/* Total Price */}
@@ -485,6 +618,77 @@ export const CartView = () => {
         </div>
       </div>
       </div>
+
+      {/* Address Required Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Address Required</h2>
+                <button 
+                  onClick={() => setShowAddressModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Warning Icon */}
+              <div className="text-center mb-6">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                  <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-medium text-gray-900 mb-2">
+                  Delivery Address Required
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Please add a delivery address in your profile settings before proceeding to checkout.
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs text-blue-800 font-medium mb-1">How to add your address:</p>
+                    <p className="text-xs text-blue-700 leading-tight">
+                      Click "Go to Address Settings" below → Click "Add New Address" → Fill city & province → Set as primary
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAddressModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddressModal(false);
+                    navigate('/customer?view=settings&tab=addresses');
+                  }}
+                  className="flex-1 px-4 py-2 bg-orange-300 text-black rounded-lg font-medium hover:bg-orange-400 transition-colors"
+                >
+                  Go to Address Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

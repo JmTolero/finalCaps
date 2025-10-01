@@ -63,10 +63,56 @@ export const Vendor = () => {
     sales_today: 0,
     sales_this_month: 0,
     top_flavor: "N/A",
-    product_count: 0,
+    product_count: 0, // Actually counts flavors, not products
     upcoming_deliveries: [],
   });
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  
+  // Upcoming deliveries filter state
+  const [deliveryFilter, setDeliveryFilter] = useState({
+    status: 'all', // all, confirmed, preparing, out_for_delivery
+    urgency: 'all' // all, today, tomorrow, upcoming, overdue
+  });
+
+  // Filter upcoming deliveries based on current filter settings
+  const getFilteredDeliveries = () => {
+    if (!dashboardData.upcoming_deliveries) return [];
+    
+    return dashboardData.upcoming_deliveries.filter(delivery => {
+      // Filter by status
+      const statusMatch = deliveryFilter.status === 'all' || delivery.status === deliveryFilter.status;
+      
+      // Filter by urgency
+      let urgencyMatch = true;
+      if (deliveryFilter.urgency !== 'all') {
+        const deliveryDate = new Date(delivery.delivery_datetime);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+        const diffTime = deliveryDay.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        switch (deliveryFilter.urgency) {
+          case 'overdue':
+            urgencyMatch = diffDays < 0;
+            break;
+          case 'today':
+            urgencyMatch = diffDays === 0;
+            break;
+          case 'tomorrow':
+            urgencyMatch = diffDays === 1;
+            break;
+          case 'upcoming':
+            urgencyMatch = diffDays > 1 && diffDays <= 7;
+            break;
+          default:
+            urgencyMatch = true;
+        }
+      }
+      
+      return statusMatch && urgencyMatch;
+    });
+  };
 
   // My Store data state
   const [publishedFlavors, setPublishedFlavors] = useState([]);
@@ -74,6 +120,16 @@ export const Vendor = () => {
 
   // Drum management state
   const [drumReturnLoading, setDrumReturnLoading] = useState(null);
+  const [selectedReturnOrders, setSelectedReturnOrders] = useState([]); // For checkbox selection
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmModalData, setConfirmModalData] = useState({
+    title: '',
+    message: '',
+    onConfirm: null,
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    type: 'warning' // 'warning', 'danger', 'info'
+  });
   const [availableDrums, setAvailableDrums] = useState({
     small: 0,
     medium: 0,
@@ -102,15 +158,15 @@ export const Vendor = () => {
 
   // Drum prices (editable by vendor)
   const [drumPrices, setDrumPrices] = useState({
-    small: 500, // ₱500 per small drum
-    medium: 800, // ₱800 per medium drum
-    large: 1200, // ₱1200 per large drum
+    small: 0, // Default to 0 - vendor must set prices
+    medium: 0, // Default to 0 - vendor must set prices
+    large: 0, // Default to 0 - vendor must set prices
   });
   const [isEditingPrices, setIsEditingPrices] = useState(false);
   const [tempPrices, setTempPrices] = useState({
-    small: 500,
-    medium: 800,
-    large: 1200,
+    small: 0,
+    medium: 0,
+    large: 0,
   });
 
   // Delivery pricing state
@@ -160,6 +216,19 @@ export const Vendor = () => {
   const [selectedFlavorImages, setSelectedFlavorImages] = useState([]);
   const [selectedFlavorName, setSelectedFlavorName] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Drum setup validation modal state
+  const [showDrumSetupModal, setShowDrumSetupModal] = useState(false);
+  
+  // Order action modal states
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showDeclineReasonModal, setShowDeclineReasonModal] = useState(false);
+  const [showPrepareModal, setShowPrepareModal] = useState(false);
+  const [showReadyModal, setShowReadyModal] = useState(false);
+  const [showDeliveredModal, setShowDeliveredModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [declineReason, setDeclineReason] = useState('');
   
   // Flavor editing state
   const [editingFlavor, setEditingFlavor] = useState(null);
@@ -743,26 +812,102 @@ export const Vendor = () => {
      }
    };
 
-   // Decline order with reason
-   const declineOrderWithReason = (orderId) => {
-     // Show decline reason modal
-     const reason = prompt(
-       "Please provide a reason for declining this order:\n\n" +
-       "Common reasons:\n" +
-       "• No available containers/drums\n" +
-       "• Delivery date fully booked\n" +
-       "• Ingredient shortage\n" +
-       "• Store closed on requested date\n" +
-       "• Other (please specify)\n\n" +
-       "Enter your reason:"
-     );
-     
-     if (reason && reason.trim()) {
-       updateOrderStatus(orderId, 'cancelled', null, reason.trim());
-     } else if (reason !== null) {
-       alert('Please provide a reason for declining the order.');
-     }
-   };
+  // Decline order with reason
+  const declineOrderWithReason = (orderId) => {
+    const order = vendorOrders.find(o => o.order_id === orderId);
+    setSelectedOrder(order);
+    setDeclineReason('');
+    setShowDeclineReasonModal(true);
+  };
+
+  // Handle decline reason submission
+  const handleDeclineReasonSubmit = () => {
+    if (!declineReason.trim()) {
+      alert('Please provide a reason for declining the order.');
+      return;
+    }
+    
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.order_id, 'cancelled', null, declineReason.trim());
+      setShowDeclineReasonModal(false);
+      setSelectedOrder(null);
+      setDeclineReason('');
+    }
+  };
+
+  // Handle approve order action
+  const handleApproveOrder = (order) => {
+    setSelectedOrder(order);
+    setShowApproveModal(true);
+  };
+
+  // Handle reject order action
+  const handleRejectOrder = (order) => {
+    setSelectedOrder(order);
+    setShowRejectModal(true);
+  };
+
+  // Confirm approve order
+  const confirmApproveOrder = () => {
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.order_id, 'confirmed');
+      setShowApproveModal(false);
+      setSelectedOrder(null);
+    }
+  };
+
+  // Confirm reject order
+  const confirmRejectOrder = () => {
+    if (selectedOrder) {
+      declineOrderWithReason(selectedOrder.order_id);
+      setShowRejectModal(false);
+    }
+  };
+
+  // Handle prepare order
+  const handlePrepareOrder = (order) => {
+    setSelectedOrder(order);
+    setShowPrepareModal(true);
+  };
+
+  // Confirm prepare order
+  const confirmPrepareOrder = () => {
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.order_id, 'preparing');
+      setShowPrepareModal(false);
+      setSelectedOrder(null);
+    }
+  };
+
+  // Handle ready for delivery
+  const handleReadyOrder = (order) => {
+    setSelectedOrder(order);
+    setShowReadyModal(true);
+  };
+
+  // Confirm ready for delivery
+  const confirmReadyOrder = () => {
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.order_id, 'out_for_delivery');
+      setShowReadyModal(false);
+      setSelectedOrder(null);
+    }
+  };
+
+  // Handle mark as delivered
+  const handleDeliveredOrder = (order) => {
+    setSelectedOrder(order);
+    setShowDeliveredModal(true);
+  };
+
+  // Confirm mark as delivered
+  const confirmDeliveredOrder = () => {
+    if (selectedOrder) {
+      updateOrderStatus(selectedOrder.order_id, 'delivered');
+      setShowDeliveredModal(false);
+      setSelectedOrder(null);
+    }
+  };
 
    // Update order status (approve/decline)
    const updateOrderStatus = async (orderId, newStatus, previousStatus = null, declineReason = null) => {
@@ -837,10 +982,18 @@ export const Vendor = () => {
 
   // Handle drum return pickup
   const handleDrumReturnPickup = async (orderId) => {
-    if (!window.confirm('Mark this container as picked up? This will update the status to "returned".')) {
-      return;
-    }
+    showConfirmModalDialog(
+      'Mark Container as Returned',
+      'Mark this container as returned? This will update the status to "returned".',
+      () => confirmDrumReturnPickup(orderId),
+      'Mark as Returned',
+      'Cancel',
+      'warning'
+    );
+  };
 
+  const confirmDrumReturnPickup = async (orderId) => {
+    setShowConfirmModal(false);
     setDrumReturnLoading(orderId);
     
     try {
@@ -874,6 +1027,179 @@ export const Vendor = () => {
 
   const getTotalDrums = () => {
     return availableDrums.small + availableDrums.medium + availableDrums.large;
+  };
+
+  // Show confirmation modal
+  const showConfirmModalDialog = (title, message, onConfirm, confirmText = 'Confirm', cancelText = 'Cancel', type = 'warning') => {
+    setConfirmModalData({
+      title,
+      message,
+      onConfirm,
+      confirmText,
+      cancelText,
+      type
+    });
+    setShowConfirmModal(true);
+  };
+
+  // Handle bulk marking containers as returned
+  const handleBulkMarkReturned = async () => {
+    const containerReturnOrders = vendorOrders.filter(order => 
+      order.drum_status === 'not returned' || order.drum_status === 'return_requested'
+    );
+
+    if (containerReturnOrders.length === 0) {
+      updateStatus("info", "No containers are currently pending return.");
+      return;
+    }
+
+    showConfirmModalDialog(
+      'Mark All Containers as Returned',
+      `Mark ${containerReturnOrders.length} containers as returned? This will update their status to "returned".`,
+      () => confirmBulkMarkReturned(),
+      'Mark All as Returned',
+      'Cancel',
+      'warning'
+    );
+  };
+
+  const confirmBulkMarkReturned = async () => {
+    setShowConfirmModal(false);
+    setDrumReturnLoading('bulk');
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Get container return orders
+      const containerReturnOrders = vendorOrders.filter(order => 
+        order.drum_status === 'not returned' || order.drum_status === 'return_requested'
+      );
+
+      // Process each order individually
+      for (const order of containerReturnOrders) {
+        try {
+          const response = await axios.post(`${apiBase}/api/orders/${order.order_id}/drum-return`, {
+            drum_status: 'returned',
+            return_requested_at: new Date().toISOString()
+          });
+          
+          if (response.data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Error updating order ${order.order_id}:`, error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        updateStatus("success", `Successfully marked ${successCount} containers as returned!`);
+        // Refresh orders to show updated status
+        fetchVendorOrders();
+        setSelectedReturnOrders([]); // Clear selection
+      }
+      
+      if (errorCount > 0) {
+        updateStatus("error", `Failed to update ${errorCount} containers. Please try again.`);
+      }
+    } catch (error) {
+      console.error('Error in bulk mark returned:', error);
+      updateStatus("error", "Failed to mark containers as returned. Please try again.");
+    } finally {
+      setDrumReturnLoading(null);
+    }
+  };
+
+  // Handle marking selected containers as returned
+  const handleMarkSelectedReturned = async () => {
+    if (selectedReturnOrders.length === 0) {
+      updateStatus("info", "Please select containers to mark as returned.");
+      return;
+    }
+
+    showConfirmModalDialog(
+      'Mark Selected Containers as Returned',
+      `Mark ${selectedReturnOrders.length} selected container(s) as returned?`,
+      () => confirmMarkSelectedReturned(),
+      'Mark Selected',
+      'Cancel',
+      'warning'
+    );
+  };
+
+  const confirmMarkSelectedReturned = async () => {
+    setShowConfirmModal(false);
+    setDrumReturnLoading('selected');
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Process each selected order
+      for (const orderId of selectedReturnOrders) {
+        try {
+          const response = await axios.post(`${apiBase}/api/orders/${orderId}/drum-return`, {
+            drum_status: 'returned',
+            return_requested_at: new Date().toISOString()
+          });
+          
+          if (response.data.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          console.error(`Error updating order ${orderId}:`, error);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        updateStatus("success", `Successfully marked ${successCount} container(s) as returned!`);
+        // Refresh orders to show updated status
+        fetchVendorOrders();
+        setSelectedReturnOrders([]); // Clear selection
+      }
+      
+      if (errorCount > 0) {
+        updateStatus("error", `Failed to update ${errorCount} container(s). Please try again.`);
+      }
+    } catch (error) {
+      console.error('Error in mark selected returned:', error);
+      updateStatus("error", "Failed to mark containers as returned. Please try again.");
+    } finally {
+      setDrumReturnLoading(null);
+    }
+  };
+
+  // Toggle container selection
+  const handleToggleReturnSelection = (orderId) => {
+    setSelectedReturnOrders(prev => {
+      if (prev.includes(orderId)) {
+        return prev.filter(id => id !== orderId);
+      } else {
+        return [...prev, orderId];
+      }
+    });
+  };
+
+  // Select all containers for return
+  const handleSelectAllReturns = () => {
+    const containerReturnOrders = vendorOrders.filter(order => 
+      order.drum_status === 'not returned' || order.drum_status === 'return_requested'
+    );
+    const allOrderIds = containerReturnOrders.map(order => order.order_id);
+    
+    if (selectedReturnOrders.length === allOrderIds.length) {
+      setSelectedReturnOrders([]); // Deselect all
+    } else {
+      setSelectedReturnOrders(allOrderIds); // Select all
+    }
   };
 
   const handleImageUpload = (event) => {
@@ -1134,6 +1460,15 @@ export const Vendor = () => {
 
     if (!currentVendor?.vendor_id) {
       updateStatus("error", "Vendor information not available");
+      return;
+    }
+
+    // Check if drum inventory and prices are set before allowing flavor save
+    const hasDrumInventory = availableDrums.small > 0 || availableDrums.medium > 0 || availableDrums.large > 0;
+    const hasDrumPrices = drumPrices.small > 0 || drumPrices.medium > 0 || drumPrices.large > 0;
+    
+    if (!hasDrumInventory || !hasDrumPrices) {
+      setShowDrumSetupModal(true);
       return;
     }
 
@@ -1678,7 +2013,13 @@ export const Vendor = () => {
           "error",
           response.data.message || "Failed to update profile"
         );
-      }
+        }
+        
+        // Navigate to notifications view
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        });
     } catch (error) {
       console.error("Error updating profile:", error);
       updateStatus("error", "Failed to update profile. Please try again.");
@@ -1936,31 +2277,60 @@ export const Vendor = () => {
             <div className="p-8 pt-28">
               <div className="max-w-6xl mx-auto">
               {/* Header */}
-              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
-                        Vendor Settings
-                      </h1>
-                      <p className="text-gray-600 mt-2">
-                        Manage your store information and preferences
-                      </p>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-100 p-8 mb-8">
+                <div className="flex items-center space-x-6">
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
+                    <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="flex-1">
+                    
                     {currentVendor && (
-                      <div className="mt-2">
-                        <p className="text-sm text-blue-600">
-                            Store: {currentVendor.store_name} | Owner:{" "}
-                            {currentVendor.fname}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                            Contact:{" "}
-                            {currentVendor.contact_no || "Not provided"} |
-                            Email: {currentVendor.email}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-700">Store Information</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">{currentVendor.store_name}</span>
                           </p>
-                          <p className="text-xs text-gray-500">
-                            User ID: {currentVendor.user_id} | Vendor ID:{" "}
-                            {currentVendor.vendor_id} | Status:{" "}
-                            {currentVendor.status}
-                        </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Owner: {currentVendor.fname} | Status: 
+                            <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              currentVendor.status === 'active' 
+                                ? 'bg-green-100 text-green-800' 
+                                : currentVendor.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {currentVendor.status}
+                            </span>
+                          </p>
+                        </div>
+                        
+                        <div className="bg-white/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-700">Contact Details</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {currentVendor.email}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {currentVendor.contact_no || "Contact not provided"}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1986,23 +2356,35 @@ export const Vendor = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Settings Sidebar */}
                 <div className="lg:col-span-1">
-                  <div className="bg-white rounded-lg shadow-sm p-4">
-                    <nav className="space-y-2">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 sticky top-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Settings
+                    </h3>
+                    <nav className="space-y-3">
                       {settingsTabs.map((tab) => (
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                          className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center ${
                             activeTab === tab.id
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                : "text-gray-600 hover:bg-gray-50"
+                                ? "bg-orange-300 text-gray-900 border border-orange-400 shadow-sm transform scale-[1.02]"
+                                : "text-gray-600 hover:bg-orange-100 hover:text-gray-900 hover:shadow-sm"
                           }`}
                         >
-                          <span className="mr-3">{tab.icon}</span>
-                          {tab.label}
+                          <span className="text-xl mr-3">{tab.icon}</span>
+                          <span className="font-medium">{tab.label}</span>
+                          {activeTab === tab.id && (
+                            <svg className="w-4 h-4 ml-auto text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
                         </button>
                       ))}
                     </nav>
@@ -2011,7 +2393,7 @@ export const Vendor = () => {
 
                 {/* Settings Content */}
                 <div className="lg:col-span-3">
-                  <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
                     {/* Profile Tab */}
                       {activeTab === "profile" && (
                       <div>
@@ -2020,58 +2402,88 @@ export const Vendor = () => {
                           </h2>
                         <div className="space-y-6">
                           {/* Profile Image Upload Section */}
-                          <div className="bg-gray-50 rounded-lg p-6">
-                              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
+                              <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                                <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
                                 Profile Picture
                               </h3>
-                            <div className="flex items-center space-x-6">
+                            <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
                               {/* Current/Preview Image */}
                               <div className="flex-shrink-0">
-                                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                                  {profileImagePreview ? (
-                                    <img 
-                                      src={profileImagePreview} 
-                                      alt="Profile preview" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                      <svg
-                                        className="w-12 h-12 text-gray-400"
-                                        fill="currentColor"
-                                        viewBox="0 0 20 20"
-                                      >
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                                          clipRule="evenodd"
-                                        />
-                                    </svg>
+                                <div className="relative">
+                                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-lg border-4 border-white flex items-center justify-center">
+                                    {profileImagePreview ? (
+                                      <img 
+                                        src={profileImagePreview} 
+                                        alt="Profile preview" 
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                        <svg
+                                          className="w-16 h-16 text-gray-400"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                                            clipRule="evenodd"
+                                          />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  {profileImagePreview && (
+                                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
                                   )}
                                 </div>
                               </div>
                               
                               {/* Upload Button */}
-                              <div className="flex-1">
-                                <label className="block">
+                              <div className="flex-1 text-center md:text-left">
+                                <label className="block cursor-pointer">
                                     <span className="sr-only">
                                       Choose profile photo
                                     </span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleProfileImageChange}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                  />
+                                  <div className="bg-white rounded-xl p-6 border-2 border-dashed border-orange-300 hover:border-orange-500 transition-colors duration-200">
+                                    <div className="text-center">
+                                      <svg className="mx-auto h-12 w-12 text-orange-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                      </svg>
+                                      <div className="flex justify-center">
+                                        <span className="bg-orange-300 text-gray-900 px-6 py-2 rounded-lg font-medium hover:bg-orange-400 transition-colors duration-200">
+                                          Choose File
+                                        </span>
+                                      </div>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleProfileImageChange}
+                                        className="hidden"
+                                      />
+                                    </div>
+                                  </div>
                                 </label>
-                                <p className="mt-2 text-sm text-gray-500">
-                                  JPG, PNG or GIF. Max size 20MB.
-                                </p>
-                                {newProfileImage && (
-                                  <p className="mt-1 text-sm text-green-600">
-                                      ✓ New image selected:{" "}
-                                      {newProfileImage.name}
+                                <div className="mt-4 space-y-2">
+                                  <p className="text-sm text-gray-600">
+                                    JPG, PNG or GIF. Max size 20MB.
                                   </p>
-                                )}
+                                  {newProfileImage && (
+                                    <div className="flex items-center justify-center md:justify-start space-x-2">
+                                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <p className="text-sm text-green-600 font-medium">
+                                        New image selected: {newProfileImage.name}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -2151,7 +2563,7 @@ export const Vendor = () => {
                           <div className="flex justify-end">
                             <button 
                               onClick={handleSaveProfile}
-                              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                              className="bg-orange-300 text-gray-900 px-6 py-3 rounded-lg hover:bg-orange-400 transition-colors font-medium"
                             >
                               Save Profile
                             </button>
@@ -2183,7 +2595,7 @@ export const Vendor = () => {
                                   address_type: "business",
                               });
                             }}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            className="bg-orange-300 text-gray-900 px-4 py-2 rounded-lg hover:bg-orange-400 transition-colors"
                           >
                             + Add Store Address
                           </button>
@@ -2294,7 +2706,7 @@ export const Vendor = () => {
                               </button>
                               <button
                                 onClick={saveAddress}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                className="px-6 py-3 bg-orange-300 text-gray-900 rounded-lg hover:bg-orange-400 transition-colors"
                               >
                                   {editingAddress
                                     ? "Update Address"
@@ -2354,7 +2766,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
                                   >
                                     View Document
                                   </button>
@@ -2406,7 +2818,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
                                   >
                                     View Document
                                   </button>
@@ -2460,7 +2872,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
                                   >
                                     View Document
                                   </button>
@@ -2829,7 +3241,7 @@ export const Vendor = () => {
                         />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Total Products</p>
+                        <p className="text-sm text-gray-600">Total Flavors</p>
                         <p className="text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
@@ -2906,9 +3318,81 @@ export const Vendor = () => {
                          Upcoming Deliveries
                        </h3>
                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                         {dashboardData.upcoming_deliveries?.length || 0} orders
+                         {getFilteredDeliveries().length} orders
                        </span>
                      </div>
+                     
+                     {/* Filter Controls */}
+                     <div className="mb-4 flex flex-wrap gap-3">
+                       {/* Status Filter */}
+                       <div className="flex items-center space-x-2">
+                         <label className="text-sm font-medium text-gray-700">Status:</label>
+                         <select
+                           value={deliveryFilter.status}
+                           onChange={(e) => setDeliveryFilter(prev => ({ ...prev, status: e.target.value }))}
+                           className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                         >
+                           <option value="all">All Status</option>
+                           <option value="confirmed">Confirmed</option>
+                           <option value="preparing">Preparing</option>
+                           <option value="out_for_delivery">Out for Delivery</option>
+                         </select>
+                       </div>
+                       
+                       {/* Urgency Filter */}
+                       <div className="flex items-center space-x-2">
+                         <label className="text-sm font-medium text-gray-700">Urgency:</label>
+                         <select
+                           value={deliveryFilter.urgency}
+                           onChange={(e) => setDeliveryFilter(prev => ({ ...prev, urgency: e.target.value }))}
+                           className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                         >
+                           <option value="all">All Time</option>
+                           <option value="overdue">Overdue</option>
+                           <option value="today">Today</option>
+                           <option value="tomorrow">Tomorrow</option>
+                           <option value="upcoming">This Week</option>
+                         </select>
+                       </div>
+                       
+                       {/* Clear Filters */}
+                       {(deliveryFilter.status !== 'all' || deliveryFilter.urgency !== 'all') && (
+                         <button
+                           onClick={() => setDeliveryFilter({ status: 'all', urgency: 'all' })}
+                           className="text-sm text-blue-600 hover:text-blue-800 underline font-medium"
+                         >
+                           Clear Filters
+                         </button>
+                       )}
+                     </div>
+                     
+                     {/* Active Filter Indicators */}
+                     {(deliveryFilter.status !== 'all' || deliveryFilter.urgency !== 'all') && (
+                       <div className="mb-3 flex flex-wrap gap-2">
+                         {deliveryFilter.status !== 'all' && (
+                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                             Status: {deliveryFilter.status.charAt(0).toUpperCase() + deliveryFilter.status.slice(1).replace('_', ' ')}
+                             <button
+                               onClick={() => setDeliveryFilter(prev => ({ ...prev, status: 'all' }))}
+                               className="ml-1 text-blue-600 hover:text-blue-800"
+                             >
+                               ×
+                             </button>
+                           </span>
+                         )}
+                         {deliveryFilter.urgency !== 'all' && (
+                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                             Urgency: {deliveryFilter.urgency.charAt(0).toUpperCase() + deliveryFilter.urgency.slice(1)}
+                             <button
+                               onClick={() => setDeliveryFilter(prev => ({ ...prev, urgency: 'all' }))}
+                               className="ml-1 text-green-600 hover:text-green-800"
+                             >
+                               ×
+                             </button>
+                           </span>
+                         )}
+                       </div>
+                     )}
                      
                      {dashboardLoading ? (
                        <div className="space-y-3">
@@ -2918,9 +3402,9 @@ export const Vendor = () => {
                            </div>
                          ))}
                        </div>
-                     ) : dashboardData.upcoming_deliveries && dashboardData.upcoming_deliveries.length > 0 ? (
+                     ) : getFilteredDeliveries().length > 0 ? (
                        <div className="space-y-3 max-h-80 overflow-y-auto">
-                         {dashboardData.upcoming_deliveries.map((delivery) => {
+                         {getFilteredDeliveries().map((delivery) => {
                            const deliveryDate = new Date(delivery.delivery_datetime);
                            const now = new Date();
                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3012,10 +3496,16 @@ export const Vendor = () => {
                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                              </svg>
                              <span className="text-sm text-gray-500">
-                               No upcoming deliveries
+                               {dashboardData.upcoming_deliveries?.length === 0 
+                                 ? 'No upcoming deliveries' 
+                                 : 'No deliveries match your current filters'
+                               }
                              </span>
                              <p className="text-xs text-gray-400 mt-1">
-                               Approved orders with delivery dates will appear here
+                               {dashboardData.upcoming_deliveries?.length === 0
+                                 ? 'Approved orders with delivery dates will appear here'
+                                 : 'Try adjusting your filter settings or clear all filters'
+                               }
                              </p>
                            </div>
                          </div>
@@ -4141,6 +4631,68 @@ export const Vendor = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Container Returns Bulk Action */}
+                    {orderFilter === 'drum_return' && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="text-orange-800 font-medium mb-1">📦 Container Returns Management</h4>
+                            <p className="text-orange-700 text-sm">
+                              Select specific containers or mark all as returned
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {selectedReturnOrders.length > 0 && (
+                              <span className="text-sm font-medium text-orange-700 bg-orange-100 px-3 py-1 rounded-full">
+                                {selectedReturnOrders.length} selected
+                              </span>
+                            )}
+                            <button 
+                              onClick={() => handleSelectAllReturns()}
+                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2 text-sm"
+                            >
+                              <span>{selectedReturnOrders.length === vendorOrders.filter(o => o.drum_status === 'not returned' || o.drum_status === 'return_requested').length ? '☑️' : '☐'}</span>
+                              <span>Select All</span>
+                            </button>
+                            <button 
+                              onClick={() => handleMarkSelectedReturned()}
+                              disabled={drumReturnLoading === 'selected' || selectedReturnOrders.length === 0}
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                            >
+                              {drumReturnLoading === 'selected' ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Processing...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>✅</span>
+                                  <span>Mark Selected</span>
+                                </>
+                              )}
+                            </button>
+                            <button 
+                              onClick={() => handleBulkMarkReturned()}
+                              disabled={drumReturnLoading === 'bulk'}
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                            >
+                              {drumReturnLoading === 'bulk' ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Processing...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>✅</span>
+                                  <span>Mark All</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Orders List */}
@@ -4511,21 +5063,13 @@ export const Vendor = () => {
                           {order.status === 'pending' && (
                             <div className="flex space-x-4">
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Approve Order #${order.order_id}?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nThis will allow the customer to proceed with payment.`)) {
-                                    updateOrderStatus(order.order_id, 'confirmed');
-                                  }
-                                }}
+                                onClick={() => handleApproveOrder(order)}
                                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
                               >
                                 ✅ Approve Order
                               </button>
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Decline Order #${order.order_id}?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nThis action cannot be easily undone. The customer will be notified.`)) {
-                                    declineOrderWithReason(order.order_id);
-                                  }
-                                }}
+                                onClick={() => handleRejectOrder(order)}
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
                               >
                                 ❌ Decline Order
@@ -4549,11 +5093,7 @@ export const Vendor = () => {
                                 Customer has paid. You can now start preparing the ice cream.
                               </p>
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Start preparing ice cream for Order #${order.order_id}?\n\nThis will notify the customer that their order is being prepared.`)) {
-                                    updateOrderStatus(order.order_id, 'preparing');
-                                  }
-                                }}
+                                onClick={() => handlePrepareOrder(order)}
                                 className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
                               >
                                 🍦 Start Preparing Ice Cream
@@ -4568,11 +5108,7 @@ export const Vendor = () => {
                                 Ice cream is being prepared. Mark as ready for delivery when finished.
                               </p>
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Mark Order #${order.order_id} as ready for delivery?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAddress: ${order.delivery_address}\n\nThis will notify the customer that their order is on the way.`)) {
-                                    updateOrderStatus(order.order_id, 'out_for_delivery');
-                                  }
-                                }}
+                                onClick={() => handleReadyOrder(order)}
                                 className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
                               >
                                 🚚 Ready for Delivery
@@ -4587,11 +5123,7 @@ export const Vendor = () => {
                                 Order is on the way to customer. Mark as delivered when completed.
                               </p>
                               <button
-                                onClick={() => {
-                                  if (window.confirm(`Mark Order #${order.order_id} as delivered?\n\nCustomer: ${order.customer_fname} ${order.customer_lname}\nAmount: ₱${parseFloat(order.total_amount).toFixed(2)}\n\nConfirm that the order has been successfully delivered to the customer.`)) {
-                                    updateOrderStatus(order.order_id, 'delivered');
-                                  }
-                                }}
+                                onClick={() => handleDeliveredOrder(order)}
                                 className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
                               >
                                 ✅ Mark as Delivered
@@ -4611,17 +5143,26 @@ export const Vendor = () => {
                               {/* Container Return Section */}
                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-3">
+                                  {orderFilter === 'drum_return' && (order.drum_status === 'not returned' || order.drum_status === 'return_requested') && (
+                                    <div className="flex items-center mr-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedReturnOrders.includes(order.order_id)}
+                                        onChange={() => handleToggleReturnSelection(order.order_id)}
+                                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                      />
+                                    </div>
+                                  )}
                                   <div>
                                     <h3 className="text-blue-800 font-medium mb-1">📦 Container Return Status</h3>
                                     <p className="text-blue-700 text-sm">
-                                      {order.drum_status === 'in use' && 'Container is currently in use by customer'}
-                                      {order.drum_status === 'not returned' && 'Customer has requested container return - waiting for pickup'}
+                                      {(order.drum_status === 'in_use' || order.drum_status === 'in use' || !order.drum_status) && 'Container is currently in use by customer'}
+                                      {(order.drum_status === 'not returned' || order.drum_status === 'return_requested') && 'Customer has requested container return - waiting for pickup'}
                                       {order.drum_status === 'returned' && 'Container has been successfully returned'}
-                                      {!order.drum_status && 'Container status unknown'}
                                     </p>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    {order.drum_status === 'not returned' && (
+                                    {(order.drum_status === 'not returned' || order.drum_status === 'return_requested') && (
                                       <button 
                                         onClick={() => handleDrumReturnPickup(order.order_id)}
                                         disabled={drumReturnLoading === order.order_id}
@@ -4645,10 +5186,29 @@ export const Vendor = () => {
                                         ✅ Container Returned
                                       </span>
                                     )}
-                                    {order.drum_status === 'in use' && (
-                                      <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
-                                        📦 In Use
-                                      </span>
+                                    {(order.drum_status === 'in_use' || order.drum_status === 'in use' || !order.drum_status) && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                                          📦 In Use
+                                        </span>
+                                        <button 
+                                          onClick={() => handleDrumReturnPickup(order.order_id)}
+                                          disabled={drumReturnLoading === order.order_id}
+                                          className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 text-sm"
+                                        >
+                                          {drumReturnLoading === order.order_id ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                                              <span>Updating...</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span>✅</span>
+                                              <span>Mark as Returned</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
@@ -5295,6 +5855,46 @@ export const Vendor = () => {
         </div>
       )}
 
+      {/* Drum Setup Validation Modal */}
+      {showDrumSetupModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
+                <svg className="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Setup Required
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Please set up your drum inventory and prices before uploading flavors. Go to the "Inventory" tab to configure your drums first.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowDrumSetupModal(false)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDrumSetupModal(false);
+                    setActiveView("inventory");
+                    // Auto scroll to top to show inventory section
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex-1 bg-orange-300 hover:bg-orange-4 00 text-black font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Go to Inventory
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirmOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -5323,6 +5923,334 @@ export const Vendor = () => {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                 >
                   Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Order Modal */}
+      {showApproveModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Approve Order #{selectedOrder.order_id}
+              </h3>
+              <div className="text-left text-sm text-gray-600 mb-6 space-y-2">
+                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+                <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                <p className="text-gray-500 mt-3">
+                  This will allow the customer to proceed with payment.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowApproveModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmApproveOrder}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Approve Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Order Modal */}
+      {showRejectModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Decline Order #{selectedOrder.order_id}
+              </h3>
+              <div className="text-left text-sm text-gray-600 mb-6 space-y-2">
+                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+                <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                <p className="text-red-600 mt-3 font-medium">
+                  This action cannot be easily undone. The customer will be notified.
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRejectOrder}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Decline Order
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Decline Reason Modal */}
+      {showDeclineReasonModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Decline Order #{selectedOrder.order_id}
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Please provide a reason for declining this order:
+              </p>
+              
+              <div className="text-left text-xs text-gray-500 mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium mb-2">Common reasons:</p>
+                <ul className="space-y-1">
+                  <li>• No available containers/drums</li>
+                  <li>• Delivery date fully booked</li>
+                  <li>• Ingredient shortage</li>
+                  <li>• Store closed on requested date</li>
+                  <li>• Other (please specify)</li>
+                </ul>
+              </div>
+              
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Enter your reason for declining this order..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                rows={4}
+                required
+              />
+              
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowDeclineReasonModal(false);
+                    setSelectedOrder(null);
+                    setDeclineReason('');
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeclineReasonSubmit}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Submit Decline
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prepare Order Confirmation Modal */}
+      {showPrepareModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Start Preparing Order #{selectedOrder.order_id}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                This will notify the customer that their ice cream is being prepared. Are you ready to start?
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowPrepareModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmPrepareOrder}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Start Preparing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ready for Delivery Confirmation Modal */}
+      {showReadyModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
+                <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Ready for Delivery - Order #{selectedOrder.order_id}
+              </h3>
+              <div className="text-sm text-gray-600 mb-4 text-left bg-gray-50 p-3 rounded-lg">
+                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+                <p><strong>Address:</strong> {selectedOrder.delivery_address}</p>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">
+                This will notify the customer that their order is on the way.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowReadyModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReadyOrder}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Ready for Delivery
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Delivered Confirmation Modal */}
+      {showDeliveredModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Mark as Delivered - Order #{selectedOrder.order_id}
+              </h3>
+              <div className="text-sm text-gray-600 mb-4 text-left bg-gray-50 p-3 rounded-lg">
+                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+                <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">
+                Confirm that the order has been successfully delivered to the customer.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeliveredModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeliveredOrder}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  Mark as Delivered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                confirmModalData.type === 'danger' ? 'bg-red-100' : 
+                confirmModalData.type === 'info' ? 'bg-blue-100' : 
+                'bg-yellow-100'
+              }`}>
+                {confirmModalData.type === 'danger' ? (
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                ) : confirmModalData.type === 'info' ? (
+                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {confirmModalData.title}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {confirmModalData.message}
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  {confirmModalData.cancelText}
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmModalData.onConfirm) {
+                      confirmModalData.onConfirm();
+                    }
+                  }}
+                  className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ${
+                    confirmModalData.type === 'danger' 
+                      ? 'bg-red-600 hover:bg-red-700 text-white' 
+                      : confirmModalData.type === 'info'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                  }`}
+                >
+                  {confirmModalData.confirmText}
                 </button>
               </div>
             </div>

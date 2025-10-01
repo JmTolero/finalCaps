@@ -266,10 +266,17 @@ export const Checkout = () => {
     
     return items.reduce((groups, item) => {
       const vendorId = item.vendor_id;
+      
+      // Skip items with invalid vendor_id
+      if (!vendorId || vendorId === null || vendorId === undefined) {
+        console.warn('Skipping item with invalid vendor_id:', item);
+        return groups;
+      }
+      
       if (!groups[vendorId]) {
         groups[vendorId] = {
           vendor_id: vendorId,
-          vendor_name: item.vendor_name,
+          vendor_name: item.vendor_name || 'Unknown Vendor',
           items: [],
           total_price: 0
         };
@@ -369,8 +376,22 @@ export const Checkout = () => {
       
       setShowReceipt(false);
       
-      // Navigate directly to customer dashboard
-      navigate('/customer');
+      // Prepare order details for confirmation page
+      const orderDetails = {
+        vendorName: orderData.vendorName,
+        totalAmount: getTotalAmount(),
+        deliveryAddress: deliveryAddress || userAddress,
+        deliveryDateTime: deliveryDateTime,
+        orderId: Array.isArray(savedOrderId) ? savedOrderId[0] : savedOrderId
+      };
+      
+      // Save order details to session storage for confirmation page
+      sessionStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+      
+      // Navigate to order confirmation page
+      navigate('/order-confirmation', { 
+        state: { orderDetails } 
+      });
     } catch (error) {
       console.error('Error saving order:', error);
       setShowReceipt(false);
@@ -597,8 +618,8 @@ ${orderData.items?.map(item =>
 
 ${orderData?.fromCart ? 
   Object.entries(vendorDeliveryFees).map(([vendorId, fee]) => {
-    const vendorGroup = groupedVendors.find(vg => vg.vendor_id.toString() === vendorId);
-    return fee > 0 ? `${vendorGroup?.vendor_name} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name} Delivery: Free`;
+    const vendorGroup = groupedVendors.find(vg => vg.vendor_id && vg.vendor_id.toString() === vendorId);
+    return fee > 0 ? `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: Free`;
   }).join('\n') :
   (deliveryPrice > 0 ? `Delivery Fee: ₱${deliveryPrice.toFixed(2)}` : '')
 }
@@ -658,8 +679,8 @@ ${orderData.items?.map(item =>
 
 ${orderData?.fromCart ? 
   Object.entries(vendorDeliveryFees).map(([vendorId, fee]) => {
-    const vendorGroup = groupedVendors.find(vg => vg.vendor_id.toString() === vendorId);
-    return fee > 0 ? `${vendorGroup?.vendor_name} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name} Delivery: Free`;
+    const vendorGroup = groupedVendors.find(vg => vg.vendor_id && vg.vendor_id.toString() === vendorId);
+    return fee > 0 ? `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: Free`;
   }).join('\n') :
   (deliveryPrice > 0 ? `Delivery Fee: ₱${deliveryPrice.toFixed(2)}` : '')
 }
@@ -993,7 +1014,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               </div>
               <button
                 onClick={handleNext}
-                className="px-8 py-3 text-white rounded-lg font-medium hover:opacity-80 transition-colors"
+                className="px-8 py-3 text-black rounded-lg font-medium hover:opacity-80 transition-colors"
                 style={{ backgroundColor: '#FFDDAE' }}
               >
                 Place Order
@@ -1087,10 +1108,10 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                     {orderData?.fromCart ? (
                       // Show delivery fees by vendor for cart checkout
                       Object.entries(vendorDeliveryFees).map(([vendorId, fee]) => {
-                        const vendorGroup = groupedVendors.find(vg => vg.vendor_id.toString() === vendorId);
+                        const vendorGroup = groupedVendors.find(vg => vg.vendor_id && vg.vendor_id.toString() === vendorId);
                         return (
                           <div key={vendorId} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{vendorGroup?.vendor_name} Delivery</span>
+                            <span className="text-gray-600">{vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery</span>
                             <span className="font-medium">{fee > 0 ? `₱${fee.toFixed(2)}` : 'Free'}</span>
                           </div>
                         );

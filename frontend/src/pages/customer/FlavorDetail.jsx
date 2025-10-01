@@ -25,7 +25,10 @@ export const FlavorDetail = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showReserveModal, setShowReserveModal] = useState(false);
   
   // Rating state
   const [ratings, setRatings] = useState([]);
@@ -123,16 +126,24 @@ export const FlavorDetail = () => {
       const response = await axios.get(`${apiBase}/api/flavors/${flavorId}`);
       
       if (response.data.success) {
+        console.log('🔍 API Response flavor:', response.data.flavor);
+        console.log('🔍 flavor_name from API:', response.data.flavor.flavor_name);
         setFlavor(response.data.flavor);
         
         // Parse and set images
+        console.log('🔍 flavor.image_url from API:', response.data.flavor.image_url);
         if (response.data.flavor.image_url) {
           try {
             const images = JSON.parse(response.data.flavor.image_url);
+            console.log('🔍 Parsed images:', images);
             setSelectedImages(Array.isArray(images) ? images : [images]);
           } catch (e) {
+            console.log('🔍 Failed to parse images, using raw image_url:', response.data.flavor.image_url);
             setSelectedImages([response.data.flavor.image_url]);
           }
+        } else {
+          console.log('🔍 No image_url found in flavor data');
+          setSelectedImages([]);
         }
       } else {
         setError('Flavor not found');
@@ -236,13 +247,21 @@ export const FlavorDetail = () => {
     if (!flavor) return;
     
     // Validate required fields
+    if (!deliveryDate && !deliveryTime) {
+      setValidationMessage('Please select both delivery date and time to proceed with booking.');
+      setShowValidationModal(true);
+      return;
+    }
+    
     if (!deliveryDate) {
-      alert('Please select a delivery date');
+      setValidationMessage('Please select a delivery date to proceed with booking.');
+      setShowValidationModal(true);
       return;
     }
     
     if (!deliveryTime) {
-      alert('Please select a delivery time');
+      setValidationMessage('Please select a delivery time to proceed with booking.');
+      setShowValidationModal(true);
       return;
     }
     
@@ -273,6 +292,12 @@ export const FlavorDetail = () => {
   const handleReserve = async () => {
     if (!flavor) return;
 
+    console.log('🔍 Debug flavor object:', flavor);
+    console.log('🔍 flavor.flavor_name:', flavor.flavor_name);
+    console.log('🔍 flavor.store_name:', flavor.store_name);
+    console.log('🔍 selectedImages:', selectedImages);
+    console.log('🔍 selectedImages[0]:', selectedImages[0]);
+
     const cartItem = {
       flavor_id: flavor.flavor_id,
       name: flavor.flavor_name,
@@ -285,8 +310,19 @@ export const FlavorDetail = () => {
       location: flavor.location
     };
 
+    console.log('🔍 Cart item created:', cartItem);
+    console.log('🔍 Flavor data vendor_id:', flavor.vendor_id);
+    console.log('🔍 Flavor data store_name:', flavor.store_name);
+    
+    // Validate vendor_id before adding to cart
+    if (!flavor.vendor_id || flavor.vendor_id === null || flavor.vendor_id === undefined) {
+      console.error('❌ Flavor has no vendor_id:', flavor);
+      alert('This product has missing vendor information and cannot be added to cart. Please contact support.');
+      return;
+    }
+
     await addToCart(cartItem);
-    alert(`Added ${quantity} ${selectedSize} ${flavor.flavor_name} to your cart!`);
+    setShowReserveModal(true);
   };
 
   const getPrice = () => {
@@ -305,10 +341,20 @@ export const FlavorDetail = () => {
   };
 
   const getAvailableDrums = () => {
-    if (!flavor || !flavor.drum_availability) return 0;
+    if (!flavor || !flavor.drum_availability) {
+      return 0;
+    }
     
-    // Get availability for the selected size
-    const availability = flavor.drum_availability[selectedSize];
+    // Get availability for the selected size - handle case sensitivity
+    let availability = flavor.drum_availability[selectedSize];
+    
+    // Fallback: try with different cases if not found
+    if (availability === undefined || availability === null) {
+      const lowerCase = selectedSize.toLowerCase();
+      const upperCase = selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1);
+      availability = flavor.drum_availability[lowerCase] || flavor.drum_availability[upperCase];
+    }
+    
     return availability || 0;
   };
 
@@ -640,12 +686,9 @@ export const FlavorDetail = () => {
                    <div className="flex justify-end space-x-4 pt-16">
                      <button 
                        onClick={handleReserve}
-                       className="px-8 py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                         className="px-8 py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors"
                      >
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-                       </svg>
-                       <span>Reserve</span>
+                       Reserve
                      </button>
                      <button 
                        onClick={handleBookNow}
@@ -688,13 +731,13 @@ export const FlavorDetail = () => {
               <div className="flex space-x-3">
                 <button 
                   onClick={() => navigate(`/vendor/${flavor.vendor_id}/store`)}
-                  className="px-6 py-2 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors"
+                  className="px-6 py-2 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors"
                 >
                   View Shop
                 </button>
                 <button 
                   onClick={() => setShowContactModal(true)}
-                  className="px-6 py-2 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors"
+                  className="px-6 py-2 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors"
                 >
                   Contact Shop
                 </button>
@@ -901,7 +944,7 @@ export const FlavorDetail = () => {
             <h2 className="text-2xl font-bold text-gray-800">Customer Reviews</h2>
             <button 
               onClick={() => setShowRatingModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
             >
               Rate This Flavor
             </button>
@@ -935,7 +978,7 @@ export const FlavorDetail = () => {
               <p className="text-gray-600 mb-4">Be the first to rate this flavor!</p>
               <button 
                 onClick={() => setShowRatingModal(true)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
               >
                 Rate This Flavor
               </button>
@@ -943,6 +986,89 @@ export const FlavorDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Validation Modal */}
+      {showValidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
+                <svg className="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Missing Information
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {validationMessage}
+              </p>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="w-full bg-orange-300 hover:bg-orange-400 text-black font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reserve Confirmation Modal */}
+      {showReserveModal && flavor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Item Reserved!</h2>
+                <button 
+                  onClick={() => setShowReserveModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Success Icon */}
+              <div className="text-center mb-6">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                  <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Successfully Added to Cart
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Added {quantity} {selectedSize} {flavor.flavor_name} to your cart!
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowReserveModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Continue Shopping
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReserveModal(false);
+                    navigate('/cart');
+                  }}
+                  className="flex-1 px-4 py-2 bg-orange-300 text-black rounded-lg font-medium hover:bg-orange-400 transition-colors"
+                >
+                  Go to Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

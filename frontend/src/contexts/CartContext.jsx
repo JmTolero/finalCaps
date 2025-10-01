@@ -157,10 +157,12 @@ export const CartProvider = ({ children }) => {
           size: item.size,
           quantity: item.quantity,
           price: parseFloat(item.price),
+          name: item.flavor_name,
           flavor_name: item.flavor_name,
           vendor_name: item.vendor_name,
           vendor_id: item.vendor_id,
-          cart_item_id: item.cart_item_id
+          cart_item_id: item.cart_item_id,
+          image_url: item.image_url
         }));
         
         dispatch({ type: CART_ACTIONS.LOAD_CART, payload: cartItems });
@@ -310,10 +312,12 @@ export const CartProvider = ({ children }) => {
           size: dbItem.size,
           quantity: dbItem.quantity,
           price: parseFloat(dbItem.price),
+          name: dbItem.flavor_name,
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
           vendor_id: dbItem.vendor_id,
-          cart_item_id: dbItem.cart_item_id
+          cart_item_id: dbItem.cart_item_id,
+          image_url: dbItem.image_url
         }));
         
         dispatch({ type: CART_ACTIONS.SYNC_CART, payload: cartItems });
@@ -364,10 +368,12 @@ export const CartProvider = ({ children }) => {
           size: dbItem.size,
           quantity: dbItem.quantity,
           price: parseFloat(dbItem.price),
+          name: dbItem.flavor_name,
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
           vendor_id: dbItem.vendor_id,
-          cart_item_id: dbItem.cart_item_id
+          cart_item_id: dbItem.cart_item_id,
+          image_url: dbItem.image_url
         }));
         
         dispatch({ type: CART_ACTIONS.SYNC_CART, payload: cartItems });
@@ -422,10 +428,12 @@ export const CartProvider = ({ children }) => {
           size: dbItem.size,
           quantity: dbItem.quantity,
           price: parseFloat(dbItem.price),
+          name: dbItem.flavor_name,
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
           vendor_id: dbItem.vendor_id,
-          cart_item_id: dbItem.cart_item_id
+          cart_item_id: dbItem.cart_item_id,
+          image_url: dbItem.image_url
         }));
         
         dispatch({ type: CART_ACTIONS.SYNC_CART, payload: cartItems });
@@ -503,10 +511,12 @@ export const CartProvider = ({ children }) => {
           size: dbItem.size,
           quantity: dbItem.quantity,
           price: parseFloat(dbItem.price),
+          name: dbItem.flavor_name,
           flavor_name: dbItem.flavor_name,
           vendor_name: dbItem.vendor_name,
           vendor_id: dbItem.vendor_id,
-          cart_item_id: dbItem.cart_item_id
+          cart_item_id: dbItem.cart_item_id,
+          image_url: dbItem.image_url
         }));
         
         dispatch({ type: CART_ACTIONS.SYNC_CART, payload: cartItems });
