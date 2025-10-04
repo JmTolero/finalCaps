@@ -218,12 +218,12 @@ const CustomerVendorMap = ({
 
   // Handle marker click
   const handleMarkerClick = (marker, mapMarker) => {
-    // Only call onVendorSelect if the prop is provided
+    // Call onVendorSelect with the clicked vendor data
     if (marker.vendorData && onVendorSelect) {
       onVendorSelect(marker.vendorData);
     }
 
-    // Add custom click handlers for vendor selection (only if onVendorSelect is provided)
+    // Add custom click handlers for vendor selection
     window.selectVendor = (vendorId) => {
       const vendor = vendors.find(v => v.id === vendorId);
       if (onVendorSelect) {

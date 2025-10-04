@@ -1771,14 +1771,20 @@ export const Customer = () => {
                     </div>
 
                     {/* Rating and Sold Count */}
-                    <div className="flex justify-between items-center">
-                      <StarRating 
-                        rating={parseFloat(flavor.average_rating) || 0}
-                        size="xs"
-                        showCount={true}
-                        totalRatings={flavor.total_ratings || 0}
-                      />
-                      <span className="text-xs text-gray-600 font-medium">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1">
+                        <StarRating 
+                          rating={parseFloat(flavor.average_rating) || 0}
+                          size="xs"
+                          showCount={false}
+                          totalRatings={0}
+                          showRating={false}
+                        />
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium">
+                          {parseFloat(flavor.average_rating || 0).toFixed(1)}
+                        </span>
+                      </div>
+                      <span className="text-xs sm:text-sm text-gray-600">
                         {flavor.sold_count || 0} sold
                       </span>
                     </div>

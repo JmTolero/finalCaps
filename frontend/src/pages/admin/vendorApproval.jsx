@@ -16,6 +16,14 @@ export const AdminVendorApproval = () => {
   const [selectedImageTitle, setSelectedImageTitle] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [previousVendorCount, setPreviousVendorCount] = useState(0);
+  
+  // Modal states for vendor approval/rejection
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(false);
 
   const fetchVendors = useCallback(async (showLoading = true) => {
     try {
@@ -60,7 +68,16 @@ export const AdminVendorApproval = () => {
     return () => clearInterval(interval);
   }, [fetchVendors]);
 
+  const showConfirmDialog = (vendor, status) => {
+    setSelectedVendor(vendor);
+    setPendingAction(status);
+    setShowConfirmModal(true);
+  };
+
   const updateVendorStatus = async (vendorId, newStatus) => {
+    setLoadingAction(true);
+    setShowConfirmModal(false);
+    
     try {
       const response = await axios.put(`http://localhost:3001/api/admin/vendors/${vendorId}/status`, {
         status: newStatus
@@ -73,13 +90,37 @@ export const AdminVendorApproval = () => {
             ? { ...vendor, status: newStatus }
             : vendor
         ));
-        alert('Vendor status updated successfully!');
+        setLoadingAction(false);
+        setShowSuccessModal(true);
+        
+        // Auto-hide success modal after 2 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setPendingAction(null);
+          setSelectedVendor(null);
+        }, 2000);
       } else {
-        alert('Failed to update vendor status');
+        setLoadingAction(false);
+        setShowErrorModal(true);
+        
+        // Auto-hide error modal after 3 seconds
+        setTimeout(() => {
+          setShowErrorModal(false);
+          setPendingAction(null);
+          setSelectedVendor(null);
+        }, 3000);
       }
     } catch (err) {
       console.error('Error updating vendor status:', err);
-      alert('Failed to update vendor status');
+      setLoadingAction(false);
+      setShowErrorModal(true);
+      
+      // Auto-hide error modal after 3 seconds
+      setTimeout(() => {
+        setShowErrorModal(false);
+        setPendingAction(null);
+        setSelectedVendor(null);
+      }, 3000);
     }
   };
 
@@ -171,8 +212,8 @@ export const AdminVendorApproval = () => {
   }
 
   return (
-    <main className="w-full py-6 sm:py-10 min-h-screen">
-      <div className="px-4 sm:px-6 lg:px-8">
+    <main className="w-full py-6 sm:py-10 min-h-screen overflow-x-hidden">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-full">
         <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Vendor Approval</h1>
       
       {/* Tabs */}
@@ -239,23 +280,11 @@ export const AdminVendorApproval = () => {
             <h2 className="text-lg sm:text-xl font-semibold">
               {activeTab === 'allVendors' ? 'All Vendors' : 'Registration Pending Approval'}
             </h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => fetchVendors(true)}
-                disabled={loading}
-                className="flex items-center space-x-1 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </button>
-              {lastUpdated && (
-                <span className="text-xs text-gray-500">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                </span>
-              )}
-            </div>
+            {lastUpdated && (
+              <span className="text-xs text-gray-500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
           </div>
           <span className="text-sm text-gray-500">
             {filteredVendors.length} {filteredVendors.length === 1 ? 'vendor' : 'vendors'}
@@ -286,57 +315,57 @@ export const AdminVendorApproval = () => {
         {!loading && !error && activeTab === 'allVendors' && (
           <>
             {/* Desktop/Tablet Table View - Shows on screens 768px+ */}
-            <div className="hidden md:block shadow-lg rounded-lg overflow-hidden w-full">
-              <div className="max-h-96 overflow-y-auto w-full">
-                <table className="w-full border-collapse bg-white">
+            <div className="hidden md:block shadow-lg rounded-lg overflow-hidden w-full max-w-full">
+              <div className="max-h-96 overflow-y-auto overflow-x-auto w-full">
+                <table className="w-full border-collapse bg-white min-w-max">
                   <thead className="bg-[#FFDDAE] sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-48">Vendor Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-48">Shop Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-64">Email</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-32">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-r border-orange-200 w-40">Registration Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 w-48">Actions</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-32">Vendor Name</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-32">Shop Name</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-40">Email</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-24">Status</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-28">Registration Date</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 w-36">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVendors.map((vendor) => (
                     <tr key={vendor.vendor_id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-48">
-                        <div className="text-sm font-medium text-gray-900 truncate">
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-32">
+                        <div className="text-xs font-medium text-gray-900 truncate">
                           {(vendor.fname || '') + ' ' + (vendor.lname || '')}
                         </div>
                       </td>
-                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-48">
-                        <div className="text-sm font-medium text-gray-900 truncate">{vendor.store_name || 'N/A'}</div>
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-32">
+                        <div className="text-xs font-medium text-gray-900 truncate">{vendor.store_name || 'N/A'}</div>
                       </td>
-                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-64">
-                        <div className="text-sm text-gray-600 truncate">{vendor.email || 'N/A'}</div>
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-40">
+                        <div className="text-xs text-gray-600 truncate">{vendor.email || 'N/A'}</div>
                       </td>
-                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-32">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(vendor.status)}`}>
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-24">
+                        <span className={`inline-flex items-center px-1 py-0.5 rounded-full text-xs font-medium ${getStatusColor(vendor.status)}`}>
                           {getStatusDisplayName(vendor.status)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 border-r border-gray-200 whitespace-nowrap w-40">
-                        <div className="text-sm text-gray-500">
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-28">
+                        <div className="text-xs text-gray-500">
                           {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap w-48">
-                        <div className="flex flex-col md:flex-row space-y-1 md:space-y-0 md:space-x-2">
+                      <td className="px-2 py-2 whitespace-nowrap w-36">
+                        <div className="flex flex-row space-x-1">
                           {(!vendor.status || vendor.status.toLowerCase() !== 'approved') && (
                             <button
-                              onClick={() => updateVendorStatus(vendor.vendor_id, 'approved')}
-                              className="px-2 md:px-3 py-1 bg-green-500 text-white text-xs md:text-sm rounded hover:bg-green-600"
+                              onClick={() => showConfirmDialog(vendor, 'approved')}
+                              className="px-1 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
                             >
                               Approve
                             </button>
                           )}
                           {(!vendor.status || vendor.status.toLowerCase() !== 'rejected') && (
                             <button
-                              onClick={() => updateVendorStatus(vendor.vendor_id, 'rejected')}
-                              className="px-2 md:px-3 py-1 bg-red-500 text-white text-xs md:text-sm rounded hover:bg-red-600"
+                              onClick={() => showConfirmDialog(vendor, 'rejected')}
+                              className="px-1 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
                             >
                               Reject
                             </button>
@@ -351,7 +380,7 @@ export const AdminVendorApproval = () => {
             </div>
 
             {/* Mobile Card View - Shows on screens below 768px */}
-            <div className="md:hidden max-h-96 overflow-y-auto space-y-4 pr-2">
+            <div className="md:hidden max-h-96 overflow-y-auto overflow-x-hidden space-y-4 pr-2 max-w-full">
               {filteredVendors.map((vendor) => (
                 <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
@@ -371,7 +400,7 @@ export const AdminVendorApproval = () => {
                     <div className="flex flex-row sm:flex-col space-x-2 sm:space-x-0 sm:space-y-2">
                       {(!vendor.status || vendor.status.toLowerCase() !== 'approved') && (
                         <button
-                          onClick={() => updateVendorStatus(vendor.vendor_id, 'approved')}
+                          onClick={() => showConfirmDialog(vendor, 'approved')}
                           className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 flex-1 sm:flex-none"
                         >
                           Approve
@@ -379,7 +408,7 @@ export const AdminVendorApproval = () => {
                       )}
                       {(!vendor.status || vendor.status.toLowerCase() !== 'rejected') && (
                         <button
-                          onClick={() => updateVendorStatus(vendor.vendor_id, 'rejected')}
+                          onClick={() => showConfirmDialog(vendor, 'rejected')}
                           className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 flex-1 sm:flex-none"
                         >
                           Reject
@@ -395,7 +424,7 @@ export const AdminVendorApproval = () => {
 
         {/* Requested Approval Tab Content */}
         {!loading && !error && activeTab === 'requestedApproval' && (
-          <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+          <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-4 pr-2 max-w-full">
             {filteredVendors.map((vendor) => (
               <div 
                 key={vendor.vendor_id} 
@@ -426,6 +455,11 @@ export const AdminVendorApproval = () => {
                       {vendor.business_permit_url && (
                         <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           📄 Business Permit Uploaded
+                        </span>
+                      )}
+                      {vendor.proof_image_url && (
+                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          📄 Proof Image Uploaded
                         </span>
                       )}
                     </div>
@@ -488,6 +522,109 @@ export const AdminVendorApproval = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmation Dialog */}
+      {showConfirmModal && selectedVendor && pendingAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+                pendingAction === 'approved' ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {pendingAction === 'approved' ? (
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {pendingAction === 'approved' ? 'Approve Vendor' : 'Reject Vendor'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {pendingAction === 'approved' 
+                    ? `Are you sure you want to approve ${selectedVendor.store_name || 'this vendor'}?` 
+                    : `Are you sure you want to reject ${selectedVendor.store_name || 'this vendor'}?`
+                  }
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setPendingAction(null);
+                  setSelectedVendor(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => updateVendorStatus(selectedVendor.vendor_id, pendingAction)}
+                disabled={loadingAction}
+                className={`px-4 py-2 text-white font-medium rounded transition-colors ${
+                  pendingAction === 'approved' 
+                    ? 'bg-green-500 hover:bg-green-600 disabled:bg-green-300' 
+                    : 'bg-red-500 hover:bg-red-600 disabled:bg-red-300'
+                }`}
+              >
+                {loadingAction ? 'Processing...' : `${pendingAction === 'approved' ? 'Confirm Approve' : 'Confirm Reject'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Success Message */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+            <p className="text-gray-600 mb-4">
+              Vendor {selectedVendor?.store_name || 'application'} {pendingAction === 'approved' ? 'approved' : 'rejected'} successfully!
+            </p>
+            <div className="animate-pulse text-sm text-green-600">
+              ✅ Status updated
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Error Message */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error!</h3>
+            <p className="text-gray-600 mb-4">Failed to update vendor status. Please try again.</p>
+            <button
+              onClick={() => {
+                setShowErrorModal(false);
+                setPendingAction(null);
+                setSelectedVendor(null);
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

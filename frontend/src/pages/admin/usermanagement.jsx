@@ -21,6 +21,13 @@ export const AdminUserManagement = () => {
     role: 'customer'
   });
 
+  // Modal states for user management actions
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [loadingAction, setLoadingAction] = useState(false);
+
   // Fetch users from API*
   useEffect(() => {
     fetchUsers();
@@ -45,6 +52,10 @@ export const AdminUserManagement = () => {
   };
 
   const updateUser = async (userId, userData) => {
+    setLoadingAction(true);
+    setShowEditModal(false);
+    setSelectedUser(null);
+    
     try {
       const response = await axios.put(`http://localhost:3001/api/admin/users/${userId}`, userData);
       
@@ -55,19 +66,43 @@ export const AdminUserManagement = () => {
             ? { ...user, ...userData }
             : user
         ));
-        alert('User updated successfully!');
-        setShowEditModal(false);
-        setSelectedUser(null);
+        setLoadingAction(false);
+        setSuccessMessage('User information updated successfully!');
+        setShowSuccessModal(true);
+        
+        // Auto-hide success modal after 3 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessMessage('');
+        }, 3000);
       } else {
-        alert('Failed to update user');
+        setLoadingAction(false);
+        setErrorMessage('Failed to update user information');
+        setShowErrorModal(true);
+        
+        // Auto-hide error modal after 5 seconds
+        setTimeout(() => {
+          setShowErrorModal(false);
+          setErrorMessage('');
+        }, 5000);
       }
     } catch (err) {
       console.error('Error updating user:', err);
-      alert(err.response?.data?.error || 'Failed to update user');
+      setLoadingAction(false);
+      setErrorMessage(err.response?.data?.error || 'Failed to update user information');
+      setShowErrorModal(true);
+      
+      // Auto-hide error modal after 5 seconds
+      setTimeout(() => {
+        setShowErrorModal(false);
+        setErrorMessage('');
+      }, 5000);
     }
   };
 
   const updateUserStatus = async (userId, status) => {
+    setLoadingAction(true);
+    
     try {
       const response = await axios.put(`http://localhost:3001/api/admin/users/${userId}/status`, { status });
       
@@ -82,13 +117,37 @@ export const AdminUserManagement = () => {
         if (selectedUser && selectedUser.user_id === userId) {
           setSelectedUser({ ...selectedUser, status: status });
         }
-        alert(`User status updated to ${status} successfully!`);
+        setLoadingAction(false);
+        setSuccessMessage(`User status updated to ${status.charAt(0).toUpperCase() + status.slice(1)} successfully!`);
+        setShowSuccessModal(true);
+        
+        // Auto-hide success modal after 3 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+          setSuccessMessage('');
+        }, 3000);
       } else {
-        alert('Failed to update user status');
+        setLoadingAction(false);
+        setErrorMessage('Failed to update user status');
+        setShowErrorModal(true);
+        
+        // Auto-hide error modal after 5 seconds
+        setTimeout(() => {
+          setShowErrorModal(false);
+          setErrorMessage('');
+        }, 5000);
       }
     } catch (err) {
       console.error('Error updating user status:', err);
-      alert(err.response?.data?.error || 'Failed to update user status');
+      setLoadingAction(false);
+      setErrorMessage(err.response?.data?.error || 'Failed to update user status');
+      setShowErrorModal(true);
+      
+      // Auto-hide error modal after 5 seconds
+      setTimeout(() => {
+        setShowErrorModal(false);
+        setErrorMessage('');
+      }, 5000);
     }
   };
 
@@ -101,7 +160,8 @@ export const AdminUserManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching user details:', err);
-      alert('Failed to fetch user details');
+      setErrorMessage('Failed to fetch user details');
+      setShowErrorModal(true);
     }
   };
 
@@ -111,13 +171,30 @@ export const AdminUserManagement = () => {
       if (response.data.success) {
         const user = response.data.user;
         setSelectedUser(user);
+        // Format birth_date for HTML date input (YYYY-MM-DD format)
+        let formattedBirthDate = '';
+        if (user.birth_date) {
+          try {
+            // If birth_date is an ISO string or contains time, extract just the date
+            if (user.birth_date.includes('T')) {
+              formattedBirthDate = new Date(user.birth_date).toISOString().split('T')[0];
+            } else {
+              // If it's already in YYYY-MM-DD format, use as is
+              formattedBirthDate = user.birth_date;
+            }
+          } catch (dateError) {
+            console.error('Error formatting birth_date:', dateError);
+            formattedBirthDate = '';
+          }
+        }
+        
         setEditForm({
           fname: user.fname || '',
           lname: user.lname || '',
           username: user.username || '',
           email: user.email || '',
           contact_no: user.contact_no || '',
-          birth_date: user.birth_date || '',
+          birth_date: formattedBirthDate,
           gender: user.gender || '',
           role: user.role || 'customer'
         });
@@ -125,7 +202,8 @@ export const AdminUserManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching user details:', err);
-      alert('Failed to fetch user details');
+      setErrorMessage('Failed to fetch user details');
+      setShowErrorModal(true);
     }
   };
 
@@ -157,7 +235,8 @@ export const AdminUserManagement = () => {
       const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
       window.open(imageUrl, '_blank');
     } else {
-      alert('No document available');
+      setErrorMessage('No document available for viewing');
+      setShowErrorModal(true);
     }
   };
 
@@ -171,7 +250,8 @@ export const AdminUserManagement = () => {
       link.click();
       document.body.removeChild(link);
     } else {
-      alert('No document available for download');
+      setErrorMessage('No document available for download');
+      setShowErrorModal(true);
     }
   };
 
@@ -959,6 +1039,58 @@ export const AdminUserManagement = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal: Success Message */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+            <p className="text-gray-600 mb-4">{successMessage}</p>
+            <div className="animate-pulse text-sm text-green-600">
+              ✅ {successMessage.includes('status') ? 'Status updated' : 'Information updated'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Error Message */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error!</h3>
+            <p className="text-gray-600 mb-4">{errorMessage}</p>
+            <button
+              onClick={() => {
+                setShowErrorModal(false);
+                setErrorMessage('');
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay for Actions */}
+      {loadingAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Processing...</h3>
+            <p className="text-gray-600">Please wait while we update the user information</p>
           </div>
         </div>
       )}

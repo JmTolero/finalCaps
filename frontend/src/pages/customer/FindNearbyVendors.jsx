@@ -14,6 +14,7 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 export const FindNearbyVendors = () => {
   const navigate = useNavigate();
   const [vendors, setVendors] = useState([]);
+  const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [userLocation, setUserLocation] = useState(null);
@@ -91,6 +92,9 @@ export const FindNearbyVendors = () => {
       const response = await axios.get(`${apiBase}/api/vendor/with-locations`);
       if (response.data.success) {
         setVendors(response.data.vendors);
+        if (response.data.vendors.length > 0) {
+          setSelectedVendor(response.data.vendors[0]);
+        }
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -111,8 +115,13 @@ export const FindNearbyVendors = () => {
     return R * c;
   };
 
-  // Filter vendors based on location proximity and search term
+  // Filter vendors based on location proximity, search term, and selected vendor
   const filteredVendors = vendors.filter((vendor) => {
+    // If a vendor is selected from map, show only that vendor
+    if (selectedVendor && selectedVendor.vendor_id === vendor.vendor_id) {
+      return true;
+    }
+    
     // If no user location, show all vendors (fallback)
     if (!userLocation) {
       return (
@@ -147,6 +156,35 @@ export const FindNearbyVendors = () => {
     return isNearby && matchesSearch;
   });
 
+  // Handle vendor selection from map
+  const handleVendorSelect = (vendor) => {
+    // Find the corresponding vendor from the real vendors list
+    const realVendor = vendors.find(v => 
+      v.store_name === vendor.name || 
+      v.vendor_id === vendor.id ||
+      v.location === vendor.location
+    );
+    
+    if (realVendor) {
+      setSelectedVendor(realVendor);
+    } else {
+      // If no match found, create a vendor object from the marker data
+      setSelectedVendor({
+        vendor_id: vendor.id,
+        store_name: vendor.name,
+        location: vendor.location || 'Location not specified',
+        profile_image_url: null,
+        rating: vendor.rating || 4.5,
+        flavors: vendor.flavors || [],
+        drumSizes: vendor.drumSizes || []
+      });
+    }
+  };
+
+  // Clear selected vendor to show all vendors
+  const clearSelectedVendor = () => {
+    setSelectedVendor(null);
+  };
 
   // Handle location change from map
   const handleLocationChange = (location, zone) => {
@@ -266,10 +304,35 @@ export const FindNearbyVendors = () => {
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Show All Vendors Button */}
+                {selectedVendor && (
+                  <div className="mb-4 p-4 bg-blue-100 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-blue-800">Selected Vendor</h3>
+                        <p className="text-sm text-blue-600">
+                          Showing only: {selectedVendor.store_name || 'Unnamed Store'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={clearSelectedVendor}
+                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Show All Vendors
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor.vendor_id}
-                    className="bg-blue-50 rounded-lg p-6 transition-all duration-200 hover:shadow-md"
+                    className={`bg-blue-50 rounded-lg p-6 cursor-pointer transition-all duration-200 ${
+                      selectedVendor?.vendor_id === vendor.vendor_id
+                        ? "ring-2 ring-blue-500 shadow-lg"
+                        : "hover:shadow-md"
+                    }`}
+                    onClick={() => setSelectedVendor(vendor)}
                   >
                     <div className="flex items-start space-x-4">
                       {/* Vendor Logo */}
@@ -417,12 +480,13 @@ export const FindNearbyVendors = () => {
                   Find Vendors Near You
                 </h3>
                 <p className="text-blue-100 text-sm">
-                  View all nearby vendors on the map. Your location will be used to show vendors within your area.
+                  Click on markers to view vendor details and delivery options
                 </p>
               </div>
               
               <div className="p-4">
                 <CustomerVendorMap
+                  onVendorSelect={handleVendorSelect}
                   onLocationChange={handleLocationChange}
                   className="w-full h-96"
                 />

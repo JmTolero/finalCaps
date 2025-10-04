@@ -153,10 +153,11 @@ const updateVendorStatus = async (req, res) => {
                 related_vendor_id: vendor_id
             });
         } else if (status.toLowerCase() === 'rejected') {
-            // Calculate auto-return date (1 week from now)
+            // Calculate auto-return date (TESTING: 5 seconds from now)
             const autoReturnDate = new Date();
-            autoReturnDate.setDate(autoReturnDate.getDate() + 7);
-            
+            autoReturnDate.setSeconds(autoReturnDate.getSeconds() + 5); // TEST: 5 seconds
+            // autoReturnDate.setDate(autoReturnDate.getDate() + 7); // PRODUCTION: 1 week
+                
             // Record the rejection for auto-return tracking
             await pool.query(
                 'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, ?)',
@@ -333,6 +334,23 @@ const updateUser = async (req, res) => {
         
         console.log('Updating user:', user_id, req.body);
         
+        // Format birth_date for MySQL (convert ISO string to date-only format)
+        let formattedBirthDate = null;
+        if (birth_date) {
+            try {
+                // If it's an ISO string, extract just the date part
+                if (birth_date.includes('T')) {
+                    formattedBirthDate = new Date(birth_date).toISOString().split('T')[0];
+                } else {
+                    // If it's already in YYYY-MM-DD format, use as is
+                    formattedBirthDate = birth_date;
+                }
+            } catch (dateError) {
+                console.error('Error formatting birth_date:', dateError);
+                formattedBirthDate = null;
+            }
+        }
+        
         // Validate required fields
         if (!fname || !email || !role) {
             return res.status(400).json({ error: 'First name, email, and role are required' });
@@ -361,7 +379,7 @@ const updateUser = async (req, res) => {
         // Update user information
         const [result] = await pool.query(
             'UPDATE users SET fname = ?, lname = ?, username = ?, email = ?, contact_no = ?, birth_date = ?, gender = ?, role = ? WHERE user_id = ?',
-            [fname, lname || '', username || '', email, contact_no || '', birth_date || null, gender || null, role, user_id]
+            [fname, lname || '', username || '', email, contact_no || '', formattedBirthDate, gender || null, role, user_id]
         );
         
         if (result.affectedRows === 0) {

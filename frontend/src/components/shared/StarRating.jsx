@@ -7,6 +7,7 @@ const StarRating = ({
   size = 'sm',
   showCount = false,
   totalRatings = 0,
+  showRating = true,
   className = ''
 }) => {
   const [hoverRating, setHoverRating] = useState(0);
@@ -75,13 +76,13 @@ const StarRating = ({
       </div>
       
       {showCount && totalRatings > 0 && (
-        <span className="ml-2 text-sm text-gray-600">
+        <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-gray-600">
           ({totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'})
         </span>
       )}
       
-      {rating > 0 && (
-        <span className="ml-1 text-sm font-medium text-gray-700">
+      {rating > 0 && showRating && (
+        <span className="ml-1 text-xs sm:text-sm font-medium text-gray-700">
           {rating.toFixed(1)}
         </span>
       )}

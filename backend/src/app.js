@@ -150,4 +150,19 @@ app.get('/db/health', async (req, res) => {
 //     }
 // });
 
+// ============ AUTOMATIC VENDOR AUTO-RESET BACKGROUND PROCESS ============
+const { processVendorAutoReturns } = require('./utils/vendorAutoReturn');
+
+// Start automatic vendor auto-reset checking every 10 seconds
+console.log('🚀 Starting vendor auto-reset background process...');
+setInterval(async () => {
+    try {
+        await processVendorAutoReturns();
+    } catch (error) {
+        console.error('❌ Auto-reset background process error:', error.message);
+    }
+}, 10000); // Check every 10 seconds
+
+console.log('✅ Auto-reset background process running every 10 seconds');
+
 module.exports = app;

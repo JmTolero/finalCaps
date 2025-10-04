@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom'; 
 import adminIcon from '../../assets/images/administrator.png'
 import usermanagement from '../../assets/images/usermanagement.png'
 import vendorApproval from '../../assets/images/approval.png'
@@ -10,7 +10,13 @@ import '../../assets/fonts/fonts.css';
 
 
 export const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(true); 
+  const location = useLocation();
+
+  // Helper function to check if link is active
+  const isActiveLink = (path) => {
+    return location.pathname === path;
+  };
 
   useEffect(() => {
     const handleToggle = () => {
@@ -36,7 +42,11 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors text-gray-700 hover:bg-blue-300 hover:text-gray-900`}>
+          } rounded-lg transition-colors ${
+            isActiveLink('/admin/dashboard')
+              ? 'bg-blue-500 text-white'
+              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+          }`}>
             <img src={adminIcon} alt="admin" className="w-8 h-8 flex-shrink-0 object-contain"/>
             {isOpen && <span className="font-medium text-sm">Dashboard</span>}
           </li>
@@ -47,7 +57,11 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors text-gray-700 hover:bg-blue-300 hover:text-gray-900`}>
+          } rounded-lg transition-colors ${
+            isActiveLink('/admin/vendor-approval')
+              ? 'bg-blue-500 text-white'
+              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+          }`}>
             <img src={vendorApproval} alt="vendorApproval" className="w-8 h-8 flex-shrink-0 object-contain"/>
             {isOpen && <span className="font-medium text-sm">Vendor Approval</span>}
           </li>
@@ -58,7 +72,11 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors text-gray-700 hover:bg-blue-300 hover:text-gray-900`}>
+          } rounded-lg transition-colors ${
+            isActiveLink('/admin/vendor-locations')
+              ? 'bg-blue-500 text-white'
+              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+          }`}>
             <img src={vendorLocationManagerIcon} alt="vendor locations" className="w-8 h-8 flex-shrink-0 object-contain"/>
             {isOpen && <span className="font-medium text-sm">Vendor Locations</span>}
           </li>
@@ -69,7 +87,11 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors text-gray-700 hover:bg-blue-300 hover:text-gray-900`}>
+          } rounded-lg transition-colors ${
+            isActiveLink('/admin/user-management')
+              ? 'bg-blue-500 text-white'
+              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+          }`}>
             <img src={usermanagement} alt="usermanagement" className="w-8 h-8 flex-shrink-0 object-contain"/>
             {isOpen && <span className="font-medium text-sm">User Management</span>}
           </li>
@@ -80,7 +102,11 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors text-gray-700 hover:bg-blue-300 hover:text-gray-900`}>
+          } rounded-lg transition-colors ${
+            isActiveLink('/admin/feedback')
+              ? 'bg-blue-500 text-white'
+              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+          }`}>
             <img src={feedback} alt="feedback" className="w-8 h-8 flex-shrink-0 object-contain"/>
             {isOpen && <span className="font-medium text-sm">Feedback</span>}
           </li>

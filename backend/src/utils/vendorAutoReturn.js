@@ -1,5 +1,42 @@
 const pool = require('../db/config');
 const { createNotification } = require('../controller/shared/notificationController');
+const fs = require('fs').promises;
+const path = require('path');
+
+/**
+ * Delete physical vendor document files from uploads directory
+ * @param {Object} vendorData - Vendor data containing file URLs
+ */
+const deleteVendorFiles = async (vendorData) => {
+    const uploadDir = path.join(__dirname, '../../uploads/vendor-documents');
+    
+    try {
+        // List of potential file fields to delete
+        const fileFields = ['valid_id_url', 'business_permit_url', 'proof_image_url', 'profile_image_url'];
+        
+        for (const field of fileFields) {
+            const fileName = vendorData[field];
+            if (fileName && fileName.trim() !== '') {
+                const filePath = path.join(uploadDir, fileName);
+                
+                try {
+                    await fs.unlink(filePath);
+                    console.log(`🗑️ Deleted file: ${fileName}`);
+                } catch (error) {
+                    if (error.code !== 'ENOENT') {
+                        console.error(`❌ Error deleting file ${fileName}:`, error.message);
+                    }
+                    // Don't throw error if file doesn't exist (ENOENT)
+                }
+            }
+        }
+        
+        console.log(`✅ File cleanup completed for vendor ${vendorData.vendor_id}`);
+        
+    } catch (error) {
+        console.error(`❌ Error during file cleanup for vendor ${vendorData.vendor_id}:`, error.message);
+    }
+};
 
 /**
  * Check for vendors that should be automatically returned after 1 week of rejection
@@ -9,31 +46,40 @@ const processVendorAutoReturns = async () => {
     try {
         console.log('🔄 Processing vendor auto-returns...');
         
-        // Find vendors that are eligible for auto-return
+        // Find vendors that are eligible for auto-return (SIMPLIFIED and ROBUST)
         const [eligibleRejections] = await pool.query(`
             SELECT 
-                vr.*,
-                v.vendor_id,
-                v.user_id,
+                vr.vendor_id,
+                vr.user_id,
+                vr.rejection_id,
+                vr.auto_return_at,
+                COALESCE(v.store_name, 'No Store Name') as store_name,
+                v.valid_id_url,
+                v.business_permit_url,
+                v.proof_image_url,
+                v.profile_image_url,
                 u.fname,
                 u.lname,
                 u.email
             FROM vendor_rejections vr
-            JOIN vendors v ON vr.vendor_id = v.vendor_id
-            JOIN users u ON vr.user_id = u.user_id
+            LEFT JOIN vendors v ON vr.vendor_id = v.vendor_id
+            LEFT JOIN users u ON vr.user_id = u.user_id
             WHERE vr.is_returned = FALSE 
             AND vr.auto_return_at <= NOW()
-            AND v.status = 'rejected'
         `);
         
         console.log(`Found ${eligibleRejections.length} vendors eligible for auto-return`);
         
         for (const rejection of eligibleRejections) {
             try {
-                // Update vendor status back to pending
+                // STEP 1: Delete physical files first
+                console.log(`🗑️ Deleting physical files for vendor ${rejection.vendor_id}...`);
+                await deleteVendorFiles(rejection);
+                
+                // STEP 2: DELETE the vendor application record completely
                 await pool.query(
-                    'UPDATE vendors SET status = ? WHERE vendor_id = ?',
-                    ['pending', rejection.vendor_id]
+                    'DELETE FROM vendors WHERE vendor_id = ?',
+                    [rejection.vendor_id]
                 );
                 
                 // Mark rejection as returned
@@ -42,17 +88,17 @@ const processVendorAutoReturns = async () => {
                     [rejection.rejection_id]
                 );
                 
-                // Create notification for vendor
+                // Create notification for vendor (COMPLETE RESET)
                 await createNotification({
                     user_id: rejection.user_id,
                     user_type: 'vendor',
-                    title: 'Reapplication Available! 🔄',
-                    message: `Hello ${rejection.fname}! You can now reapply for vendor status. Your previous application has been reset to pending status. Please review and improve your application if needed.`,
+                    title: 'Fresh Start Available! 🆕',
+                    message: `Hello ${rejection.fname}! Your vendor application has been completely reset. You now have a clean slate and can submit a brand new application with fresh documents. Please reapply from scratch.`,
                     notification_type: 'system_announcement',
                     related_vendor_id: rejection.vendor_id
                 });
                 
-                console.log(`✅ Auto-returned vendor ${rejection.vendor_id} (${rejection.fname} ${rejection.lname})`);
+                console.log(`✅ Auto-reset vendor ${rejection.vendor_id} (${rejection.fname} ${rejection.lname}) - Complete data wipe completed`);
                 
             } catch (error) {
                 console.error(`❌ Error processing auto-return for vendor ${rejection.vendor_id}:`, error);
@@ -126,8 +172,24 @@ const getVendorRejectionStats = async () => {
     }
 };
 
+/**
+ * Manually trigger the auto-reset process (for testing)
+ * This will process any vendors that are past their auto-return time
+ */
+const triggerAutoReset = async () => {
+    try {
+        console.log('🚀 Manually triggering vendor auto-reset process...');
+        await processVendorAutoReturns();
+        return { success: true, message: 'Auto-reset process completed' };
+    } catch (error) {
+        console.error('❌ Error in manual auto-reset trigger:', error);
+        return { success: false, message: error.message };
+    }
+};
+
 module.exports = {
     processVendorAutoReturns,
     getVendorsInRejectionPeriod,
-    getVendorRejectionStats
+    getVendorRejectionStats,
+    triggerAutoReset
 };

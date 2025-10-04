@@ -9,6 +9,8 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedImageTitle, setSelectedImageTitle] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   const fetchVendorDetails = useCallback(async () => {
     try {
@@ -45,6 +47,11 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
     }
   }, [vendorId, fetchVendorDetails]);
 
+  const showConfirmDialog = (status) => {
+    setPendingAction(status);
+    setShowConfirmModal(true);
+  };
+
   const handleStatusUpdate = async (newStatus) => {
     try {
       const response = await axios.put(`http://localhost:3001/api/admin/vendors/${vendorId}/status`, {
@@ -54,13 +61,31 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
       if (response.data.success) {
         setVendor(prev => ({ ...prev, status: newStatus }));
         onStatusUpdate(vendorId, newStatus);
-        alert(`Vendor ${newStatus} successfully!`);
+        
+        // Show success modal
+        setShowConfirmModal(false);
+        setPendingAction('success');
+        
+        // Navigate back to requested approval tab after a short delay
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+        
       } else {
-        alert('Failed to update vendor status');
+        // Show error modal
+        setShowConfirmModal(false);
+        setPendingAction('error');
+        setTimeout(() => {
+          setPendingAction(null);
+        }, 3000);
       }
     } catch (err) {
       console.error('Error updating vendor status:', err);
-      alert('Failed to update vendor status');
+      setShowConfirmModal(false);
+      setPendingAction('error');
+      setTimeout(() => {
+        setPendingAction(null);
+      }, 3000);
     }
   };
 
@@ -101,14 +126,24 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   const viewImage = (documentUrl, title) => {
     console.log('viewImage called with:', { documentUrl, title });
     if (documentUrl) {
-      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
-      console.log('Setting image URL:', imageUrl);
-      setSelectedImage(imageUrl);
-      setSelectedImageTitle(title);
-      setShowImageModal(true);
+      // Check if file is a PDF
+      const isPdf = documentUrl.toLowerCase().endsWith('.pdf');
+      
+      if (isPdf) {
+        // For PDFs, open in a new tab/window instead of modal
+        const pdfUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+        window.open(pdfUrl, '_blank');
+      } else {
+        // For images, use the modal as before
+        const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+        console.log('Setting image URL:', imageUrl);
+        setSelectedImage(imageUrl);
+        setSelectedImageTitle(title);
+        setShowImageModal(true);
+      }
     } else {
       console.log('No document URL provided for:', title);
-      alert('No image available for this document');
+      alert('No document available for this file');
     }
   };
 
@@ -282,7 +317,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                         onClick={() => viewImage(vendor.valid_id_url, 'Valid ID')}
                         className="text-sm text-green-600 hover:text-green-800 underline"
                       >
-                        👁️ View Image
+                        👁️ View Document
                       </button>
                       <button
                         onClick={() => downloadDocument(vendor.valid_id_url, 'valid_id')}
@@ -310,7 +345,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                         onClick={() => viewImage(vendor.business_permit_url, 'Business Permit')}
                         className="text-sm text-green-600 hover:text-green-800 underline"
                       >
-                        👁️ View Image
+                        👁️ View Document
                       </button>
                       <button
                         onClick={() => downloadDocument(vendor.business_permit_url, 'business_permit')}
@@ -341,7 +376,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                         }}
                         className="text-sm text-green-600 hover:text-green-800 underline"
                       >
-                        👁️ View Image
+                        👁️ View Document
                       </button>
                       <button
                         onClick={() => downloadDocument(vendor.proof_image_url, 'ice_cream_proof')}
@@ -373,13 +408,13 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
         {/* Action Buttons - Outside the flex container, positioned at bottom right */}
         <div className="mt-8 flex justify-end space-x-3">
           <button
-            onClick={() => handleStatusUpdate('rejected')}
+            onClick={() => showConfirmDialog('rejected')}
             className="px-6 py-3 bg-red-500 text-white font-medium rounded-full hover:bg-red-600 transition-colors"
           >
             Reject
           </button>
           <button
-            onClick={() => handleStatusUpdate('approved')}
+            onClick={() => showConfirmDialog('approved')}
             className="px-6 py-3 bg-blue-500 text-white font-medium rounded-full hover:bg-blue-600 transition-colors"
           >
             Approve
@@ -440,6 +475,104 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                 📥 Download
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && pendingAction && pendingAction !== 'error' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+                pendingAction === 'approved' ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {pendingAction === 'approved' ? (
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {pendingAction === 'approved' ? 'Approve Vendor' : 'Reject Vendor'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {pendingAction === 'approved' 
+                    ? `Are you sure you want to approve ${vendor?.store_name || 'this vendor'}?` 
+                    : `Are you sure you want to reject ${vendor?.store_name || 'this vendor'}?`
+                  }
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setPendingAction(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleStatusUpdate(pendingAction)}
+                className={`px-4 py-2 text-white font-medium rounded transition-colors ${
+                  pendingAction === 'approved' 
+                    ? 'bg-green-500 hover:bg-green-600' 
+                    : 'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {pendingAction === 'approved' ? 'Confirm Approve' : 'Confirm Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {pendingAction === 'success' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+            <p className="text-gray-600 mb-4">
+              Vendor {vendor?.status === 'approved' ? 'approved' : 'rejected'} successfully!
+            </p>
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <span className="ml-2 text-sm text-gray-500">Redirecting back to vendor list...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {pendingAction === 'error' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error!</h3>
+            <p className="text-gray-600 mb-4">Failed to update vendor status. Please try again.</p>
+            <button
+              onClick={() => setPendingAction(null)}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
