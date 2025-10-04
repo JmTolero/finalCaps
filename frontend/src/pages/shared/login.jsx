@@ -44,7 +44,6 @@ export const Login = () => {
 
       try {
         const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-        
         // Trim form data before sending
         const trimmedForm = trimFormData(form);
 

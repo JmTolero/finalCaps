@@ -248,17 +248,17 @@ export const CartView = () => {
   if (items.length === 0) {
     return (
       <>
-        {/* Header */}
-        <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="flex items-center justify-end mb-6">
-              <div className="flex items-center space-x-4">
-                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+            <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+              <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
+                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                   Find nearby Vendors
                 </Link>
                 
                 {/* Navigation Icons */}
-                <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+                <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                   {/* Products/Flavors Icon - Navigate to browse flavors */}
                   <button 
                     onClick={() => {
@@ -322,17 +322,17 @@ export const CartView = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="bg-sky-100 rounded-xl p-8 text-center">
-            <div className="text-6xl mb-4">🛒</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-6">Add some delicious ice cream flavors to get started!</p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="bg-sky-100 rounded-xl p-6 sm:p-8 text-center">
+            <div className="text-4xl sm:text-6xl mb-4">🛒</div>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Your cart is empty</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">Add some delicious ice cream flavors to get started!</p>
             <button
               onClick={() => {
                 // Navigate to customer dashboard to browse flavors
                 navigate('/customer');
               }}
-              className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
+              className="bg-orange-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-orange-600 transition-colors text-sm sm:text-base"
             >
               Browse Flavors
             </button>
@@ -354,64 +354,56 @@ export const CartView = () => {
               </Link>
               
               {/* Navigation Icons */}
-              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
-                {/* Products/Flavors Icon - Navigate to browse flavors */}
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
+                {/* Products/Flavors Icon */}
                 <button 
-                  onClick={() => {
-                    // Navigate to customer dashboard
-                    navigate('/customer');
-                  }}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  title="Browse Flavors"
+                  onClick={() => navigate('/customer')}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
                 >
-                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
                 
                 {/* Notification Bell */}
                 <button 
                   onClick={() => navigate('/customer/notifications')}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
                 >
-                  <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                  <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
                 
-                {/* Cart Icon */}
+                {/* Cart Icon - Active on cart page */}
                 <button 
                   onClick={() => navigate('/cart')}
-                  className={`p-2 rounded-lg transition-all duration-200 relative ${
-                    totalItems > 0 
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
-                      : 'hover:bg-gray-100'
-                  }`}
+                  className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors relative sm:p-2"
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-5 h-5 transition-transform duration-200 ${
+                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
                       totalItems > 0 ? 'scale-110' : ''
                     }`} 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
                 </button>
                 
                 {/* Feedback Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -420,32 +412,32 @@ export const CartView = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="bg-sky-100 rounded-xl p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Reserved Items</h2>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="bg-sky-100 rounded-xl p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Reserved Items</h2>
         <button
           onClick={clearCart}
-          className="text-red-600 hover:text-red-800 text-sm font-medium"
+          className="text-red-600 hover:text-red-800 text-sm font-medium self-end sm:self-auto"
         >
           Clear All
         </button>
       </div>
 
       {/* Cart Items */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
         {items.map((item, index) => (
-          <div key={`${item.flavor_id}-${item.size}`} className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center space-x-4">
+          <div key={`${item.flavor_id}-${item.size}`} className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
               {/* Checkbox */}
               <input
                 type="checkbox"
                 defaultChecked
-                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 self-start sm:self-auto"
               />
               
               {/* Item Image */}
-              <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                 {(() => {
                   console.log('🔍 Cart item image debug:', {
                     item: item,
@@ -486,42 +478,45 @@ export const CartView = () => {
               </div>
 
               {/* Item Details */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-blue-600 mb-1">
+              <div className="flex-1 min-w-0 w-full sm:w-auto">
+                <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-1">
                   {item.vendor_name}
                 </h3>
                 <p className="text-sm text-gray-800 font-medium mb-2">
                   {item.flavor_name || item.name || 'No flavor name'}
                 </p>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
                   <span className="text-sm text-gray-600 font-medium">Size: {item.size}</span>
                   <span className="text-sm text-gray-600">Unit Price: ₱{item.price.toFixed(2)}</span>
                 </div>
               </div>
 
-              {/* Quantity Display */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Qty:</span>
-                <span className="w-8 text-center font-medium">{item.quantity}</span>
-              </div>
+              {/* Bottom row for mobile - Quantity, Price, Remove */}
+              <div className="flex items-center justify-between w-full sm:w-auto sm:space-x-4">
+                {/* Quantity Display */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Qty:</span>
+                  <span className="w-8 text-center font-medium">{item.quantity}</span>
+                </div>
 
-              {/* Total Price */}
-              <div className="text-right">
-                <p className="text-lg font-bold text-gray-800">
-                  ₱{(item.price * item.quantity).toFixed(2)}
-                </p>
-              </div>
+                {/* Total Price */}
+                <div className="text-right sm:text-left">
+                  <p className="text-base sm:text-lg font-bold text-gray-800">
+                    ₱{(item.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
 
-              {/* Remove Button */}
-              <button
-                onClick={() => removeFromCart(item.flavor_id, item.size)}
-                className="text-red-500 hover:text-red-700 p-1"
-                title="Remove item"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+                {/* Remove Button */}
+                <button
+                  onClick={() => removeFromCart(item.flavor_id, item.size)}
+                  className="text-red-500 hover:text-red-700 p-1"
+                  title="Remove item"
+                >
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -529,15 +524,15 @@ export const CartView = () => {
 
       {/* Delivery Schedule Section */}
       {showDeliveryForm && (
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <div className="bg-white rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 shadow-sm">
           <div className="flex items-center space-x-2 mb-4">
-            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <h3 className="text-lg font-semibold text-gray-800">Schedule Delivery</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800">Schedule Delivery</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Delivery Date <span className="text-red-500">*</span>
@@ -546,7 +541,7 @@ export const CartView = () => {
                 type="date"
                 value={deliveryDate}
                 onChange={(e) => setDeliveryDate(e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base ${
                   !deliveryDate ? 'border-red-300' : 'border-gray-300'
                 }`}
                 min={new Date().toISOString().split('T')[0]}
@@ -561,7 +556,7 @@ export const CartView = () => {
                 type="time"
                 value={deliveryTime}
                 onChange={(e) => setDeliveryTime(e.target.value)}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base ${
                   !deliveryTime ? 'border-red-300' : 'border-gray-300'
                 }`}
                 required
@@ -575,17 +570,17 @@ export const CartView = () => {
             </p>
           )}
           
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowDeliveryForm(false)}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 sm:px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               onClick={handleCheckout}
               disabled={!deliveryDate || !deliveryTime}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               Proceed to Checkout
             </button>

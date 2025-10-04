@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
+import CustomerVendorMap from "../../components/customer/CustomerVendorMap";
 import axios from "axios";
 
 // Import customer icons
@@ -13,9 +14,10 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 export const FindNearbyVendors = () => {
   const navigate = useNavigate();
   const [vendors, setVendors] = useState([]);
-  const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
   
   // Notification state
   const [notifications, setNotifications] = useState([]);
@@ -86,12 +88,9 @@ export const FindNearbyVendors = () => {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
       // Fetch vendors with their locations
-      const response = await axios.get(`${apiBase}/api/vendors/with-locations`);
+      const response = await axios.get(`${apiBase}/api/vendor/with-locations`);
       if (response.data.success) {
         setVendors(response.data.vendors);
-        if (response.data.vendors.length > 0) {
-          setSelectedVendor(response.data.vendors[0]);
-        }
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -100,11 +99,60 @@ export const FindNearbyVendors = () => {
     }
   };
 
-  const filteredVendors = vendors.filter(
-    (vendor) =>
-      vendor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Calculate distance between two coordinates (in kilometers)
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Filter vendors based on location proximity and search term
+  const filteredVendors = vendors.filter((vendor) => {
+    // If no user location, show all vendors (fallback)
+    if (!userLocation) {
+      return (
+        (vendor.store_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (vendor.location?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Calculate distance from user to vendor
+    const vendorLat = parseFloat(vendor.latitude);
+    const vendorLng = parseFloat(vendor.longitude);
+    
+    if (isNaN(vendorLat) || isNaN(vendorLng)) {
+      return false; // Skip vendors without valid coordinates
+    }
+    
+    const distance = calculateDistance(
+      userLocation.lat, 
+      userLocation.lng, 
+      vendorLat, 
+      vendorLng
+    );
+    
+    // Show only vendors within 50km radius
+    const isNearby = distance <= 50;
+    
+    // Also check search term if provided
+    const matchesSearch = !searchTerm || 
+      (vendor.store_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (vendor.location?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    
+    return isNearby && matchesSearch;
+  });
+
+
+  // Handle location change from map
+  const handleLocationChange = (location, zone) => {
+    setUserLocation(location);
+    setSelectedZone(zone);
+  };
 
   return (
     <>
@@ -221,12 +269,7 @@ export const FindNearbyVendors = () => {
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor.vendor_id}
-                    className={`bg-blue-50 rounded-lg p-6 cursor-pointer transition-all duration-200 ${
-                      selectedVendor?.vendor_id === vendor.vendor_id
-                        ? "ring-2 ring-blue-500 shadow-lg"
-                        : "hover:shadow-md"
-                    }`}
-                    onClick={() => setSelectedVendor(vendor)}
+                    className="bg-blue-50 rounded-lg p-6 transition-all duration-200 hover:shadow-md"
                   >
                     <div className="flex items-start space-x-4">
                       {/* Vendor Logo */}
@@ -253,7 +296,7 @@ export const FindNearbyVendors = () => {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xl font-bold text-gray-800">
-                            {vendor.store_name}
+                            {vendor.store_name || 'Unnamed Store'}
                           </h3>
                           <div className="flex items-center space-x-1">
                             <svg
@@ -283,8 +326,18 @@ export const FindNearbyVendors = () => {
                             />
                           </svg>
                           <span className="text-sm text-gray-600">
-                            {vendor.location}
+                            {vendor.location || 'Location not specified'}
                           </span>
+                          {userLocation && vendor.latitude && vendor.longitude && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              {calculateDistance(
+                                userLocation.lat,
+                                userLocation.lng,
+                                parseFloat(vendor.latitude),
+                                parseFloat(vendor.longitude)
+                              ).toFixed(1)} km away
+                            </span>
+                          )}
                         </div>
 
                         {/* Drum Sizes */}
@@ -338,15 +391,6 @@ export const FindNearbyVendors = () => {
                           </div>
                         </div>
 
-                        {/* Shop Status */}
-                        <div className="mb-4">
-                          <span className="text-sm font-semibold text-gray-700">
-                            Shop Status:{" "}
-                          </span>
-                          <span className="text-sm text-red-600 font-semibold">
-                            Closed
-                          </span>
-                        </div>
 
                         {/* Action Buttons */}
                         <div className="flex space-x-3">
@@ -366,39 +410,22 @@ export const FindNearbyVendors = () => {
           </div>
 
           {/* Right Side - Map */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden">
-            <div className="h-96 bg-gray-200 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                  Interactive Map
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                <h3 className="text-xl font-bold text-white">
+                  Find Vendors Near You
                 </h3>
-                <p className="text-gray-500">
-                  Map will show vendor locations with markers
+                <p className="text-blue-100 text-sm">
+                  View all nearby vendors on the map. Your location will be used to show vendors within your area.
                 </p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Vendor locations will be displayed here
-                </p>
+              </div>
+              
+              <div className="p-4">
+                <CustomerVendorMap
+                  onLocationChange={handleLocationChange}
+                  className="w-full h-96"
+                />
               </div>
             </div>
           </div>
