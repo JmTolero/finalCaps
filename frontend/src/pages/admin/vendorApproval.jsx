@@ -28,7 +28,8 @@ export const AdminVendorApproval = () => {
   const fetchVendors = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
-      const response = await axios.get('http://localhost:3001/api/admin/vendors');
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/vendors`);
       if (response.data.success) {
         const newVendors = response.data.vendors;
         setVendors(newVendors);
@@ -79,7 +80,8 @@ export const AdminVendorApproval = () => {
     setShowConfirmModal(false);
     
     try {
-      const response = await axios.put(`http://localhost:3001/api/admin/vendors/${vendorId}/status`, {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/admin/vendors/${vendorId}/status`, {
         status: newStatus
       });
       

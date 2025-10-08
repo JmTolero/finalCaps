@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   const [vendor, setVendor] = useState(null);
@@ -15,7 +16,8 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   const fetchVendorDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/admin/vendors/${vendorId}`);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/vendors/${vendorId}`);
       if (response.data.success) {
         console.log('Vendor data received:', response.data.vendor);
         setVendor(response.data.vendor);
@@ -23,7 +25,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
         // Fetch vendor's addresses if we have user_id
         if (response.data.vendor.user_id) {
           try {
-            const addressResponse = await axios.get(`http://localhost:3001/api/user/${response.data.vendor.user_id}/addresses`);
+            const addressResponse = await axios.get(`${apiBase}/api/user/${response.data.vendor.user_id}/addresses`);
             setAddresses(addressResponse.data || []);
           } catch (addressErr) {
             console.error('Error fetching vendor addresses:', addressErr);
@@ -54,7 +56,8 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
 
   const handleStatusUpdate = async (newStatus) => {
     try {
-      const response = await axios.put(`http://localhost:3001/api/admin/vendors/${vendorId}/status`, {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/admin/vendors/${vendorId}/status`, {
         status: newStatus
       });
       
@@ -100,7 +103,9 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
 
   const downloadDocument = async (documentUrl, documentType) => {
     try {
-      const response = await axios.get(`http://localhost:3001/uploads/vendor-documents/${documentUrl}`, {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const fileUrl = getImageUrl(documentUrl, apiBase);
+      const response = await axios.get(fileUrl, {
         responseType: 'blob'
       });
       
@@ -128,16 +133,19 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
     if (documentUrl) {
       // Check if file is a PDF
       const isPdf = documentUrl.toLowerCase().endsWith('.pdf');
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Get the correct URL (handles both Cloudinary and legacy local files)
+      const fileUrl = getImageUrl(documentUrl, apiBase);
       
       if (isPdf) {
         // For PDFs, open in a new tab/window instead of modal
-        const pdfUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
-        window.open(pdfUrl, '_blank');
+        console.log('Opening PDF:', fileUrl);
+        window.open(fileUrl, '_blank');
       } else {
         // For images, use the modal as before
-        const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
-        console.log('Setting image URL:', imageUrl);
-        setSelectedImage(imageUrl);
+        console.log('Setting image URL:', fileUrl);
+        setSelectedImage(fileUrl);
         setSelectedImageTitle(title);
         setShowImageModal(true);
       }

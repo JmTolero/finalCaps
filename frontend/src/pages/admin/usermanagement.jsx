@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getImageUrl } from '../../utils/imageUtils';
 
 export const AdminUserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -36,7 +37,8 @@ export const AdminUserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3001/api/admin/users');
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/users`);
       if (response.data.success) {
         setUsers(response.data.users);
       } else {
@@ -57,7 +59,8 @@ export const AdminUserManagement = () => {
     setSelectedUser(null);
     
     try {
-      const response = await axios.put(`http://localhost:3001/api/admin/users/${userId}`, userData);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/admin/users/${userId}`, userData);
       
       if (response.data.success) {
         // Update local state
@@ -104,7 +107,8 @@ export const AdminUserManagement = () => {
     setLoadingAction(true);
     
     try {
-      const response = await axios.put(`http://localhost:3001/api/admin/users/${userId}/status`, { status });
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(`${apiBase}/api/admin/users/${userId}/status`, { status });
       
       if (response.data.success) {
         // Update local state
@@ -153,7 +157,8 @@ export const AdminUserManagement = () => {
 
   const handleView = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:3001/api/admin/users/${userId}`);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/users/${userId}`);
       if (response.data.success) {
         setSelectedUser(response.data.user);
         setShowViewModal(true);
@@ -167,7 +172,8 @@ export const AdminUserManagement = () => {
 
   const handleEdit = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:3001/api/admin/users/${userId}`);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/users/${userId}`);
       if (response.data.success) {
         const user = response.data.user;
         setSelectedUser(user);
@@ -232,7 +238,8 @@ export const AdminUserManagement = () => {
 
   const viewDocument = (documentUrl, title) => {
     if (documentUrl) {
-      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const imageUrl = getImageUrl(documentUrl, apiBase);
       window.open(imageUrl, '_blank');
     } else {
       setErrorMessage('No document available for viewing');
@@ -242,7 +249,8 @@ export const AdminUserManagement = () => {
 
   const downloadDocument = (documentUrl, documentType) => {
     if (documentUrl) {
-      const imageUrl = `http://localhost:3001/uploads/vendor-documents/${documentUrl}`;
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const imageUrl = getImageUrl(documentUrl, apiBase);
       const link = document.createElement('a');
       link.href = imageUrl;
       link.download = `${documentType}_${Date.now()}`;

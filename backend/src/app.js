@@ -22,14 +22,48 @@ const { validateRequiredFields, trimObjectStrings } = require('./utils/validatio
 
 const app = express();
 
+// CORS Configuration for production (Railway + Vercel)
+const allowedOrigins = [
+  'http://localhost:3000', // Local development
+  'http://127.0.0.1:3000', // Local development alternative
+  process.env.FRONTEND_URL, // Vercel production URL (set in Railway env vars)
+  /\.vercel\.app$/, // All Vercel preview deployments
+  /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:3000$/, // Local network testing
+];
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      }
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files - DISABLED: Using Cloudinary for file storage
+// app.use('/uploads', express.static('uploads'));
+// All files are now served directly from Cloudinary CDN
 
 // Dev aid: confirm admin env presence on startup (won't print password)
 if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {

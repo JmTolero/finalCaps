@@ -1,0 +1,63 @@
+# Render Blueprint for ChillNet Backend
+# This file can be used for automated deployment
+# See: https://render.com/docs/blueprint-spec
+
+services:
+  # Backend Web Service
+  - type: web
+    name: chillnet-backend
+    env: node
+    region: oregon  # Choose region closest to your users
+    plan: free  # or 'starter' for $7/month (no cold starts)
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node src/server.js
+    healthCheckPath: /db/health
+    
+    # Environment Variables
+    envVars:
+      - key: PORT
+        value: 3001
+      
+      - key: NODE_ENV
+        value: production
+      
+      # Database - YOU MUST UPDATE THESE with your Railway credentials
+      - key: DB_HOST
+        value: REPLACE_WITH_RAILWAY_HOST
+      
+      - key: DB_PORT
+        value: REPLACE_WITH_RAILWAY_PORT
+      
+      - key: DB_USER
+        value: REPLACE_WITH_RAILWAY_USER
+      
+      - key: DB_PASSWORD
+        value: REPLACE_WITH_RAILWAY_PASSWORD
+      
+      - key: DB_NAME
+        value: REPLACE_WITH_RAILWAY_DATABASE
+      
+      # Admin Credentials - CHANGE THESE!
+      - key: ADMIN_USERNAME
+        value: admin
+      
+      - key: ADMIN_PASSWORD
+        value: CHANGE_THIS_PASSWORD
+      
+      # Frontend URL - Update after deploying Vercel
+      - key: FRONTEND_URL
+        value: https://your-app.vercel.app
+      
+      # Upload Directory for Render
+      - key: UPLOAD_DIR
+        value: /var/data/uploads/vendor-documents/
+    
+    # Persistent Disk for File Uploads
+    disk:
+      name: uploads
+      mountPath: /var/data
+      sizeGB: 1
+
+# Note: This blueprint is for reference only
+# You can use it with "render.yaml" deployment or manually configure in Render dashboard
+

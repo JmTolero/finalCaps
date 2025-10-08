@@ -1,21 +1,22 @@
 const pool = require('../../db/config');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const { validateRequiredFields, trimObjectStrings } = require('../../utils/validation');
+const cloudinary = require('../../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/vendor-documents/';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+// Configure Cloudinary storage for file uploads
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'vendor-documents', // Folder in Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto', // Allows images and PDFs
+    public_id: (req, file) => {
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return `${file.fieldname}-${uniqueSuffix}`;
     }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -25,22 +26,22 @@ const upload = multer({
     fileSize: 20 * 1024 * 1024 // 20MB limit
   },
   fileFilter: (req, file, cb) => {
-    console.log('File filter - Field name:', file.fieldname);
-    console.log('File filter - Original name:', file.originalname);
-    console.log('File filter - MIME type:', file.mimetype);
+    console.log('[Cloudinary Upload] Field name:', file.fieldname);
+    console.log('[Cloudinary Upload] Original name:', file.originalname);
+    console.log('[Cloudinary Upload] MIME type:', file.mimetype);
     
     const allowedTypes = /jpeg|jpg|png|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
     
-    console.log('File filter - Extension check:', extname);
-    console.log('File filter - MIME type check:', mimetype);
+    console.log('[Cloudinary Upload] Extension check:', extname);
+    console.log('[Cloudinary Upload] MIME type check:', mimetype);
     
     if (mimetype && extname) {
-      console.log('File filter - File accepted');
+      console.log('[Cloudinary Upload] File accepted ✅');
       return cb(null, true);
     } else {
-      console.log('File filter - File rejected');
+      console.log('[Cloudinary Upload] File rejected ❌');
       cb(new Error('Only images and PDF files are allowed'));
     }
   }
@@ -95,9 +96,9 @@ const registerVendor = async (req, res) => {
         console.log('User created with ID:', userId);
 
         // Get file paths
-        const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].filename : null;
-        const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].filename : null;
-        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].filename : null;
+        const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].path : null;
+        const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].path : null;
+        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].path : null;
 
         // No location data collected during registration - address will be required in vendor setup
         let primaryAddressId = null;
@@ -272,13 +273,13 @@ const updateVendorProfile = async (req, res) => {
         // Handle profile image upload
         let profileImageUrl = null;
         if (req.files?.profile_image) {
-            profileImageUrl = req.files.profile_image[0].filename;
+            profileImageUrl = req.files.profile_image[0].path;
         }
         
         // Handle proof image upload
         let proofImageUrl = null;
         if (req.files?.proof_image) {
-            proofImageUrl = req.files.proof_image[0].filename;
+            proofImageUrl = req.files.proof_image[0].path;
         }
         
         // Update vendor information (store_name, profile image, and proof image)
@@ -578,9 +579,9 @@ const registerExistingUserAsVendor = async (req, res) => {
         );
 
         // Get file paths
-        const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].filename : null;
-        const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].filename : null;
-        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].filename : null;
+        const validIdUrl = req.files?.valid_id ? req.files.valid_id[0].path : null;
+        const businessPermitUrl = req.files?.business_permit ? req.files.business_permit[0].path : null;
+        const proofImageUrl = req.files?.proof_image ? req.files.proof_image[0].path : null;
 
         let primaryAddressId = null;
 
