@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS notifications (
         'payment_failed',
         'drum_return_requested',
         'drum_picked_up',
-        'system_announcement'
+        'system_announcement',
+        'review_received'
     ) NOT NULL,
     related_order_id INT NULL,
     related_vendor_id INT NULL,

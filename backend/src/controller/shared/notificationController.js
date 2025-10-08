@@ -19,7 +19,7 @@ const getNotifications = async (req, res) => {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
 
-    // Build query
+    // Build query - handle vendor notifications correctly
     let query = `
       SELECT 
         n.notification_id,
@@ -71,24 +71,36 @@ const getNotifications = async (req, res) => {
     const [countResult] = await pool.query(countQuery, countParams);
     const total = countResult[0].total;
 
-    // Format notifications
-    const formattedNotifications = notifications.map(notification => ({
-      id: notification.notification_id,
-      title: notification.title,
-      message: notification.message,
-      type: notification.notification_type,
-      is_read: notification.is_read,
-      created_at: notification.created_at,
-      related_order_id: notification.related_order_id,
-      related_vendor_id: notification.related_vendor_id,
-      related_customer_id: notification.related_customer_id,
-      order_status: notification.order_status,
-      total_amount: notification.total_amount,
-      vendor_name: notification.vendor_name,
-      customer_name: notification.customer_first_name && notification.customer_last_name 
-        ? `${notification.customer_first_name} ${notification.customer_last_name}` 
-        : null
-    }));
+    // Format notifications with timezone conversion
+    const formattedNotifications = notifications.map(notification => {
+      // Convert timestamp to Philippine time
+      let philippineTime = notification.created_at;
+      if (notification.created_at) {
+        const date = new Date(notification.created_at);
+        // Add 8 hours to convert from UTC to Philippine time (UTC+8)
+        const philippineDate = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+        philippineTime = philippineDate.toISOString();
+      }
+      
+      return {
+        id: notification.notification_id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.notification_type,
+        notification_type: notification.notification_type, // Add this for frontend compatibility
+        is_read: notification.is_read,
+        created_at: philippineTime,
+        related_order_id: notification.related_order_id,
+        related_vendor_id: notification.related_vendor_id,
+        related_customer_id: notification.related_customer_id,
+        order_status: notification.order_status,
+        total_amount: notification.total_amount,
+        vendor_name: notification.vendor_name,
+        customer_name: notification.customer_first_name && notification.customer_last_name 
+          ? `${notification.customer_first_name} ${notification.customer_last_name}` 
+          : null
+      };
+    });
 
     res.json({
       success: true,

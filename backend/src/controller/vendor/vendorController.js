@@ -709,7 +709,7 @@ const getVendorsWithLocations = async (req, res) => {
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
-            LEFT JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
+            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
             WHERE v.status = 'approved'
             GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude
             ORDER BY v.store_name
@@ -737,10 +737,10 @@ const getVendorsWithLocations = async (req, res) => {
 
 const getAllApprovedVendors = async (req, res) => {
     try {
-        console.log('📋 Fetching all approved vendors for customer store listing');
+        console.log('📋 Fetching all approved vendors with at least one flavor for customer store listing');
 
         const [vendors] = await pool.query(`
-            SELECT 
+            SELECT DISTINCT
                 v.vendor_id,
                 v.store_name,
                 v.profile_image_url,
@@ -772,6 +772,7 @@ const getAllApprovedVendors = async (req, res) => {
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
             LEFT JOIN user_addresses ua ON v.user_id = ua.user_id AND ua.is_default = 1
             LEFT JOIN addresses a2 ON ua.address_id = a2.address_id
+            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
             WHERE v.status = 'approved'
             ORDER BY v.store_name
         `);

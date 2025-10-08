@@ -17,6 +17,7 @@ const notificationRoutes = require('./routes/shared/notificationRoutes');
 const autoReturnRoutes = require('./routes/admin/autoReturnRoutes');
 const ratingRoutes = require('./routes/shared/ratingRoutes');
 const cartRoutes = require('./routes/shared/cartRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/auto-return', autoReturnRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api', reviewRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

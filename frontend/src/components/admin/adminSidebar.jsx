@@ -10,7 +10,8 @@ import '../../assets/fonts/fonts.css';
 
 
 export const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true); 
+  // Sidebar state - always closed on initial load for clean login experience
+  const [isOpen, setIsOpen] = useState(false); 
   const location = useLocation();
 
   // Helper function to check if link is active
@@ -23,21 +24,51 @@ export const Sidebar = () => {
       setIsOpen(prev => !prev);
     };
 
+    const handleClose = () => {
+      setIsOpen(false);
+    };
+
     window.addEventListener('toggleSidebar', handleToggle);
-    return () => window.removeEventListener('toggleSidebar', handleToggle);
+    window.addEventListener('closeSidebar', handleClose);
+    return () => {
+      window.removeEventListener('toggleSidebar', handleToggle);
+      window.removeEventListener('closeSidebar', handleClose);
+    };
   }, []);
+
+  // Handle window resize for sidebar responsiveness
+  useEffect(() => {
+    const handleResize = () => {
+      const isDesktop = window.innerWidth >= 1024;
+      if (!isDesktop && isOpen) {
+        // Auto-close when resizing to mobile
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
+
+  // Auto-close sidebar on mobile after clicking a link
+  const handleLinkClick = () => {
+    if (window.innerWidth < 1024 && isOpen) {
+      // Dispatch close event to close sidebar on both components
+      window.dispatchEvent(new Event('closeSidebar'));
+    }
+  };
 
   return (
     <div
-      className={`bg-[#BBDEF8] h-screen fixed left-0 top-16 z-10 transition-all duration-300 overflow-y-auto ${
-        isOpen ? "w-64" : "w-20"
+      className={`bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl ${
+        isOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
       }`}
     >
       <div className="p-4 pt-8">
         {/* Menu items */}
         <ul className="flex flex-col space-y-3">
 
-        <Link to="/admin/dashboard">
+        <Link to="/admin/dashboard" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
               ? "items-center gap-3 px-4 py-3"
@@ -52,7 +83,7 @@ export const Sidebar = () => {
           </li>
         </Link>
         
-        <Link to="/admin/vendor-approval">
+        <Link to="/admin/vendor-approval" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
               ? "items-center gap-3 px-4 py-3"
@@ -67,7 +98,7 @@ export const Sidebar = () => {
           </li>
         </Link>
         
-        <Link to="/admin/vendor-locations">
+        <Link to="/admin/vendor-locations" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
               ? "items-center gap-3 px-4 py-3"
@@ -82,7 +113,7 @@ export const Sidebar = () => {
           </li>
         </Link>
         
-        <Link to="/admin/user-management">
+        <Link to="/admin/user-management" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
               ? "items-center gap-3 px-4 py-3"
@@ -97,7 +128,7 @@ export const Sidebar = () => {
           </li>
         </Link>
         
-        <Link to="/admin/feedback">
+        <Link to="/admin/feedback" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
               ? "items-center gap-3 px-4 py-3"

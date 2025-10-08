@@ -333,7 +333,7 @@ export const BecomeVendor = () => {
               {/* Submit Button */}
               <div className="flex justify-end space-x-4">
                 <Link
-                  to="/home"
+                  to="/customer"
                   className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel

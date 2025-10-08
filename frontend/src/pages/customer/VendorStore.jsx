@@ -23,15 +23,59 @@ export const VendorStore = () => {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Shop Reviews state
+  const [shopReviews, setShopReviews] = useState([]);
+  const [reviewsSummary, setReviewsSummary] = useState({
+    total_reviews: 0,
+    average_rating: 0,
+    five_star: 0,
+    four_star: 0,
+    three_star: 0,
+    two_star: 0,
+    one_star: 0
+  });
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
   useEffect(() => {
     if (vendorId) {
       console.log('🚀 VendorStore component mounted with vendorId:', vendorId);
       fetchVendorData();
       fetchVendorFlavors();
+      fetchShopReviews();
     } else {
       console.log('❌ No vendorId provided');
     }
   }, [vendorId]);
+
+  // Fetch shop reviews
+  const fetchShopReviews = async () => {
+    try {
+      if (!vendorId) return;
+      
+      setReviewsLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.get(`${apiBase}/api/reviews/vendor/${vendorId}`);
+      
+      if (response.data.success) {
+        setShopReviews(response.data.reviews || []);
+        setReviewsSummary(response.data.summary || {
+          total_reviews: 0,
+          average_rating: 0,
+          five_star: 0,
+          four_star: 0,
+          three_star: 0,
+          two_star: 0,
+          one_star: 0
+        });
+        console.log('⭐ Shop reviews loaded:', response.data.reviews.length);
+      }
+    } catch (error) {
+      console.error('Error fetching shop reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
   // Fetch notifications for customer
   const fetchNotifications = async () => {
@@ -263,6 +307,33 @@ export const VendorStore = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {vendor.store_name?.toUpperCase() || 'VENDOR STORE'}
               </h1>
+              
+              {/* Shop Rating */}
+              {reviewsSummary.total_reviews > 0 && (
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`text-xl ${
+                          star <= Math.round(reviewsSummary.average_rating)
+                            ? 'text-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">
+                    {parseFloat(reviewsSummary.average_rating).toFixed(1)}
+                  </span>
+                  <span className="text-gray-600">
+                    ({reviewsSummary.total_reviews} review{reviewsSummary.total_reviews !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              )}
+              
               <p className="text-lg text-gray-600">
                 ID: {vendor.vendor_id}
               </p>
@@ -369,6 +440,147 @@ export const VendorStore = () => {
                           </span>
                         </div>
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Shop Reviews Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Shop Reviews</h2>
+          
+          {reviewsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading reviews...</p>
+            </div>
+          ) : reviewsSummary.total_reviews === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <div className="text-6xl mb-4">⭐</div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">No Reviews Yet</h3>
+              <p className="text-gray-500">Be the first to leave a review for this shop!</p>
+            </div>
+          ) : (
+            <div className="max-w-6xl mx-auto">
+              {/* Rating Summary Card */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 border-2 border-blue-200">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  {/* Average Rating */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-6xl font-bold text-blue-600">
+                      {parseFloat(reviewsSummary.average_rating).toFixed(1)}
+                    </div>
+                    <div>
+                      <div className="flex items-center mb-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`text-2xl ${
+                              star <= Math.round(reviewsSummary.average_rating)
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-gray-700 font-medium">
+                        Based on {reviewsSummary.total_reviews} review{reviewsSummary.total_reviews !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Star Breakdown */}
+                  <div className="space-y-2 flex-1 max-w-md">
+                    {[5, 4, 3, 2, 1].map((stars) => {
+                      const count = reviewsSummary[`${['one', 'two', 'three', 'four', 'five'][stars - 1]}_star`] || 0;
+                      const percentage = reviewsSummary.total_reviews > 0 
+                        ? (count / reviewsSummary.total_reviews) * 100 
+                        : 0;
+                      return (
+                        <div key={stars} className="flex items-center space-x-2">
+                          <span className="w-12 text-sm text-gray-700">{stars} ★</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-3">
+                            <div
+                              className="bg-yellow-400 h-3 rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="w-12 text-sm text-gray-600 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual Reviews */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {shopReviews.map((review) => {
+                  const reviewDate = new Date(review.created_at);
+                  const now = new Date();
+                  const diffTime = Math.abs(now - reviewDate);
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  
+                  let timeAgo;
+                  if (diffDays === 0) {
+                    timeAgo = 'Today';
+                  } else if (diffDays === 1) {
+                    timeAgo = '1 day ago';
+                  } else if (diffDays < 7) {
+                    timeAgo = `${diffDays} days ago`;
+                  } else if (diffDays < 30) {
+                    const weeks = Math.floor(diffDays / 7);
+                    timeAgo = weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+                  } else if (diffDays < 365) {
+                    const months = Math.floor(diffDays / 30);
+                    timeAgo = months === 1 ? '1 month ago' : `${months} months ago`;
+                  } else {
+                    const years = Math.floor(diffDays / 365);
+                    timeAgo = years === 1 ? '1 year ago' : `${years} years ago`;
+                  }
+                  
+                  return (
+                    <div key={review.review_id} className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+                      {/* Customer Info */}
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-lg">
+                            {review.customer_fname?.[0] || '?'}{review.customer_lname?.[0] || ''}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {review.customer_fname} {review.customer_lname || ''}
+                          </h4>
+                          <div className="flex items-center space-x-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span
+                                key={star}
+                                className={`text-lg ${
+                                  star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                                }`}
+                              >
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Review Comment */}
+                      {review.comment && (
+                        <p className="text-gray-700 mb-4 italic">
+                          "{review.comment}"
+                        </p>
+                      )}
+                      
+                      {/* Review Date */}
+                      <p className="text-sm text-gray-500">{timeAgo}</p>
                     </div>
                   );
                 })}

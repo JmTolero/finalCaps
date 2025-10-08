@@ -68,6 +68,21 @@ export const Vendor = () => {
   });
   const [dashboardLoading, setDashboardLoading] = useState(false);
   
+  // Customer feedback state
+  const [customerFeedback, setCustomerFeedback] = useState({
+    reviews: [],
+    summary: {
+      total_reviews: 0,
+      average_rating: 0,
+      five_star: 0,
+      four_star: 0,
+      three_star: 0,
+      two_star: 0,
+      one_star: 0
+    }
+  });
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
   // Upcoming deliveries filter state
   const [deliveryFilter, setDeliveryFilter] = useState({
     status: 'all', // all, confirmed, preparing, out_for_delivery
@@ -240,8 +255,29 @@ export const Vendor = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
   
-  // Sidebar state
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Sidebar state - always closed on initial load for clean login experience
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Walk-in order state
+  const [walkInCart, setWalkInCart] = useState([]);
+  const [selectedFlavor, setSelectedFlavor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+  const [walkInQuantity, setWalkInQuantity] = useState(1);
+  const [customerName, setCustomerName] = useState('');
+  const [customerContact, setCustomerContact] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerAddress, setCustomerAddress] = useState({
+    street: '',
+    barangay: '',
+    city: '',
+    province: '',
+    postalCode: ''
+  });
+  const [walkInPaymentMethod, setWalkInPaymentMethod] = useState('cash');
+  const [walkInPaymentOption, setWalkInPaymentOption] = useState('full'); // 'full' or 'partial'
+  const [walkInDeliveryDate, setWalkInDeliveryDate] = useState('');
+  const [walkInDeliveryTime, setWalkInDeliveryTime] = useState('');
+  const [showWalkInSuccess, setShowWalkInSuccess] = useState(false);
 
   const fetchAddresses = useCallback(
     async (userId = null) => {
@@ -734,6 +770,9 @@ export const Vendor = () => {
        if (response.data.success) {
          setNotifications(response.data.notifications);
          console.log('📬 Fetched vendor notifications:', response.data.notifications.length);
+         console.log('📬 Notifications data:', response.data.notifications);
+         console.log('📬 API URL called:', `${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}`);
+         console.log('📬 Vendor ID used:', currentVendor.vendor_id);
        }
      } catch (error) {
        console.error('Error fetching vendor notifications:', error);
@@ -1443,6 +1482,185 @@ export const Vendor = () => {
     return () => document.removeEventListener('keydown', handleKeyPress);
   }, [imageModalOpen, selectedFlavorImages.length]);
 
+  // Handle window resize for sidebar responsiveness
+  useEffect(() => {
+    const handleResize = () => {
+      const isDesktop = window.innerWidth >= 1024;
+      // Only auto-adjust if transitioning between mobile and desktop
+      if (isDesktop && !isSidebarOpen) {
+        // Optionally auto-open on desktop
+        // setIsSidebarOpen(true);
+      } else if (!isDesktop && isSidebarOpen) {
+        // Auto-close when resizing to mobile
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
+
+  // Walk-in order functions
+  const addToWalkInCart = () => {
+    if (!selectedFlavor || !selectedSize) {
+      updateStatus("error", "Please select a flavor and size");
+      return;
+    }
+
+    const flavor = savedFlavors.find(f => f.flavor_id === parseInt(selectedFlavor));
+    if (!flavor) {
+      updateStatus("error", "Selected flavor not found");
+      return;
+    }
+
+    const priceKey = `${selectedSize}_price`;
+    const price = flavor[priceKey];
+    
+    if (!price || price === 0) {
+      updateStatus("error", `Price not set for ${selectedSize} size`);
+      return;
+    }
+
+    const cartItem = {
+      id: Date.now(),
+      flavor_id: flavor.flavor_id,
+      flavor_name: flavor.flavor_name,
+      size: selectedSize,
+      quantity: walkInQuantity,
+      price: price,
+      subtotal: price * walkInQuantity
+    };
+
+    setWalkInCart([...walkInCart, cartItem]);
+    setSelectedFlavor('');
+    setSelectedSize('');
+    setWalkInQuantity(1);
+    updateStatus("success", "Item added to cart");
+  };
+
+  const removeFromWalkInCart = (itemId) => {
+    setWalkInCart(walkInCart.filter(item => item.id !== itemId));
+  };
+
+  const getWalkInCartTotal = () => {
+    return walkInCart.reduce((total, item) => total + item.subtotal, 0);
+  };
+
+  const submitWalkInOrder = async () => {
+    if (walkInCart.length === 0) {
+      updateStatus("error", "Please add items to cart");
+      return;
+    }
+
+    // Validate customer name
+    if (!customerName.trim()) {
+      updateStatus("error", "Please enter customer's name");
+      return;
+    }
+
+    // Validate customer contact
+    if (!customerContact.trim()) {
+      updateStatus("error", "Please enter customer's contact number");
+      return;
+    }
+
+    // Validate customer address
+    if (!customerAddress.street || !customerAddress.barangay || !customerAddress.city) {
+      updateStatus("error", "Please fill in customer's delivery address (Street, Barangay, and City are required)");
+      return;
+    }
+
+    // Validate delivery date and time
+    if (!walkInDeliveryDate || !walkInDeliveryTime) {
+      updateStatus("error", "Please select delivery date and time");
+      return;
+    }
+
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Format customer address with customer info
+      const customerInfo = `Customer: ${customerName}, Contact: ${customerContact}${customerEmail ? `, Email: ${customerEmail}` : ''}`;
+      const deliveryAddress = [
+        customerInfo,
+        customerAddress.street,
+        customerAddress.barangay,
+        customerAddress.city,
+        customerAddress.province,
+        customerAddress.postalCode
+      ].filter(Boolean).join(', ');
+
+      // Combine date and time for delivery_datetime
+      const deliveryDateTime = `${walkInDeliveryDate} ${walkInDeliveryTime}:00`;
+
+      const orderItems = walkInCart.map(item => ({
+        flavor_id: item.flavor_id,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      // Determine payment status based on payment option
+      const paymentStatus = walkInPaymentOption === 'partial' ? 'partial' : 'unpaid';
+
+      const orderPayload = {
+        customer_id: currentVendor.user_id, // Use vendor's user_id as placeholder for walk-in
+        vendor_id: currentVendor.vendor_id,
+        delivery_address: deliveryAddress,
+        delivery_datetime: deliveryDateTime,
+        payment_method: walkInPaymentMethod,
+        payment_type: walkInPaymentOption,
+        subtotal: getWalkInCartTotal(),
+        delivery_fee: 0,
+        total_amount: getWalkInCartTotal(),
+        status: 'confirmed', // Walk-in orders are automatically approved
+        payment_status: paymentStatus, // unpaid for full payment, partial for 50% down
+        items: orderItems
+      };
+
+      console.log('Creating walk-in order:', orderPayload);
+
+      const response = await axios.post(`${apiBase}/api/orders`, orderPayload);
+
+      if (response.data.success) {
+        updateStatus("success", `Walk-in order #${response.data.order_id} created successfully!`);
+        setShowWalkInSuccess(true);
+        
+        // Clear the cart and form
+        setWalkInCart([]);
+        setCustomerName('');
+        setCustomerContact('');
+        setCustomerEmail('');
+        setCustomerAddress({
+          street: '',
+          barangay: '',
+          city: '',
+          province: '',
+          postalCode: ''
+        });
+        setWalkInPaymentMethod('cash');
+        setWalkInPaymentOption('full');
+        setWalkInDeliveryDate('');
+        setWalkInDeliveryTime('');
+        
+        // Refresh dashboard data
+        if (currentVendor?.vendor_id) {
+          fetchDashboardData(currentVendor.vendor_id);
+        }
+
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setShowWalkInSuccess(false);
+        }, 3000);
+      } else {
+        updateStatus("error", response.data.error || "Failed to create walk-in order");
+      }
+    } catch (error) {
+      console.error("Error creating walk-in order:", error);
+      updateStatus("error", "Failed to create walk-in order. Please try again.");
+    }
+  };
+
   const handleSaveFlavor = async () => {
     if (!flavorForm.name.trim()) {
       updateStatus("error", "Please enter a flavor name");
@@ -1673,6 +1891,13 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
 
+  // Fetch customer feedback when feedback view is active and vendor is loaded
+  useEffect(() => {
+    if (activeView === "feedback" && currentVendor?.vendor_id && !isInitialLoading) {
+      fetchCustomerFeedback(currentVendor.vendor_id);
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+
   // Fetch published flavors when my-store view is active and vendor is loaded
   useEffect(() => {
     if (activeView === "my-store" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
@@ -1728,6 +1953,13 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
+  // Fetch saved flavors when walk-in order view is active
+  useEffect(() => {
+    if (activeView === "addCustomerOrders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Loading flavors for walk-in orders');
+      fetchSavedFlavors();
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
   // Auto-refresh vendor notifications every 30 seconds for real-time updates
   useEffect(() => {
@@ -1782,6 +2014,108 @@ export const Vendor = () => {
     } finally {
       setDashboardLoading(false);
     }
+  };
+
+  // Fetch customer feedback/reviews for vendor
+  const fetchCustomerFeedback = async (vendorId) => {
+    if (!vendorId) return;
+    
+    try {
+      setFeedbackLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(
+        `${apiBase}/api/reviews/vendor/${vendorId}`
+      );
+      
+      if (response.data.success) {
+        setCustomerFeedback({
+          reviews: response.data.reviews || [],
+          summary: response.data.summary || {
+            total_reviews: 0,
+            average_rating: 0,
+            five_star: 0,
+            four_star: 0,
+            three_star: 0,
+            two_star: 0,
+            one_star: 0
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching customer feedback:", error);
+      // Set default values on error
+      setCustomerFeedback({
+        reviews: [],
+        summary: {
+          total_reviews: 0,
+          average_rating: 0,
+          five_star: 0,
+          four_star: 0,
+          three_star: 0,
+          two_star: 0,
+          one_star: 0
+        }
+      });
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // Helper function to generate initials from name
+  const getInitials = (firstName, lastName) => {
+    const first = firstName ? firstName.charAt(0).toUpperCase() : '';
+    const last = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return first + last;
+  };
+
+  // Helper function to get avatar color based on initials
+  const getAvatarColor = (initials) => {
+    const colors = [
+      { bg: 'bg-blue-100', text: 'text-blue-600' },
+      { bg: 'bg-green-100', text: 'text-green-600' },
+      { bg: 'bg-purple-100', text: 'text-purple-600' },
+      { bg: 'bg-orange-100', text: 'text-orange-600' },
+      { bg: 'bg-pink-100', text: 'text-pink-600' },
+      { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+      { bg: 'bg-red-100', text: 'text-red-600' },
+      { bg: 'bg-yellow-100', text: 'text-yellow-600' }
+    ];
+    const index = initials.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
+  // Helper function to render stars
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push('★');
+    }
+    if (hasHalfStar) {
+      stars.push('☆');
+    }
+    while (stars.length < 5) {
+      stars.push('☆');
+    }
+    
+    return stars.join('');
+  };
+
+  // Helper function to format time ago
+  const formatTimeAgo = (dateString) => {
+    const now = new Date();
+    const reviewDate = new Date(dateString);
+    const diffTime = Math.abs(now - reviewDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 14) return '1 week ago';
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 60) return '1 month ago';
+    return `${Math.floor(diffDays / 30)} months ago`;
   };
 
   const handleAddressChange = (addressData) => {
@@ -2050,14 +2384,14 @@ export const Vendor = () => {
     return (
       <>
         {/* Custom Navbar */}
-        <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20 overflow-visible">
-          <div className="flex items-center space-x-3">
+        <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-md hover:bg-blue-200 transition-colors"
+              className="p-1.5 sm:p-2 rounded-md hover:bg-blue-200 transition-colors"
             >
               <svg
-                className="w-6 h-6 text-gray-700"
+                className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2074,22 +2408,27 @@ export const Vendor = () => {
               <img
                 src={logoImage}
                 alt="ChillNet Logo"
-                className="ChillNet-Logo h-10 rounded-full object-cover"
+                className="ChillNet-Logo h-8 sm:h-10 rounded-full object-cover"
               />
             </Link>
           </div>
           
           {/* Profile Dropdown in Navbar */}
-          <div className="relative flex items-center space-x-2" ref={profileDropdownRef}>
+          <div className="relative flex items-center space-x-1 sm:space-x-2" ref={profileDropdownRef}>
             {/* Notification and Feedback Icons */}
             <button
-              onClick={() => setActiveView("notifications")}
-              className="p-2 rounded-full hover:bg-blue-200 transition-colors relative"
+              onClick={() => {
+                setActiveView("notifications");
+                if (window.innerWidth < 1024) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className="p-1.5 sm:p-2 rounded-full hover:bg-blue-200 transition-colors relative"
             >
               <img 
                 src={bellNotificationIcon} 
                 alt="Notifications" 
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
               />
               {/* Notification badge */}
               {unreadCount > 0 && (
@@ -2100,13 +2439,18 @@ export const Vendor = () => {
             </button>
             
             <button
-              onClick={() => setActiveView("feedback")}
-              className="p-2 rounded-full hover:bg-blue-200 transition-colors"
+              onClick={() => {
+                setActiveView("feedback");
+                if (window.innerWidth < 1024) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className="p-1.5 sm:p-2 rounded-full hover:bg-blue-200 transition-colors"
             >
               <img 
                 src={feedbackIcon} 
                 alt="Feedback" 
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-6 sm:h-6"
               />
             </button>
             <button
@@ -2205,8 +2549,8 @@ export const Vendor = () => {
            {/* Sidebar */}
           <div
             className={`${
-              isSidebarOpen ? "w-64" : "w-20"
-            } bg-[#BBDEF8] h-screen fixed left-0 top-16 z-10 transition-all duration-300 overflow-y-auto`}
+              isSidebarOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
+            } bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl`}
           >
             <div className="p-4 pt-8">
                {/* Menu items */}
@@ -2214,7 +2558,13 @@ export const Vendor = () => {
                  {sidebarItems.map((item) => (
                    <li key={item.id}>
                      <button
-                       onClick={() => setActiveView(item.id)}
+                       onClick={() => {
+                         setActiveView(item.id);
+                         // Close sidebar on mobile after selection
+                         if (window.innerWidth < 1024) {
+                           setIsSidebarOpen(false);
+                         }
+                       }}
                       className={`w-full flex ${
                         isSidebarOpen
                           ? "items-center gap-3 px-4 py-3"
@@ -2272,8 +2622,16 @@ export const Vendor = () => {
              </div>
            </div>
 
+          {/* Backdrop overlay when sidebar is open (mobile/tablet only) */}
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-30 z-40 top-16 transition-opacity duration-300 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
           {/* Main Content */}
-          <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
+          <div className="flex-1 w-full">
             <div className="p-8 pt-28">
               <div className="max-w-6xl mx-auto">
               {/* Header */}
@@ -2374,14 +2732,14 @@ export const Vendor = () => {
                           onClick={() => setActiveTab(tab.id)}
                           className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center ${
                             activeTab === tab.id
-                                ? "bg-orange-300 text-gray-900 border border-orange-400 shadow-sm transform scale-[1.02]"
-                                : "text-gray-600 hover:bg-orange-100 hover:text-gray-900 hover:shadow-sm"
+                                ? "bg-blue-500 text-white border border-blue-600 shadow-sm transform scale-[1.02]"
+                                : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-sm"
                           }`}
                         >
                           <span className="text-xl mr-3">{tab.icon}</span>
                           <span className="font-medium">{tab.label}</span>
                           {activeTab === tab.id && (
-                            <svg className="w-4 h-4 ml-auto text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 ml-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           )}
@@ -2450,13 +2808,13 @@ export const Vendor = () => {
                                     <span className="sr-only">
                                       Choose profile photo
                                     </span>
-                                  <div className="bg-white rounded-xl p-6 border-2 border-dashed border-orange-300 hover:border-orange-500 transition-colors duration-200">
+                                  <div className="bg-white rounded-xl p-6 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors duration-200">
                                     <div className="text-center">
-                                      <svg className="mx-auto h-12 w-12 text-orange-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="mx-auto h-12 w-12 text-blue-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                       </svg>
                                       <div className="flex justify-center">
-                                        <span className="bg-orange-300 text-gray-900 px-6 py-2 rounded-lg font-medium hover:bg-orange-400 transition-colors duration-200">
+                                        <span className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200">
                                           Choose File
                                         </span>
                                       </div>
@@ -2563,7 +2921,7 @@ export const Vendor = () => {
                           <div className="flex justify-end">
                             <button 
                               onClick={handleSaveProfile}
-                              className="bg-orange-300 text-gray-900 px-6 py-3 rounded-lg hover:bg-orange-400 transition-colors font-medium"
+                              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md hover:shadow-lg"
                             >
                               Save Profile
                             </button>
@@ -2595,7 +2953,7 @@ export const Vendor = () => {
                                   address_type: "business",
                               });
                             }}
-                            className="bg-orange-300 text-gray-900 px-4 py-2 rounded-lg hover:bg-orange-400 transition-colors"
+                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg"
                           >
                             + Add Store Address
                           </button>
@@ -2706,7 +3064,7 @@ export const Vendor = () => {
                               </button>
                               <button
                                 onClick={saveAddress}
-                                className="px-6 py-3 bg-orange-300 text-gray-900 rounded-lg hover:bg-orange-400 transition-colors"
+                                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg"
                               >
                                   {editingAddress
                                     ? "Update Address"
@@ -2766,7 +3124,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -2818,7 +3176,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -2872,7 +3230,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-900 text-sm font-medium rounded-lg transition-colors"
+                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -2944,14 +3302,14 @@ export const Vendor = () => {
   return (
     <>
       {/* Custom Navbar */}
-      <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20 overflow-visible">
-        <div className="flex items-center space-x-3">
+      <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-md hover:bg-blue-200 transition-colors"
+            className="p-1.5 sm:p-2 rounded-md hover:bg-blue-200 transition-colors"
           >
             <svg
-              className="w-6 h-6 text-gray-700"
+              className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2968,22 +3326,27 @@ export const Vendor = () => {
             <img
               src={logoImage}
               alt="ChillNet Logo"
-              className="ChillNet-Logo h-10 rounded-full object-cover"
+              className="ChillNet-Logo h-8 sm:h-10 rounded-full object-cover"
             />
           </Link>
         </div>
         
         {/* Profile Dropdown in Navbar */}
-        <div className="relative flex items-center space-x-2" ref={profileDropdownRef}>
+        <div className="relative flex items-center space-x-1 sm:space-x-2" ref={profileDropdownRef}>
           {/* Notification and Feedback Icons */}
           <button
-            onClick={() => setActiveView("notifications")}
-            className="p-2 rounded-full hover:bg-blue-200 transition-colors relative"
+            onClick={() => {
+              setActiveView("notifications");
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
+            className="p-1.5 sm:p-2 rounded-full hover:bg-blue-200 transition-colors relative"
           >
             <img 
               src={bellNotificationIcon} 
               alt="Notifications" 
-              className="w-6 h-6"
+              className="w-5 h-5 sm:w-6 sm:h-6"
             />
             {/* Notification badge */}
             {unreadCount > 0 && (
@@ -2994,13 +3357,18 @@ export const Vendor = () => {
           </button>
           
           <button
-            onClick={() => setActiveView("feedback")}
-            className="p-2 rounded-full hover:bg-blue-200 transition-colors"
+            onClick={() => {
+              setActiveView("feedback");
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
+            className="p-1.5 sm:p-2 rounded-full hover:bg-blue-200 transition-colors"
           >
             <img 
               src={feedbackIcon} 
               alt="Feedback" 
-              className="w-6 h-6"
+              className="w-5 h-5 sm:w-6 sm:h-6"
             />
           </button>
           <button
@@ -3099,8 +3467,8 @@ export const Vendor = () => {
          {/* Sidebar */}
         <div
           className={`${
-            isSidebarOpen ? "w-64" : "w-20"
-          } bg-[#BBDEF8] h-screen fixed left-0 top-16 z-10 transition-all duration-300 overflow-y-auto`}
+            isSidebarOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
+          } bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl`}
         >
           <div className="p-4 pt-8">
              {/* Menu items */}
@@ -3116,6 +3484,10 @@ export const Vendor = () => {
                         activeView
                       );
                        setActiveView(item.id);
+                       // Close sidebar on mobile after selection
+                       if (window.innerWidth < 1024) {
+                         setIsSidebarOpen(false);
+                       }
                      }}
                     className={`w-full flex ${
                       isSidebarOpen
@@ -3173,36 +3545,44 @@ export const Vendor = () => {
            </div>
          </div>
 
+        {/* Backdrop overlay when sidebar is open (mobile/tablet only) */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 z-40 top-16 transition-opacity duration-300 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Main Content */}
-        <div className={`flex-1 p-8 pt-28 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 pt-20 sm:pt-24 lg:pt-28 w-full">
           <div className="max-w-6xl mx-auto">
             {/* Dashboard Content */}
             {activeView === "dashboard" && (
               <div>
-                <div className="mb-8">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="mb-6 sm:mb-8">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                     Vendor Dashboard
                   </h1>
-                  <p className="text-gray-600">
+                  <p className="text-sm sm:text-base text-gray-600">
                     Welcome to your vendor dashboard. Manage your ice cream
                     business here.
                   </p>
                 </div>
 
                 {/* Quick Stats */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                         <img
                           src={ordersIcon}
                           alt="Orders"
-                          className="w-5 h-5"
+                          className="w-6 h-6 sm:w-5 sm:h-5"
                         />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Total Orders</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-xs sm:text-sm text-gray-600">Total Orders</p>
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.total_orders}
@@ -3211,18 +3591,18 @@ export const Vendor = () => {
                     </div>
                   </div>
                   
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
                         <img
                           src={paymentsIcon}
                           alt="Revenue"
-                          className="w-5 h-5"
+                          className="w-6 h-6 sm:w-5 sm:h-5"
                         />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Total Revenue</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-xs sm:text-sm text-gray-600">Total Revenue</p>
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : `₱${dashboardData.total_revenue.toLocaleString()}`}
@@ -3231,18 +3611,18 @@ export const Vendor = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm sm:col-span-2 lg:col-span-1">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
                         <img
                           src={inventoryIcon}
                           alt="Products"
-                          className="w-5 h-5"
+                          className="w-6 h-6 sm:w-5 sm:h-5"
                         />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Total Flavors</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-xs sm:text-sm text-gray-600">Total Flavors</p>
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.product_count}
@@ -3253,10 +3633,10 @@ export const Vendor = () => {
                   </div>
                   
                 {/* Other Details and Upcoming Deliveries */}
-                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   {/* Other Details Card */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
                       Other Details
                     </h3>
                     <div className="space-y-3">
@@ -3312,25 +3692,25 @@ export const Vendor = () => {
                   </div>
                   
                    {/* Upcoming Deliveries Card */}
-                   <div className="bg-white p-6 rounded-lg shadow-sm">
-                     <div className="flex items-center justify-between mb-4">
-                       <h3 className="text-lg font-semibold text-gray-900">
+                   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
+                       <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                          Upcoming Deliveries
                        </h3>
-                       <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                       <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full w-fit">
                          {getFilteredDeliveries().length} orders
                        </span>
                      </div>
                      
                      {/* Filter Controls */}
-                     <div className="mb-4 flex flex-wrap gap-3">
+                     <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
                        {/* Status Filter */}
-                       <div className="flex items-center space-x-2">
-                         <label className="text-sm font-medium text-gray-700">Status:</label>
+                       <div className="flex items-center space-x-2 w-full sm:w-auto">
+                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Status:</label>
                          <select
                            value={deliveryFilter.status}
                            onChange={(e) => setDeliveryFilter(prev => ({ ...prev, status: e.target.value }))}
-                           className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none"
                          >
                            <option value="all">All Status</option>
                            <option value="confirmed">Confirmed</option>
@@ -3340,12 +3720,12 @@ export const Vendor = () => {
                        </div>
                        
                        {/* Urgency Filter */}
-                       <div className="flex items-center space-x-2">
-                         <label className="text-sm font-medium text-gray-700">Urgency:</label>
+                       <div className="flex items-center space-x-2 w-full sm:w-auto">
+                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Urgency:</label>
                          <select
                            value={deliveryFilter.urgency}
                            onChange={(e) => setDeliveryFilter(prev => ({ ...prev, urgency: e.target.value }))}
-                           className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none"
                          >
                            <option value="all">All Time</option>
                            <option value="overdue">Overdue</option>
@@ -3430,14 +3810,14 @@ export const Vendor = () => {
                            }
                            
                            return (
-                             <div key={delivery.order_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                               <div className="flex items-start justify-between">
-                                 <div className="flex-1">
-                                   <div className="flex items-center space-x-2 mb-2">
-                                     <h4 className="font-medium text-gray-900">
+                             <div key={delivery.order_id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                 <div className="flex-1 min-w-0">
+                                   <div className="flex flex-wrap items-center gap-2 mb-2">
+                                     <h4 className="text-sm sm:text-base font-medium text-gray-900">
                                        Order #{delivery.order_id}
                                      </h4>
-                                     <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass}`}>
+                                     <div className={`inline-flex items-center px-2 py-0.5 sm:py-1 rounded-md text-xs font-semibold ${urgencyClass}`}>
                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                        </svg>
@@ -3446,10 +3826,10 @@ export const Vendor = () => {
                                    </div>
                                    
                                    <div className="space-y-1">
-                                     <p className="text-sm text-gray-600">
+                                     <p className="text-xs sm:text-sm text-gray-600 truncate">
                                        <span className="font-medium">Customer:</span> {delivery.customer_name} {delivery.customer_lname}
                                      </p>
-                                     <p className="text-sm text-gray-600">
+                                     <p className="text-xs sm:text-sm text-gray-600">
                                        <span className="font-medium">Delivery:</span> {deliveryDate.toLocaleString('en-US', {
                                          weekday: 'short',
                                          month: 'short',
@@ -3459,10 +3839,10 @@ export const Vendor = () => {
                                          hour12: true
                                        })}
                                      </p>
-                                     <p className="text-sm text-gray-600">
+                                     <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
                                        <span className="font-medium">Address:</span> {delivery.delivery_address || 'No address specified'}
                                      </p>
-                                     <p className="text-sm text-gray-600">
+                                     <p className="text-xs sm:text-sm text-gray-600">
                                        <span className="font-medium">Status:</span> 
                                        <span className={`ml-1 font-medium ${
                                          delivery.status === 'confirmed' ? 'text-blue-600' :
@@ -3475,8 +3855,8 @@ export const Vendor = () => {
                                    </div>
                                  </div>
                                  
-                                 <div className="text-right ml-4">
-                                   <p className="text-lg font-bold text-green-600">
+                                 <div className="text-left sm:text-right sm:ml-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200">
+                                   <p className="text-base sm:text-lg font-bold text-green-600">
                                      ₱{parseFloat(delivery.total_amount || 0).toFixed(2)}
                                    </p>
                                    <p className="text-xs text-gray-500">
@@ -3520,7 +3900,7 @@ export const Vendor = () => {
             {activeView === "orders" && (
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-6">
-                  Orders
+                
                 </h1>
               </div>
             )}
@@ -4130,7 +4510,7 @@ export const Vendor = () => {
                       <div className="flex items-center space-x-3">
                         <label
                           htmlFor="flavor-images"
-                          className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 cursor-pointer"
+                          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 cursor-pointer hover:shadow-lg"
                         >
                           Upload Images
                         </label>
@@ -4145,7 +4525,7 @@ export const Vendor = () => {
                         <div className="flex space-x-3">
                           <button
                             onClick={handleSaveFlavor}
-                            className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200"
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg"
                           >
                             {isEditingFlavor ? "Update Flavor" : "Save Flavor"}
                           </button>
@@ -4365,7 +4745,7 @@ export const Vendor = () => {
                     {/* Publish Flavor Button */}
                     <button
                       onClick={() => setActiveView("inventory")}
-                      className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-6 py-3 rounded-xl transition-colors duration-200 shadow-lg"
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl"
                     >
                       Publish Flavor
                     </button>
@@ -4392,7 +4772,7 @@ export const Vendor = () => {
                           </p>
                           <button
                             onClick={() => setActiveView("inventory")}
-                            className="bg-orange-300 hover:bg-orange-400 text-gray-900 font-semibold px-8 py-3 rounded-xl transition-colors duration-200 shadow-lg"
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-8 py-3 rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl"
                           >
                             Publish Your First Flavor
                           </button>
@@ -4489,10 +4869,434 @@ export const Vendor = () => {
             )}
 
             {activeView === "addCustomerOrders" && (
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">
-                  Add Customer Orders
-                </h1>
+              <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
+                <div className="max-w-6xl mx-auto">
+                  {/* Header */}
+                  <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg border-t-4 border-blue-400">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <img 
+                          src={addCustomerIcon} 
+                          alt="Walk-in Orders" 
+                          className="w-7 h-7"
+                        />
+                      </div>
+                      <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          Walk-in Customer Orders
+                        </h1>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Success Message */}
+                  {showWalkInSuccess && (
+                    <div className="bg-blue-100 border-2 border-blue-400 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center shadow-md">
+                      <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="font-medium">Order created successfully!</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Side - Order Form */}
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-400">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                        <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add Items
+                      </h2>
+
+                      {/* Customer Information Section */}
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                          Customer Information
+                        </h3>
+                        
+                        {/* Delivery Address - Inside Customer Info */}
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <h4 className="text-xs font-semibold text-gray-900 mb-3 flex items-center">
+                            <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Delivery Address *
+                          </h4>
+                          <div className="space-y-2">
+                            <div>
+                              <input
+                                type="text"
+                                value={customerAddress.street}
+                                onChange={(e) => setCustomerAddress({...customerAddress, street: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                placeholder="Street Address *"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={customerAddress.barangay}
+                                onChange={(e) => setCustomerAddress({...customerAddress, barangay: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                placeholder="Barangay *"
+                              />
+                              <input
+                                type="text"
+                                value={customerAddress.city}
+                                onChange={(e) => setCustomerAddress({...customerAddress, city: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                placeholder="City *"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={customerAddress.province}
+                                onChange={(e) => setCustomerAddress({...customerAddress, province: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                placeholder="Province (optional)"
+                              />
+                              <input
+                                type="text"
+                                value={customerAddress.postalCode}
+                                onChange={(e) => setCustomerAddress({...customerAddress, postalCode: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                placeholder="Postal Code (optional)"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Customer Name */}
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="Enter customer name"
+                            required
+                          />
+                        </div>
+
+                        {/* Customer Contact */}
+                        <div className="mb-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Contact No. *
+                          </label>
+                          <input
+                            type="tel"
+                            value={customerContact}
+                            onChange={(e) => setCustomerContact(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="09123456789"
+                            required
+                          />
+                        </div>
+
+                        {/* Customer Email */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Email (Optional)
+                          </label>
+                          <input
+                            type="email"
+                            value={customerEmail}
+                            onChange={(e) => setCustomerEmail(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            placeholder="customer@email.com"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Flavor Selection */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Flavor *
+                        </label>
+                        <select
+                          value={selectedFlavor}
+                          onChange={(e) => setSelectedFlavor(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        >
+                          <option value="">Choose a flavor...</option>
+                          {flavorsLoading ? (
+                            <option disabled>Loading flavors...</option>
+                          ) : savedFlavors.length === 0 ? (
+                            <option disabled>No flavors available</option>
+                          ) : (
+                            savedFlavors.map((flavor) => (
+                              <option key={flavor.flavor_id} value={flavor.flavor_id}>
+                                {flavor.flavor_name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+
+                      {/* Size Selection */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Select Size *
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {['small', 'medium', 'large'].map((size) => {
+                            const selectedFlavorData = savedFlavors.find(
+                              f => f.flavor_id === parseInt(selectedFlavor)
+                            );
+                            const priceKey = `${size}_price`;
+                            const price = selectedFlavorData?.[priceKey] || 0;
+                            const hasPrice = price > 0;
+
+                            return (
+                              <button
+                                key={size}
+                                onClick={() => hasPrice && setSelectedSize(size)}
+                                disabled={!hasPrice || !selectedFlavor}
+                                className={`px-4 py-3 rounded-lg border-2 transition-all font-medium ${
+                                  selectedSize === size
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : hasPrice && selectedFlavor
+                                    ? 'border-gray-300 hover:border-blue-400 text-gray-700'
+                                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="text-sm capitalize">{size}</div>
+                                {selectedFlavor && (
+                                  <div className="text-xs mt-1">
+                                    {hasPrice ? `₱${price}` : 'N/A'}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Quantity Selection */}
+                      <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Quantity *
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => setWalkInQuantity(Math.max(1, walkInQuantity - 1))}
+                            className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={walkInQuantity}
+                            onChange={(e) => setWalkInQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-20 px-4 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          />
+                          <button
+                            onClick={() => setWalkInQuantity(walkInQuantity + 1)}
+                            className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Add to Cart Button */}
+                      <button
+                        onClick={addToWalkInCart}
+                        disabled={!selectedFlavor || !selectedSize}
+                        className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span>Add to Cart</span>
+                      </button>
+                    </div>
+
+                    {/* Right Side - Cart */}
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-400">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                        <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Cart ({walkInCart.length} items)
+                      </h2>
+
+                      {walkInCart.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">
+                          <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          <p>Cart is empty</p>
+                          <p className="text-sm mt-1">Add items to create an order</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Cart Items */}
+                          <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+                            {walkInCart.map((item) => (
+                              <div key={item.id} className="bg-blue-50 p-4 rounded-lg flex justify-between items-center border border-blue-200">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-gray-900">{item.flavor_name}</h3>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    <span className="capitalize">{item.size}</span> • Qty: {item.quantity} • ₱{item.price} each
+                                  </div>
+                                </div>
+                                <div className="text-right ml-4">
+                                  <div className="font-bold text-blue-600">₱{item.subtotal.toFixed(2)}</div>
+                                  <button
+                                    onClick={() => removeFromWalkInCart(item.id)}
+                                    className="text-red-500 hover:text-red-700 text-sm mt-1 font-medium"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Delivery Date and Time */}
+                          <div className="mb-6 pb-6 border-b border-gray-200 bg-blue-50 p-4 rounded-lg">
+                            <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
+                              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              Schedule to Deliver
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="date"
+                                  value={walkInDeliveryDate}
+                                  onChange={(e) => setWalkInDeliveryDate(e.target.value)}
+                                  min={new Date().toISOString().split('T')[0]}
+                                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-white"
+                                  required
+                                  placeholder="mm/dd/yyyy"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Time <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="time"
+                                  value={walkInDeliveryTime}
+                                  onChange={(e) => setWalkInDeliveryTime(e.target.value)}
+                                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-white"
+                                  required
+                                  placeholder="--:-- --"
+                                />
+                              </div>
+                            </div>
+                            {(!walkInDeliveryDate || !walkInDeliveryTime) && (
+                              <p className="text-red-500 text-sm mt-3 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                Please select both date and time to proceed
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Payment Method */}
+                          <div className="mb-6 pb-6 border-b border-gray-200">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                              Payment Method
+                            </h3>
+                            
+                            {/* Payment Method Selection */}
+                            <div className="mb-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setWalkInPaymentMethod('cash')}
+                                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                                    walkInPaymentMethod === 'cash'
+                                      ? 'border-green-500 bg-green-50 text-green-700'
+                                      : 'border-gray-300 hover:border-green-300 text-gray-700'
+                                  }`}
+                                >
+                                  <div className="text-sm font-medium">Cash</div>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setWalkInPaymentMethod('gcash')}
+                                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                                    walkInPaymentMethod === 'gcash'
+                                      ? 'border-green-500 bg-green-50 text-green-700'
+                                      : 'border-gray-300 hover:border-green-300 text-gray-700'
+                                  }`}
+                                >
+                                  <div className="text-sm font-medium">GCash</div>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Payment Option */}
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Payment Option:
+                              </label>
+                              <div className="space-y-2">
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="paymentOption"
+                                    value="full"
+                                    checked={walkInPaymentOption === 'full'}
+                                    onChange={(e) => setWalkInPaymentOption(e.target.value)}
+                                    className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                  />
+                                  <span className="ml-2 text-sm text-gray-900">Full Payment</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="paymentOption"
+                                    value="partial"
+                                    checked={walkInPaymentOption === 'partial'}
+                                    onChange={(e) => setWalkInPaymentOption(e.target.value)}
+                                    className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                  />
+                                  <span className="ml-2 text-sm text-gray-900">50% Down Payment</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total */}
+                          <div className="bg-blue-50 p-4 rounded-lg mb-6 border-2 border-blue-200">
+                            <div className="flex justify-between items-center text-lg font-bold text-gray-900">
+                              <span>Total Amount:</span>
+                              <span className="text-2xl text-blue-600">₱{getWalkInCartTotal().toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          {/* Complete Order Button */}
+                          <button
+                            onClick={submitWalkInOrder}
+                            className="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
+                          >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Complete Order</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -4512,7 +5316,7 @@ export const Vendor = () => {
                         </h1>
                         <p className="text-gray-600">
                           Review and manage customer orders
-                        </p>
+                        </p>  
                       </div>
                     </div>
                     
@@ -4874,12 +5678,43 @@ export const Vendor = () => {
                             <div className="space-y-3">
                               <h4 className="font-medium text-gray-900">Customer Information</h4>
                               <div className="bg-white rounded-lg p-4 space-y-2">
-                                <p className="text-sm"><strong>Name:</strong> {order.customer_fname} {order.customer_lname || ''}</p>
-                                <p className="text-sm"><strong>Contact:</strong> {order.customer_contact || 'N/A'}</p>
-                                <p className="text-sm"><strong>Email:</strong> {order.customer_email || 'N/A'}</p>
+                                {(() => {
+                                  const fullAddress = order.delivery_address || '';
+                                  const parts = fullAddress.split(', ');
+                                  
+                                  // Extract customer info if present in delivery address (for walk-in orders)
+                                  let customerName = '';
+                                  let customerContact = '';
+                                  let customerEmail = '';
+                                  
+                                  parts.forEach((part) => {
+                                    if (part.startsWith('Customer: ')) {
+                                      customerName = part.replace('Customer: ', '');
+                                    } else if (part.startsWith('Contact: ')) {
+                                      customerContact = part.replace('Contact: ', '');
+                                    } else if (part.startsWith('Email: ')) {
+                                      customerEmail = part.replace('Email: ', '');
+                                    }
+                                  });
+                                  
+                                  // Check if this is a walk-in order (has customer info in delivery address)
+                                  const isWalkInOrder = customerName && customerContact;
+                                  
+                                  // If walk-in order, use parsed data; otherwise use order fields
+                                  const displayName = isWalkInOrder ? customerName : `${order.customer_fname} ${order.customer_lname || ''}`;
+                                  const displayContact = isWalkInOrder ? customerContact : (order.customer_contact || 'N/A');
+                                  const displayEmail = isWalkInOrder ? (customerEmail || 'N/A') : (order.customer_email || 'N/A');
+                                  
+                                  return (
+                                    <>
+                                      <p className="text-sm"><strong>Name:</strong> {displayName}</p>
+                                      <p className="text-sm"><strong>Contact:</strong> {displayContact}</p>
+                                      <p className="text-sm"><strong>Email:</strong> {displayEmail}</p>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
-
                             {/* Order Details */}
                             <div className="space-y-3">
                               <h4 className="font-medium text-gray-900">Order Details</h4>
@@ -4967,95 +5802,27 @@ export const Vendor = () => {
                             </div>
                           )}
 
-                          {/* Enhanced Delivery Information */}
+                          {/* Delivery Information */}
                           <div className="mb-6">
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 space-y-4 border border-blue-200">
-                              <div className="flex items-center space-x-2 mb-4">
-                                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <h4 className="text-lg font-semibold text-gray-900">Delivery Information</h4>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-gray-700">Delivery Address</span>
-                                  </div>
-                                  <p className="text-gray-900 font-medium">{order.delivery_address || 'No address specified'}</p>
-                                </div>
+                            <h4 className="font-medium text-gray-900 mb-3">Delivery Information</h4>
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              {(() => {
+                                const fullAddress = order.delivery_address || '';
+                                const parts = fullAddress.split(', ');
                                 
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span className="text-sm font-medium text-gray-700">Scheduled Delivery</span>
-                                  </div>
-                                  {order.delivery_datetime ? (() => {
-                                    const deliveryDate = new Date(order.delivery_datetime);
-                                    const now = new Date();
-                                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                                    const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
-                                    const diffTime = deliveryDay.getTime() - today.getTime();
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                    
-                                    let urgencyClass = 'text-gray-600 bg-gray-100';
-                                    let urgencyText = '';
-                                    
-                                    if (diffDays < 0) {
-                                      urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
-                                      urgencyText = 'OVERDUE';
-                                    } else if (diffDays === 0) {
-                                      urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
-                                      urgencyText = 'TODAY';
-                                    } else if (diffDays === 1) {
-                                      urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
-                                      urgencyText = 'TOMORROW';
-                                    } else if (diffDays <= 3) {
-                                      urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
-                                      urgencyText = 'UPCOMING';
-                                    }
-                                    
-                                    return (
-                                      <div>
-                                        <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass} mb-2`}>
-                                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                          </svg>
-                                          {urgencyText}
-                                        </div>
-                                        <p className="text-gray-900 font-medium text-sm">
-                                          {deliveryDate.toLocaleString('en-US', {
-                                            weekday: 'long',
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true
-                                          })}
-                                        </p>
-                                      </div>
-                                    );
-                                  })() : (
-                                    <div>
-                                      <div className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 mb-2">
-                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        NOT SCHEDULED
-                                      </div>
-                                      <p className="text-gray-500 text-sm">No delivery time scheduled</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                                // Filter out customer info parts, keep only actual address
+                                const addressParts = parts.filter(part => 
+                                  !part.startsWith('Customer: ') && 
+                                  !part.startsWith('Contact: ') && 
+                                  !part.startsWith('Email: ')
+                                );
+                                
+                                const deliveryAddress = addressParts.join(', ') || 'No address specified';
+                                
+                                return (
+                                  <p className="text-sm"><strong>Address:</strong> {deliveryAddress}</p>
+                                );
+                              })()}
                             </div>
                           </div>
 
@@ -5077,14 +5844,48 @@ export const Vendor = () => {
                             </div>
                           )}
 
-                          {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                              <p className="text-green-800 font-medium mb-2">Order Approved!</p>
-                              <p className="text-green-700 text-sm">
-                                This order has been approved. Waiting for customer payment to start preparation.
-                              </p>
-                            </div>
-                          )}
+                          {order.status === 'confirmed' && (order.payment_status === 'unpaid' || order.payment_status === 'partial') && (() => {
+                            // Check if this is a walk-in order
+                            const fullAddress = order.delivery_address || '';
+                            const isWalkInOrder = fullAddress.includes('Customer: ') && fullAddress.includes('Contact: ');
+                            
+                            return (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <p className="text-green-800 font-medium mb-2">Order Approved!</p>
+                                <p className="text-green-700 text-sm mb-3">
+                                  {isWalkInOrder 
+                                    ? `Walk-in order - ${order.payment_status === 'partial' ? '50% down payment received' : 'Waiting for payment'}. Mark as paid to start preparation.`
+                                    : 'This order has been approved. Waiting for customer payment to start preparation.'
+                                  }
+                                </p>
+                                {isWalkInOrder && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                                        const response = await axios.put(`${apiBase}/api/orders/${order.order_id}/payment-status`, {
+                                          payment_status: 'paid'
+                                        });
+                                        
+                                        if (response.data.success) {
+                                          updateStatus("success", "Payment marked as paid! You can now start preparing.");
+                                          fetchVendorOrders(); // Refresh orders
+                                        } else {
+                                          updateStatus("error", response.data.error || "Failed to update payment status");
+                                        }
+                                      } catch (error) {
+                                        console.error("Error updating payment status:", error);
+                                        updateStatus("error", "Failed to update payment status. Please try again.");
+                                      }
+                                    }}
+                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                  >
+                                     Mark as Paid
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {order.status === 'confirmed' && order.payment_status === 'paid' && (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -5271,7 +6072,7 @@ export const Vendor = () => {
                       {!isEditingPrices && (
                         <button
                           onClick={handlePricesEdit}
-                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                         >
                           Edit Prices
                         </button>
@@ -5327,13 +6128,13 @@ export const Vendor = () => {
                         <div className="flex space-x-3">
                           <button
                             onClick={handlePricesSave}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg"
                           >
                             Save Prices
                           </button>
                           <button
                             onClick={handlePricesCancel}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
                           >
                             Cancel
                           </button>
@@ -5341,8 +6142,8 @@ export const Vendor = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-green-600 mb-1">
+                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.small}
                           </div>
                           <div className="text-sm font-semibold text-gray-800 mb-1">
@@ -5352,8 +6153,8 @@ export const Vendor = () => {
                             {drumCapacity.small} gallons
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-green-600 mb-1">
+                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.medium}
                           </div>
                           <div className="text-sm font-semibold text-gray-800 mb-1">
@@ -5363,8 +6164,8 @@ export const Vendor = () => {
                             {drumCapacity.medium} gallons
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-green-600 mb-1">
+                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.large}
                           </div>
                           <div className="text-sm font-semibold text-gray-800 mb-1">
@@ -5393,13 +6194,13 @@ export const Vendor = () => {
                         <div className="flex space-x-2">
                           <button
                             onClick={() => setShowAddZoneForm(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                           >
                             Add Zone
                           </button>
                           <button
                             onClick={handleDeliveryEdit}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                           >
                             Edit Zones
                           </button>
@@ -5454,7 +6255,7 @@ export const Vendor = () => {
                         <div className="flex space-x-3 mt-4">
                           <button
                             onClick={handleAddDeliveryZone}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg"
                           >
                             Add Zone
                           </button>
@@ -5463,7 +6264,7 @@ export const Vendor = () => {
                               setShowAddZoneForm(false);
                               setNewDeliveryZone({ city: '', province: '', delivery_price: 0 });
                             }}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
                           >
                             Cancel
                           </button>
@@ -5518,13 +6319,13 @@ export const Vendor = () => {
                         <div className="flex space-x-3">
                           <button
                             onClick={handleDeliverySave}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg"
                           >
                             Save Changes
                           </button>
                           <button
                             onClick={handleDeliveryCancel}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
                           >
                             Cancel
                           </button>
@@ -5616,38 +6417,72 @@ export const Vendor = () => {
                         <p className="text-gray-600">You'll see order updates and customer interactions here</p>
                       </div>
                     ) : (
-                      notifications.map((notification) => (
-                        <div 
-                          key={notification.id} 
-                          className={`border-l-4 p-4 rounded-r-lg cursor-pointer transition-colors ${
-                            notification.is_read 
-                              ? 'bg-gray-50 border-gray-300' 
-                              : 'bg-blue-50 border-blue-400'
-                          }`}
-                          onClick={() => markNotificationAsRead(notification.id)}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.is_read ? 'bg-gray-400' : 'bg-blue-500'
-                            }`}></div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-900">{notification.title}</h3>
-                              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                              <p className="text-xs text-gray-500 mt-2">
-                                {new Date(notification.created_at).toLocaleString()}
-                              </p>
-                              {notification.related_order_id && (
-                                <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                  Order #{notification.related_order_id}
-                                </span>
+                      notifications.map((notification) => {
+                        const isReviewNotification = notification.notification_type === 'review_received';
+                        console.log('📬 Processing notification:', notification.title, 'Type:', notification.notification_type, 'Is Review:', isReviewNotification);
+                        
+                        return (
+                          <div 
+                            key={notification.id} 
+                            className={`border-l-4 p-4 rounded-r-lg cursor-pointer transition-colors ${
+                              notification.is_read 
+                                ? 'bg-gray-50 border-gray-300'
+                                : 'bg-blue-50 border-blue-400'
+                            }`}
+                            onClick={() => markNotificationAsRead(notification.id)}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 ${
+                                notification.is_read 
+                                  ? 'bg-gray-400'
+                                  : 'bg-blue-500'
+                              }`}></div>
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900">
+                                  {notification.title}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  {(() => {
+                                    try {
+                                      const date = new Date(notification.created_at);
+                                      // If the date is invalid, return a fallback
+                                      if (isNaN(date.getTime())) {
+                                        return 'Invalid date';
+                                      }
+                                      return date.toLocaleString('en-PH', {
+                                        timeZone: 'Asia/Manila',
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      });
+                                    } catch (error) {
+                                      console.error('Date formatting error:', error);
+                                      return new Date(notification.created_at).toLocaleString();
+                                    }
+                                  })()}
+                                </p>
+                                {notification.related_order_id && (
+                                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
+                                    Order #{notification.related_order_id}
+                                  </span>
+                                )}
+                                {isReviewNotification && (
+                                  <span className="inline-block mt-2 ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                    ⭐ Review
+                                  </span>
+                                )}
+                              </div>
+                              {!notification.is_read && (
+                                <div className="w-3 h-3 rounded-full mt-2 bg-blue-500"></div>
                               )}
                             </div>
-                            {!notification.is_read && (
-                              <div className="w-3 h-3 bg-blue-500 rounded-full mt-2"></div>
-                            )}
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -5673,83 +6508,95 @@ export const Vendor = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold">JD</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">John Doe</h3>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-yellow-400">★★★★★</span>
-                            <span className="text-sm text-gray-600">5.0</span>
+                  {feedbackLoading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-3 text-gray-600">Loading customer feedback...</span>
+                    </div>
+                  ) : customerFeedback.reviews.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <img src={feedbackIcon} alt="No feedback" className="w-8 h-8 opacity-50" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No reviews yet</h3>
+                      <p className="text-gray-600">Customer reviews will appear here once customers start leaving feedback</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary Card */}
+                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-8 text-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h2 className="text-2xl font-bold mb-2">
+                              {customerFeedback.summary.average_rating} ⭐
+                            </h2>
+                            <p className="text-blue-400">
+                              Based on {customerFeedback.summary.total_reviews} review{customerFeedback.summary.total_reviews !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="space-y-1">
+                              {[5, 4, 3, 2, 1].map((star) => (
+                                <div key={star} className="flex items-center space-x-2">
+                                  <span className="text-sm">{star}★</span>
+                                  <div className="w-20 bg-blue-300 rounded-full h-2">
+                                    <div 
+                                      className="bg-white h-2 rounded-full" 
+                                      style={{ 
+                                        width: `${customerFeedback.summary.total_reviews > 0 
+                                          ? (customerFeedback.summary[`${star}_star`] / customerFeedback.summary.total_reviews) * 100 
+                                          : 0}%` 
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs text-blue-100">
+                                    {customerFeedback.summary[`${star}_star`] || 0}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <p className="text-gray-700 mb-2">
-                        "Amazing ice cream! The Mango Flavor is absolutely delicious. Will definitely order again!"
-                      </p>
-                      <p className="text-xs text-gray-500">2 days ago</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 font-semibold">SM</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Sarah Miller</h3>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-yellow-400">★★★★☆</span>
-                            <span className="text-sm text-gray-600">4.0</span>
-                          </div>
-                        </div>
+
+                      {/* Reviews Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {customerFeedback.reviews.map((review) => {
+                          const initials = getInitials(review.customer_fname, review.customer_lname);
+                          const avatarColor = getAvatarColor(initials);
+                          
+                          return (
+                            <div key={review.review_id} className="bg-gray-50 rounded-lg p-6 hover:shadow-md transition-shadow">
+                              <div className="flex items-center space-x-3 mb-4">
+                                <div className={`w-10 h-10 ${avatarColor.bg} rounded-full flex items-center justify-center`}>
+                                  <span className={`${avatarColor.text} font-semibold`}>{initials}</span>
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-gray-900">
+                                    {review.customer_fname} {review.customer_lname}
+                                  </h3>
+                                  <div className="flex items-center space-x-1">
+                                    <span className="text-yellow-400">{renderStars(review.rating)}</span>
+                                    <span className="text-sm text-gray-600">{review.rating}.0</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {review.comment && (
+                                <div className="bg-white rounded-lg p-4 mb-3 border-l-4 border-blue-400">
+                                  <p className="text-gray-800 text-base leading-relaxed font-medium">
+                                    "{review.comment}"
+                                  </p>
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                {formatTimeAgo(review.created_at)}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <p className="text-gray-700 mb-2">
-                        "Great quality ice cream, but delivery was a bit late. Overall satisfied with the product."
-                      </p>
-                      <p className="text-xs text-gray-500">1 week ago</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                          <span className="text-purple-600 font-semibold">MJ</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Mike Johnson</h3>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-yellow-400">★★★★★</span>
-                            <span className="text-sm text-gray-600">5.0</span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-2">
-                        "Best ice cream in town! The variety of flavors is impressive. Highly recommended!"
-                      </p>
-                      <p className="text-xs text-gray-500">2 weeks ago</p>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-6">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                          <span className="text-orange-600 font-semibold">AL</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">Anna Lee</h3>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-yellow-400">★★★☆☆</span>
-                            <span className="text-sm text-gray-600">3.0</span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-gray-700 mb-2">
-                        "Good ice cream but could be creamier. The packaging was excellent though."
-                      </p>
-                      <p className="text-xs text-gray-500">3 weeks ago</p>
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -5885,7 +6732,7 @@ export const Vendor = () => {
                     // Auto scroll to top to show inventory section
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex-1 bg-orange-300 hover:bg-orange-4 00 text-black font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
                 >
                   Go to Inventory
                 </button>

@@ -233,6 +233,62 @@ SELECT
 FROM vendors v
 LEFT JOIN addresses a ON v.primary_address_id = a.address_id;
 
+-- Notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_type ENUM('customer', 'vendor') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    notification_type ENUM(
+        'order_placed',
+        'order_accepted', 
+        'order_rejected',
+        'order_preparing',
+        'order_ready',
+        'order_delivered',
+        'order_cancelled',
+        'payment_confirmed',
+        'payment_failed',
+        'drum_return_requested',
+        'drum_picked_up',
+        'system_announcement',
+        'review_received'
+    ) NOT NULL,
+    related_order_id INT NULL,
+    related_vendor_id INT NULL,
+    related_customer_id INT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_user_notifications (user_id, user_type),
+    INDEX idx_notification_type (notification_type),
+    INDEX idx_created_at (created_at),
+    INDEX idx_is_read (is_read)
+);
+
+-- Vendor Reviews table
+CREATE TABLE IF NOT EXISTS vendor_reviews (
+    review_id INT AUTO_INCREMENT PRIMARY KEY,
+    vendor_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    order_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (vendor_id) REFERENCES vendors(vendor_id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_review (order_id, customer_id),
+    INDEX idx_vendor_reviews (vendor_id),
+    INDEX idx_customer_reviews (customer_id),
+    INDEX idx_order_reviews (order_id),
+    INDEX idx_rating (rating)
+);
+
 -- Database schema is now up to date with the actual database structure
 -- This includes:
 -- 1. Primary address system with primary_address_id columns
@@ -241,3 +297,5 @@ LEFT JOIN addresses a ON v.primary_address_id = a.address_id;
 -- 4. Proper foreign key relationships
 -- 5. Indexes for performance
 -- 6. Views for easy data access
+-- 7. Notifications system with review_received support
+-- 8. Vendor reviews system

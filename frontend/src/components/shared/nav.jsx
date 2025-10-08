@@ -182,18 +182,18 @@ export const NavWithLogo = () => {
 
     return(
         <div>
-            <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4 fixed top-0 left-0 z-20">
-                <div className="flex items-center space-x-3">
+            <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                     {shouldShowHamburger && (
                         <button
                             onClick={() => {
                                 // This will be handled by the admin component
                                 window.dispatchEvent(new CustomEvent('toggleSidebar'));
                             }}
-                            className="p-2 rounded-md hover:bg-blue-200 transition-colors"
+                            className="p-1.5 sm:p-2 rounded-md hover:bg-blue-200 transition-colors"
                         >
                             <svg
-                                className="w-6 h-6 text-gray-700"
+                                className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -211,7 +211,7 @@ export const NavWithLogo = () => {
                         <img
                             src={logoImage}
                             alt="ChillNet Logo"
-                            className="ChillNet-Logo h-7 rounded-full object-cover"
+                            className="ChillNet-Logo h-6 sm:h-7 rounded-full object-cover"
                         />
                     </Link>
                     

@@ -34,6 +34,17 @@ export const Notifications = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
+  
+  // Review modal states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoModalMessage, setInfoModalMessage] = useState('');
+  const [infoModalTitle, setInfoModalTitle] = useState('');
+  const [infoModalType, setInfoModalType] = useState('success'); // 'success' or 'error'
 
   useEffect(() => {
     // Load user data from session
@@ -52,13 +63,29 @@ export const Notifications = () => {
     fetchNotifications();
   }, []);
 
-  // Reset modal states when component mounts
+  // Reset modal states when component mounts or unmounts
   useEffect(() => {
     setShowDrumReturnModal(false);
     setShowDrumReturnSuccessModal(false);
     setShowErrorModal(false);
     setSelectedOrderForReturn(null);
+    setShowReviewModal(false);
+    setShowInfoModal(false);
+    setSelectedOrder(null);
+    
+    // Cleanup function when component unmounts
+    return () => {
+      setShowReviewModal(false);
+      setShowInfoModal(false);
+      setShowOrderDetails(false);
+    };
   }, []);
+  
+  // Reset modals when switching between views
+  useEffect(() => {
+    setShowReviewModal(false);
+    setShowInfoModal(false);
+  }, [activeView]);
 
   const fetchNotifications = async () => {
     try {
@@ -265,6 +292,99 @@ export const Notifications = () => {
   const closeOrderDetails = () => {
     setShowOrderDetails(false);
     setSelectedOrder(null);
+  };
+
+  // Submit shop review
+  const submitReview = async () => {
+    // Prevent multiple submissions
+    if (submittingReview) {
+      console.log('⚠️ Review submission already in progress');
+      return;
+    }
+    
+    if (reviewRating === 0) {
+      setInfoModalTitle('Rating Required');
+      setInfoModalMessage('Please select a rating before submitting your review.');
+      setInfoModalType('error');
+      setShowInfoModal(true);
+      return;
+    }
+    
+    if (!selectedOrder) return;
+    
+    try {
+      setSubmittingReview(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const token = sessionStorage.getItem('token');
+      
+      const response = await axios.post(
+        `${apiBase}/api/reviews`,
+        {
+          order_id: selectedOrder.order_id,
+          vendor_id: selectedOrder.vendor_id,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success) {
+        // Show success modal
+        setInfoModalTitle('Review Submitted! ⭐');
+        setInfoModalMessage('Thank you for your feedback! Your review has been submitted successfully.');
+        setInfoModalType('success');
+        setShowInfoModal(true);
+        
+        // Close modals and reset
+        setShowReviewModal(false);
+        setShowOrderDetails(false);
+        setReviewRating(0);
+        setReviewComment('');
+        setSelectedOrder(null);
+        
+        // Refresh orders
+        fetchOrders();
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to submit review';
+      
+      setInfoModalTitle('Review Error');
+      setInfoModalMessage(errorMsg);
+      setInfoModalType('error');
+      setShowInfoModal(true);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  // Render star rating
+  const renderStarRating = (isEditable = false) => {
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            disabled={!isEditable}
+            onClick={() => isEditable && setReviewRating(star)}
+            onMouseEnter={() => isEditable && setHoveredStar(star)}
+            onMouseLeave={() => isEditable && setHoveredStar(0)}
+            className={`text-3xl transition-all ${
+              isEditable ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+            } ${
+              star <= (hoveredStar || reviewRating)
+                ? 'text-yellow-400'
+                : 'text-gray-300'
+            }`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const showError = (message) => {
@@ -946,10 +1066,115 @@ export const Notifications = () => {
                     Close
                   </button>
                   {selectedOrder.status === 'delivered' && (
-                    <button className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors">
+                    <button 
+                      onClick={() => {
+                        setShowReviewModal(true);
+                        setReviewRating(0);
+                        setReviewComment('');
+                      }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                    >
                       Rate Order
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">
+                  Leave a Review
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setReviewRating(0);
+                    setReviewComment('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Shop Info */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">You're reviewing</p>
+                  <p className="font-semibold text-gray-900">{selectedOrder.vendor_name}</p>
+                  <p className="text-xs text-gray-500">Order #{selectedOrder.order_id}</p>
+                </div>
+
+                {/* Star Rating */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Rate your experience <span className="text-red-500">*</span>
+                  </label>
+                  {renderStarRating(true)}
+                  {reviewRating > 0 && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      {reviewRating === 1 && '⭐ Poor'}
+                      {reviewRating === 2 && '⭐⭐ Fair'}
+                      {reviewRating === 3 && '⭐⭐⭐ Good'}
+                      {reviewRating === 4 && '⭐⭐⭐⭐ Very Good'}
+                      {reviewRating === 5 && '⭐⭐⭐⭐⭐ Excellent'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Comment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Share your thoughts (Optional)
+                  </label>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Tell us about your experience with this shop..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {reviewComment.length}/500 characters
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowReviewModal(false);
+                      setReviewRating(0);
+                      setReviewComment('');
+                    }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                    disabled={submittingReview}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReview}
+                    disabled={submittingReview || reviewRating === 0}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReview ? (
+                      <span className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Submitting...
+                      </span>
+                    ) : (
+                      'Submit Review'
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1052,6 +1277,46 @@ export const Notifications = () => {
               <button
                 onClick={() => setShowErrorModal(false)}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Modal (Success/Error for Reviews) */}
+      {showInfoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+                infoModalType === 'success' ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {infoModalType === 'success' ? (
+                  <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {infoModalTitle}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {infoModalMessage}
+              </p>
+              
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className={`w-full font-medium py-2 px-4 rounded-lg transition-colors duration-200 ${
+                  infoModalType === 'success' 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
               >
                 OK
               </button>
