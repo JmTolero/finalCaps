@@ -3,9 +3,10 @@
  * Handles both Cloudinary URLs (full URL) and legacy local URLs (filename only)
  * @param {string} imageUrl - The image URL from database
  * @param {string} apiBase - The API base URL (for legacy files)
+ * @param {string} folder - The folder name for legacy files (default: 'vendor-documents')
  * @returns {string} - The complete image URL
  */
-export const getImageUrl = (imageUrl, apiBase) => {
+export const getImageUrl = (imageUrl, apiBase, folder = 'vendor-documents') => {
   if (!imageUrl) return null;
   
   // If it's already a full URL (Cloudinary), use it as-is
@@ -14,7 +15,17 @@ export const getImageUrl = (imageUrl, apiBase) => {
   }
   
   // Legacy local file - prepend API base URL
-  return `${apiBase}/uploads/vendor-documents/${imageUrl}`;
+  return `${apiBase}/uploads/${folder}/${imageUrl}`;
+};
+
+/**
+ * Helper function specifically for flavor images
+ * @param {string} imageUrl - The image URL from database
+ * @param {string} apiBase - The API base URL (for legacy files)
+ * @returns {string} - The complete image URL
+ */
+export const getFlavorImageUrl = (imageUrl, apiBase) => {
+  return getImageUrl(imageUrl, apiBase, 'flavor-images');
 };
 
 /**

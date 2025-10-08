@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
+import { getImageUrl } from '../../utils/imageUtils';
 import axios from 'axios';
 
 // Import customer icons
@@ -450,7 +451,7 @@ export const CartView = () => {
                   // Check multiple possible field names for the image
                   const imageField = item.image_url || item.flavor_image_url || item.image || item.flavor_image || flavorImages[item.flavor_id];
                   
-                  const imagePath = imageField ? `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageField}` : null;
+                  const imagePath = imageField ? (getImageUrl(imageField, process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageField}`) : null;
                   
                   console.log('🔍 Image field found:', imageField);
                   console.log('🔍 Image path:', imagePath);

@@ -2,19 +2,21 @@ const pool = require('../../db/config');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure multer for flavor image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../../uploads/flavor-images');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+// Configure Cloudinary storage for flavor image uploads
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'flavor-images', // Folder in Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    resource_type: 'image',
+    public_id: (req, file) => {
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return `flavor-${uniqueSuffix}`;
     }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'flavor-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -24,13 +26,22 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit per file
   },
   fileFilter: (req, file, cb) => {
+    console.log('[Cloudinary Flavor Upload] Field name:', file.fieldname);
+    console.log('[Cloudinary Flavor Upload] Original name:', file.originalname);
+    console.log('[Cloudinary Flavor Upload] MIME type:', file.mimetype);
+    
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
     
+    console.log('[Cloudinary Flavor Upload] Extension check:', extname);
+    console.log('[Cloudinary Flavor Upload] MIME type check:', mimetype);
+    
     if (mimetype && extname) {
+      console.log('[Cloudinary Flavor Upload] File accepted ✅');
       return cb(null, true);
     } else {
+      console.log('[Cloudinary Flavor Upload] File rejected ❌');
       cb(new Error('Only image files are allowed for flavor images'));
     }
   }
@@ -184,11 +195,11 @@ const createFlavor = async (req, res) => {
       });
     }
 
-    // Handle multiple image uploads
+    // Handle multiple image uploads (Cloudinary URLs)
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => file.filename);
-      console.log('  - Found images array:', imageUrls);
+      imageUrls = req.files.map(file => file.path); // Use .path for Cloudinary URLs
+      console.log('  - Found images array (Cloudinary URLs):', imageUrls);
     } else {
       console.log('  - No images found in req.files');
     }
@@ -260,9 +271,9 @@ const updateFlavor = async (req, res) => {
     // Handle image updates
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      // New images provided, replace existing ones
-      imageUrls = req.files.map(file => file.filename);
-      console.log('  - New images:', imageUrls);
+      // New images provided, replace existing ones (Cloudinary URLs)
+      imageUrls = req.files.map(file => file.path); // Use .path for Cloudinary URLs
+      console.log('  - New images (Cloudinary URLs):', imageUrls);
     } else {
       // No new images, keep existing ones
       try {
@@ -328,38 +339,106 @@ const deleteFlavor = async (req, res) => {
       });
     }
 
+    // First, delete related products (foreign key constraint)
+    console.log('  - Checking for related products...');
+    const [relatedProducts] = await pool.query(`
+      SELECT product_id FROM products 
+      WHERE flavor_id = ?
+    `, [flavor_id]);
+    
+    if (relatedProducts.length > 0) {
+      console.log(`  - Found ${relatedProducts.length} related product(s), deleting...`);
+      
+      // Delete order items first (if any) to avoid constraint errors
+      for (const product of relatedProducts) {
+        await pool.query(`
+          DELETE FROM order_items 
+          WHERE product_id = ?
+        `, [product.product_id]);
+      }
+      
+      // Now delete the products
+      await pool.query(`
+        DELETE FROM products 
+        WHERE flavor_id = ?
+      `, [flavor_id]);
+      
+      console.log('  - Related products deleted successfully');
+    }
+
     // Delete image files if they exist
     if (existingFlavor[0].image_url) {
       try {
         const imageUrls = JSON.parse(existingFlavor[0].image_url);
         if (Array.isArray(imageUrls)) {
           // Delete multiple images
-          imageUrls.forEach(imageUrl => {
+          for (const imageUrl of imageUrls) {
+            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+              // Cloudinary image - extract public_id and delete from Cloudinary
+              try {
+                // Extract public_id from Cloudinary URL
+                // URL format: https://res.cloudinary.com/cloud-name/image/upload/v123/folder/public-id.ext
+                const urlParts = imageUrl.split('/');
+                const fileWithExt = urlParts[urlParts.length - 1];
+                const fileName = fileWithExt.split('.')[0]; // Remove extension
+                const folder = urlParts[urlParts.length - 2];
+                const publicId = `${folder}/${fileName}`;
+                
+                await cloudinary.uploader.destroy(publicId);
+                console.log('  - Deleted Cloudinary image:', publicId);
+              } catch (cloudErr) {
+                console.error('  - Failed to delete Cloudinary image:', imageUrl, cloudErr.message);
+              }
+            } else {
+              // Local image - delete from file system
+              const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
+              if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+                console.log('  - Deleted local image:', imageUrl);
+              }
+            }
+          }
+        } else {
+          // Delete single image (old format)
+          const imageUrl = existingFlavor[0].image_url;
+          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            // Cloudinary image
+            try {
+              const urlParts = imageUrl.split('/');
+              const fileWithExt = urlParts[urlParts.length - 1];
+              const fileName = fileWithExt.split('.')[0];
+              const folder = urlParts[urlParts.length - 2];
+              const publicId = `${folder}/${fileName}`;
+              
+              await cloudinary.uploader.destroy(publicId);
+              console.log('  - Deleted Cloudinary image:', publicId);
+            } catch (cloudErr) {
+              console.error('  - Failed to delete Cloudinary image:', imageUrl, cloudErr.message);
+            }
+          } else {
+            // Local image
             const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
             if (fs.existsSync(imagePath)) {
               fs.unlinkSync(imagePath);
-              console.log('  - Deleted image:', imageUrl);
+              console.log('  - Deleted local image:', imageUrl);
             }
-          });
-        } else {
-          // Delete single image (old format)
-          const imagePath = path.join(__dirname, '../../../uploads/flavor-images', existingFlavor[0].image_url);
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-            console.log('  - Deleted image:', existingFlavor[0].image_url);
           }
         }
       } catch (e) {
+        console.error('  - Error processing image deletion:', e.message);
         // Fallback for single image
-        const imagePath = path.join(__dirname, '../../../uploads/flavor-images', existingFlavor[0].image_url);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-          console.log('  - Deleted image (fallback):', existingFlavor[0].image_url);
+        const imageUrl = existingFlavor[0].image_url;
+        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+            console.log('  - Deleted local image (fallback):', imageUrl);
+          }
         }
       }
     }
 
-    // Delete flavor from database
+    // Finally, delete the flavor from database
     await pool.query(`
       DELETE FROM flavors 
       WHERE flavor_id = ?

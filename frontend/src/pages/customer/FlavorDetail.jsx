@@ -4,6 +4,7 @@ import axios from 'axios';
 import { NavWithLogo } from '../../components/shared/nav';
 import StarRating from '../../components/shared/StarRating';
 import { useCart } from '../../contexts/CartContext';
+import { getImageUrl } from '../../utils/imageUtils';
 
 // Import customer icons
 import cartIcon from '../../assets/images/customerIcon/cart.png';
@@ -491,9 +492,12 @@ export const FlavorDetail = () => {
                    <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden relative">
                      {selectedImages[currentImageIndex] ? (
                        <img 
-                         src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${selectedImages[currentImageIndex]}`}
+                         src={getImageUrl(selectedImages[currentImageIndex], process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${selectedImages[currentImageIndex]}`}
                          alt={flavor.flavor_name}
                          className="w-full h-full object-cover"
+                         onError={(e) => {
+                           e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
+                         }}
                        />
                      ) : (
                        <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -536,9 +540,12 @@ export const FlavorDetail = () => {
                            }`}
                          >
                            <img 
-                             src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${image}`}
+                             src={getImageUrl(image, process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${image}`}
                              alt={`${flavor.flavor_name} ${index + 1}`}
                              className="w-full h-full object-cover"
+                             onError={(e) => {
+                               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
+                             }}
                            />
                          </button>
                        ))}

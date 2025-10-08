@@ -61,9 +61,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
-// Serve uploaded files - DISABLED: Using Cloudinary for file storage
-// app.use('/uploads', express.static('uploads'));
-// All files are now served directly from Cloudinary CDN
+// Serve uploaded files for legacy support (Cloudinary is primary storage)
+// Note: New uploads go to Cloudinary, but we serve old local files for backward compatibility
+app.use('/uploads', express.static('uploads'));
 
 // Dev aid: confirm admin env presence on startup (won't print password)
 if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
