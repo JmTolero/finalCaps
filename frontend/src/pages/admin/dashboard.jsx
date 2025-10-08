@@ -18,10 +18,12 @@ export const AdminDashboard = () => {
   const [error, setError] = useState(null);
 
   useEffect(()=>{
+    const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+    
     const fetchTotal = async () => {
 
       try{
-        const res = await axios.get('http://localhost:3001/api/admin/total');
+        const res = await axios.get(`${apiBase}/api/admin/total`);
         setTotalUsers(res.data.totalUsers);
         setTotalVendor(res.data.totalVendors);
         setTotalOrders(res.data.totalOrders);
@@ -35,7 +37,7 @@ export const AdminDashboard = () => {
     const fetchOrderRecords = async () => {
       try{
         setLoading(true);
-        const res = await axios.get('http://localhost:3001/api/orders/admin/all');
+        const res = await axios.get(`${apiBase}/api/orders/admin/all`);
         console.log('Order records response:', res.data);
         
         if (res.data.success) {
