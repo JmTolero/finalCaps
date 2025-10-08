@@ -23,7 +23,7 @@ const storage = new CloudinaryStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit per file
+    fileSize: 20 * 1024 * 1024 // 20MB limit per file
   },
   fileFilter: (req, file, cb) => {
     console.log('[Cloudinary Flavor Upload] Field name:', file.fieldname);

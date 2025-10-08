@@ -20,6 +20,9 @@ export const FindNearbyVendors = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
   
+  // Reviews state
+  const [vendorReviews, setVendorReviews] = useState({});
+  
   // Notification state
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -95,11 +98,47 @@ export const FindNearbyVendors = () => {
         if (response.data.vendors.length > 0) {
           setSelectedVendor(response.data.vendors[0]);
         }
+        
+        // Fetch reviews for each vendor
+        fetchAllVendorReviews(response.data.vendors);
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch reviews for all vendors
+  const fetchAllVendorReviews = async (vendorsList) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const reviewsData = {};
+
+      // Fetch reviews for each vendor
+      await Promise.all(
+        vendorsList.map(async (vendor) => {
+          try {
+            const response = await axios.get(
+              `${apiBase}/api/reviews/vendor/${vendor.vendor_id}`
+            );
+            if (response.data.success) {
+              reviewsData[vendor.vendor_id] = response.data.summary;
+            }
+          } catch (error) {
+            console.error(`Error fetching reviews for vendor ${vendor.vendor_id}:`, error);
+            // Set default values if fetch fails
+            reviewsData[vendor.vendor_id] = {
+              total_reviews: 0,
+              average_rating: "0.00"
+            };
+          }
+        })
+      );
+
+      setVendorReviews(reviewsData);
+    } catch (error) {
+      console.error("Error fetching vendor reviews:", error);
     }
   };
 
@@ -115,13 +154,8 @@ export const FindNearbyVendors = () => {
     return R * c;
   };
 
-  // Filter vendors based on location proximity, search term, and selected vendor
+  // Filter vendors based on location proximity and search term
   const filteredVendors = vendors.filter((vendor) => {
-    // If a vendor is selected from map, show only that vendor
-    if (selectedVendor && selectedVendor.vendor_id === vendor.vendor_id) {
-      return true;
-    }
-    
     // If no user location, show all vendors (fallback)
     if (!userLocation) {
       return (
@@ -145,8 +179,8 @@ export const FindNearbyVendors = () => {
       vendorLng
     );
     
-    // Show only vendors within 50km radius
-    const isNearby = distance <= 50;
+    // Show only vendors within 15km radius
+    const isNearby = distance <= 15;
     
     // Also check search term if provided
     const matchesSearch = !searchTerm || 
@@ -179,11 +213,6 @@ export const FindNearbyVendors = () => {
         drumSizes: vendor.drumSizes || []
       });
     }
-  };
-
-  // Clear selected vendor to show all vendors
-  const clearSelectedVendor = () => {
-    setSelectedVendor(null);
   };
 
   // Handle location change from map
@@ -293,7 +322,7 @@ export const FindNearbyVendors = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Vendor Information */}
           <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-orange-500 mb-6">
+            <h2 className="text-3xl font-bold text-blue-600 mb-6">
               Find nearby Vendors
             </h2>
 
@@ -304,26 +333,6 @@ export const FindNearbyVendors = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Show All Vendors Button */}
-                {selectedVendor && (
-                  <div className="mb-4 p-4 bg-blue-100 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-blue-800">Selected Vendor</h3>
-                        <p className="text-sm text-blue-600">
-                          Showing only: {selectedVendor.store_name || 'Unnamed Store'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={clearSelectedVendor}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Show All Vendors
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor.vendor_id}
@@ -370,7 +379,15 @@ export const FindNearbyVendors = () => {
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
                             <span className="text-sm text-gray-600">
-                              4.5 (55 reviews)
+                              {vendorReviews[vendor.vendor_id] ? (
+                                <>
+                                  {parseFloat(vendorReviews[vendor.vendor_id].average_rating).toFixed(1)}{" "}
+                                  ({vendorReviews[vendor.vendor_id].total_reviews}{" "}
+                                  {vendorReviews[vendor.vendor_id].total_reviews === 1 ? 'review' : 'reviews'})
+                                </>
+                              ) : (
+                                'No reviews yet'
+                              )}
                             </span>
                           </div>
                         </div>
@@ -457,11 +474,11 @@ export const FindNearbyVendors = () => {
 
                         {/* Action Buttons */}
                         <div className="flex space-x-3">
-                          <button className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-semibold rounded-lg transition-colors">
+                          <button 
+                            onClick={() => navigate(`/vendor/${vendor.vendor_id}/store`)}
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-sm"
+                          >
                             View Shop
-                          </button>
-                          <button className="px-4 py-2 bg-orange-300 hover:bg-orange-400 text-gray-800 font-semibold rounded-lg transition-colors">
-                            Book now
                           </button>
                         </div>
                       </div>
