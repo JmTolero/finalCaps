@@ -196,7 +196,7 @@ export const VendorStore = () => {
             <p className="text-gray-500 mb-4">The vendor store you're looking for doesn't exist.</p>
             <button
               onClick={() => navigate('/all-vendor-stores')}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-orange-300 text-black px-6 py-2 rounded-lg hover:bg-orange-400 transition-colors"
             >
               Back to Stores
             </button>
@@ -343,7 +343,7 @@ export const VendorStore = () => {
             <div className="flex-shrink-0">
               <button 
                 onClick={() => setShowContactModal(true)}
-                className="px-6 py-3 bg-orange-500 text-white rounded-full font-medium hover:bg-orange-600 transition-colors shadow-lg"
+                className="px-6 py-3 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors shadow-lg"
               >
                 Contact Shop
               </button>
@@ -650,7 +650,7 @@ export const VendorStore = () => {
                     </div>
                     <a 
                       href={`tel:${vendor.contact_no}`}
-                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                      className="px-3 py-1 bg-orange-300 text-black text-sm rounded-lg hover:bg-orange-400 transition-colors"
                     >
                       Call
                     </a>
@@ -671,7 +671,7 @@ export const VendorStore = () => {
                     </div>
                     <a 
                       href={`mailto:${vendor.email}`}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1 bg-orange-300 text-black text-sm rounded-lg hover:bg-orange-400 transition-colors"
                     >
                       Email
                     </a>
@@ -699,7 +699,7 @@ export const VendorStore = () => {
               <div className="mt-6 flex justify-end">
                 <button 
                   onClick={() => setShowContactModal(false)}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
                 >
                   Close
                 </button>

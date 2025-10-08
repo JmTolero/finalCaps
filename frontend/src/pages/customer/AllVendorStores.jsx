@@ -291,7 +291,7 @@ export const AllVendorStores = () => {
                   </div>
 
                   {/* View Shop Button */}
-                  <button className="w-full px-2 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-medium text-xs rounded-md transition-colors">
+                  <button className="w-full px-2 py-1.5 bg-orange-300 hover:bg-orange-400 text-black font-medium text-xs rounded-md transition-colors">
                     View Shop
                   </button>
                 </div>
