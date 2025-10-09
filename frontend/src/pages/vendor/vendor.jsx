@@ -259,7 +259,6 @@ export const Vendor = () => {
   
   // Location modal state
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationInfo, setLocationInfo] = useState(null);
   
   // Sidebar state - always closed on initial load for clean login experience
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
