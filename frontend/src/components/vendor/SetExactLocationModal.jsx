@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import axios from 'axios';
 
 const SetExactLocationModal = ({ isOpen, onClose, vendorId, onLocationSet }) => {
@@ -18,7 +19,12 @@ const SetExactLocationModal = ({ isOpen, onClose, vendorId, onLocationSet }) => 
   const fetchLocationInfo = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/vendor/${vendorId}/location-info`);
+      const token = sessionStorage.getItem('token');
+      const response = await axios.get(`${apiBase}/api/vendor/${vendorId}/location-info`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       if (response.data.success) {
         setLocationInfo(response.data.data);
       }
@@ -85,11 +91,17 @@ const SetExactLocationModal = ({ isOpen, onClose, vendorId, onLocationSet }) => 
 
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const token = sessionStorage.getItem('token');
       const response = await axios.put(
         `${apiBase}/api/vendor/${vendorId}/exact-location`,
         {
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
@@ -111,11 +123,19 @@ const SetExactLocationModal = ({ isOpen, onClose, vendorId, onLocationSet }) => 
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('🔴 Modal not open (isOpen:', isOpen, ')');
+    return null;
+  }
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+  console.log('🟢 Modal rendering! Vendor ID:', vendorId);
+
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800">
@@ -310,6 +330,12 @@ const SetExactLocationModal = ({ isOpen, onClose, vendorId, onLocationSet }) => 
         </div>
       </div>
     </div>
+  );
+
+  // Use React Portal to render modal at document root level
+  return ReactDOM.createPortal(
+    modalContent,
+    document.body
   );
 };
 

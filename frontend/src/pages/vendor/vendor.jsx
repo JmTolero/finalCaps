@@ -2949,7 +2949,12 @@ export const Vendor = () => {
                               Use your phone's GPS at your shop for best accuracy.
                             </p>
                             <button
-                              onClick={() => setShowLocationModal(true)}
+                              onClick={() => {
+                                console.log('🔘 Location button clicked!');
+                                console.log('Current vendor:', currentVendor);
+                                setShowLocationModal(true);
+                                console.log('Modal state set to true');
+                              }}
                               className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3340,6 +3345,22 @@ export const Vendor = () => {
           </div>
         </div>
         </div>
+
+        {/* Set Exact Location Modal for Settings View */}
+        <SetExactLocationModal
+          isOpen={showLocationModal}
+          onClose={() => setShowLocationModal(false)}
+          vendorId={currentVendor?.vendor_id}
+          onLocationSet={(data) => {
+            console.log('✅ Location set successfully:', data);
+            setShowStatus(true);
+            setStatus({
+              type: 'success',
+              message: 'Exact shop location set successfully!'
+            });
+            setTimeout(() => setShowStatus(false), 3000);
+          }}
+        />
       </>
     );
   }

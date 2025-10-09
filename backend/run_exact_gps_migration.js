@@ -68,7 +68,9 @@ async function runMigration() {
 
     } catch (error) {
         console.error('❌ Migration failed:', error.message);
-        console.error('Stack trace:', error.stack);
+        console.error('Error code:', error.code);
+        console.error('Error errno:', error.errno);
+        console.error('Full error:', error);
         process.exit(1);
     } finally {
         if (connection) {
