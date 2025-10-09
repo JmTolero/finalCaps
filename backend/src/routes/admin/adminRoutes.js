@@ -13,6 +13,7 @@ router.put('/users/:user_id/status', adminController.updateUserStatus);
 // Vendor management routes
 router.get('/vendors', adminController.getAllVendors);
 router.get('/vendors/:vendor_id', adminController.getVendorById);
+router.get('/vendors/:vendor_id/ongoing-orders', adminController.checkVendorOngoingOrders);
 router.put('/vendors/:vendor_id/status', adminController.updateVendorStatus);
 
 // Order management routes (admin-specific)

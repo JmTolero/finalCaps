@@ -301,7 +301,7 @@ export const Login = () => {
                           to="/user-register" 
                           className="inline-flex items-center text-indigo-600 font-semibold hover:text-indigo-800 transition-colors duration-200 text-base sm:text-lg"
                         >
-                          👤 Create Customer Account
+                           Create Customer Account
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
@@ -312,7 +312,7 @@ export const Login = () => {
                           to="/vendor-register" 
                           className="inline-flex items-center text-green-600 font-semibold hover:text-green-800 transition-colors duration-200 text-base sm:text-lg"
                         >
-                          🍦 Register as Vendor
+                           Register as Vendor
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
@@ -330,7 +330,7 @@ export const Login = () => {
                   className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-extrabold py-2 sm:py-3 px-6 sm:px-8 text-base sm:text-lg rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl w-full sm:min-w-[160px] sm:w-auto border-2 border-gray-700 drop-shadow-lg"
                   style={{textShadow: '2px 2px 4px rgba(0,0,0,0.8)'}}
                 >
-                  🚀 LOGIN
+                  LOGIN
                 </button>
               </div>
             </form>

@@ -360,7 +360,7 @@ export const AdminUserManagement = () => {
   };
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-screen">
+    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 min-h-screen mt-10">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">User Management</h1>
       
       {/* Search Bar and Role Filter */}

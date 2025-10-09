@@ -48,15 +48,37 @@ router.post('/user/:userId/address', async (req, res) => {
       return res.status(400).json({ error: 'Missing required address fields' });
     }
     
-    // Create the address
+    // Auto-geocode the address to get coordinates
+    const geocoder = require('../../utils/geocoder');
+    const coordinates = await geocoder.getCoordinatesForAddress(addressData);
+    
+    // Create the address with coordinates
     const [addressResult] = await pool.query(
       `INSERT INTO addresses 
-       (unit_number, street_name, barangay, cityVillage, province, region, postal_code, landmark, address_type, is_active, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
-      [addressData.unit_number || '', addressData.street_name, addressData.barangay, addressData.cityVillage, addressData.province, addressData.region, addressData.postal_code || '', addressData.landmark || '', addressData.address_type || 'residential']
+       (unit_number, street_name, barangay, cityVillage, province, region, postal_code, landmark, address_type, latitude, longitude, is_active, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+      [
+        addressData.unit_number || '', 
+        addressData.street_name, 
+        addressData.barangay, 
+        addressData.cityVillage, 
+        addressData.province, 
+        addressData.region, 
+        addressData.postal_code || '', 
+        addressData.landmark || '', 
+        addressData.address_type || 'residential',
+        coordinates ? coordinates.lat : null,
+        coordinates ? coordinates.lon : null
+      ]
     );
     
     const addressId = addressResult.insertId;
+    
+    if (coordinates) {
+      console.log(`✅ Address ${addressId} created with coordinates: ${coordinates.lat}, ${coordinates.lon}`);
+    } else {
+      console.log(`⚠️ Address ${addressId} created without coordinates (geocoding failed)`);
+    }
     
     // Check if this is the user's first address
     const [existingAddresses] = await pool.query(

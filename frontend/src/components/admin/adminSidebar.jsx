@@ -73,12 +73,14 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors ${
+          } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/dashboard')
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={adminIcon} alt="admin" className="w-8 h-8 flex-shrink-0 object-contain"/>
+            <img src={adminIcon} alt="admin" className={`w-8 h-8 flex-shrink-0 object-contain ${
+              isActiveLink('/admin/dashboard') ? 'brightness-0 invert' : ''
+            }`}/>
             {isOpen && <span className="font-medium text-sm">Dashboard</span>}
           </li>
         </Link>
@@ -88,12 +90,14 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors ${
+          } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/vendor-approval')
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={vendorApproval} alt="vendorApproval" className="w-8 h-8 flex-shrink-0 object-contain"/>
+            <img src={vendorApproval} alt="vendorApproval" className={`w-8 h-8 flex-shrink-0 object-contain ${
+              isActiveLink('/admin/vendor-approval') ? 'brightness-0 invert' : ''
+            }`}/>
             {isOpen && <span className="font-medium text-sm">Vendor Approval</span>}
           </li>
         </Link>
@@ -103,12 +107,14 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors ${
+          } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/vendor-locations')
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={vendorLocationManagerIcon} alt="vendor locations" className="w-8 h-8 flex-shrink-0 object-contain"/>
+            <img src={vendorLocationManagerIcon} alt="vendor locations" className={`w-8 h-8 flex-shrink-0 object-contain ${
+              isActiveLink('/admin/vendor-locations') ? 'brightness-0 invert' : ''
+            }`}/>
             {isOpen && <span className="font-medium text-sm">Vendor Locations</span>}
           </li>
         </Link>
@@ -118,12 +124,14 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors ${
+          } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/user-management')
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={usermanagement} alt="usermanagement" className="w-8 h-8 flex-shrink-0 object-contain"/>
+            <img src={usermanagement} alt="usermanagement" className={`w-8 h-8 flex-shrink-0 object-contain ${
+              isActiveLink('/admin/user-management') ? 'brightness-0 invert' : ''
+            }`}/>
             {isOpen && <span className="font-medium text-sm">User Management</span>}
           </li>
         </Link>
@@ -133,12 +141,14 @@ export const Sidebar = () => {
             isOpen
               ? "items-center gap-3 px-4 py-3"
               : "items-center justify-center p-3"
-          } rounded-lg transition-colors ${
+          } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/feedback')
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-700 hover:bg-blue-300 hover:text-gray-900'
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={feedback} alt="feedback" className="w-8 h-8 flex-shrink-0 object-contain"/>
+            <img src={feedback} alt="feedback" className={`w-8 h-8 flex-shrink-0 object-contain ${
+              isActiveLink('/admin/feedback') ? 'brightness-0 invert' : ''
+            }`}/>
             {isOpen && <span className="font-medium text-sm">Feedback</span>}
           </li>
         </Link>

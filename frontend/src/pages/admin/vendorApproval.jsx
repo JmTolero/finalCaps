@@ -24,6 +24,11 @@ export const AdminVendorApproval = () => {
   const [pendingAction, setPendingAction] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [loadingAction, setLoadingAction] = useState(false);
+  
+  // Ongoing orders modal states
+  const [showOngoingOrdersModal, setShowOngoingOrdersModal] = useState(false);
+  const [ongoingOrders, setOngoingOrders] = useState([]);
+  const [checkingOrders, setCheckingOrders] = useState(false);
 
   const fetchVendors = useCallback(async (showLoading = true) => {
     try {
@@ -69,10 +74,40 @@ export const AdminVendorApproval = () => {
     return () => clearInterval(interval);
   }, [fetchVendors]);
 
-  const showConfirmDialog = (vendor, status) => {
+  const showConfirmDialog = async (vendor, status) => {
     setSelectedVendor(vendor);
     setPendingAction(status);
-    setShowConfirmModal(true);
+    
+    // Check for ongoing orders if suspending
+    if (status === 'suspended') {
+      await checkOngoingOrders(vendor.vendor_id);
+    } else {
+      setShowConfirmModal(true);
+    }
+  };
+  
+  const checkOngoingOrders = async (vendorId) => {
+    try {
+      setCheckingOrders(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/vendors/${vendorId}/ongoing-orders`);
+      
+      if (response.data.success) {
+        if (response.data.hasOngoingOrders) {
+          setOngoingOrders(response.data.orders);
+          setShowOngoingOrdersModal(true);
+        } else {
+          // No ongoing orders, show regular confirm modal
+          setShowConfirmModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking ongoing orders:', error);
+      // On error, still show confirm modal
+      setShowConfirmModal(true);
+    } finally {
+      setCheckingOrders(false);
+    }
   };
 
   const updateVendorStatus = async (vendorId, newStatus) => {
@@ -192,6 +227,8 @@ export const AdminVendorApproval = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
+      case 'suspended':
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -215,7 +252,7 @@ export const AdminVendorApproval = () => {
 
   return (
     <main className="w-full py-6 sm:py-10 min-h-screen overflow-x-hidden">
-      <div className="px-4 sm:px-6 lg:px-8 max-w-full">
+      <div className="px-4 sm:px-6 lg:px-8 max-w-full mt-10">
         <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Vendor Approval</h1>
       
       {/* Tabs */}
@@ -271,6 +308,7 @@ export const AdminVendorApproval = () => {
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
+            <option value="suspended">Suspended</option>
           </select>
         </div>
       </div>
@@ -372,6 +410,14 @@ export const AdminVendorApproval = () => {
                               Reject
                             </button>
                           )}
+                          {vendor.status && vendor.status.toLowerCase() === 'approved' && (
+                            <button
+                              onClick={() => showConfirmDialog(vendor, 'suspended')}
+                              className="px-1 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600"
+                            >
+                              Suspend
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -414,6 +460,14 @@ export const AdminVendorApproval = () => {
                           className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 flex-1 sm:flex-none"
                         >
                           Reject
+                        </button>
+                      )}
+                      {vendor.status && vendor.status.toLowerCase() === 'approved' && (
+                        <button
+                          onClick={() => showConfirmDialog(vendor, 'suspended')}
+                          className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 flex-1 sm:flex-none"
+                        >
+                          Suspend
                         </button>
                       )}
                     </div>
@@ -534,11 +588,16 @@ export const AdminVendorApproval = () => {
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex items-center mb-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-                pendingAction === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                pendingAction === 'approved' ? 'bg-green-100' : 
+                pendingAction === 'suspended' ? 'bg-orange-100' : 'bg-red-100'
               }`}>
                 {pendingAction === 'approved' ? (
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : pendingAction === 'suspended' ? (
+                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 ) : (
                   <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -548,11 +607,14 @@ export const AdminVendorApproval = () => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {pendingAction === 'approved' ? 'Approve Vendor' : 'Reject Vendor'}
+                  {pendingAction === 'approved' ? 'Approve Vendor' : 
+                   pendingAction === 'suspended' ? 'Suspend Vendor' : 'Reject Vendor'}
                 </h3>
                 <p className="text-sm text-gray-500">
                   {pendingAction === 'approved' 
-                    ? `Are you sure you want to approve ${selectedVendor.store_name || 'this vendor'}?` 
+                    ? `Are you sure you want to approve ${selectedVendor.store_name || 'this vendor'}?`
+                    : pendingAction === 'suspended'
+                    ? `Are you sure you want to suspend ${selectedVendor.store_name || 'this vendor'}? Their store will be hidden from customers.`
                     : `Are you sure you want to reject ${selectedVendor.store_name || 'this vendor'}?`
                   }
                 </p>
@@ -576,10 +638,93 @@ export const AdminVendorApproval = () => {
                 className={`px-4 py-2 text-white font-medium rounded transition-colors ${
                   pendingAction === 'approved' 
                     ? 'bg-green-500 hover:bg-green-600 disabled:bg-green-300' 
+                    : pendingAction === 'suspended'
+                    ? 'bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300'
                     : 'bg-red-500 hover:bg-red-600 disabled:bg-red-300'
                 }`}
               >
-                {loadingAction ? 'Processing...' : `${pendingAction === 'approved' ? 'Confirm Approve' : 'Confirm Reject'}`}
+                {loadingAction ? 'Processing...' : `${
+                  pendingAction === 'approved' ? 'Confirm Approve' : 
+                  pendingAction === 'suspended' ? 'Confirm Suspend' : 'Confirm Reject'
+                }`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Ongoing Orders Warning */}
+      {showOngoingOrdersModal && selectedVendor && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Ongoing Orders Detected</h3>
+                <p className="text-sm text-gray-600">This vendor has {ongoingOrders.length} pending order{ongoingOrders.length > 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800 font-medium mb-2">⚠️ Grace Period Suspension</p>
+              <p className="text-sm text-gray-700">
+                The vendor will be suspended but allowed to complete these existing orders. They cannot receive new orders or edit products during this time.
+              </p>
+            </div>
+
+            {/* Orders List */}
+            <div className="mb-6 max-h-60 overflow-y-auto">
+              <h4 className="font-medium text-gray-900 mb-3">Pending Orders:</h4>
+              <div className="space-y-2">
+                {ongoingOrders.map((order) => (
+                  <div key={order.order_id} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold text-gray-900">Order #{order.order_id}</p>
+                        <p className="text-sm text-gray-600">{order.customer_name}</p>
+                        <p className="text-xs text-gray-500">{order.customer_email}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
+                        <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                          order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowOngoingOrdersModal(false);
+                  setOngoingOrders([]);
+                  setSelectedVendor(null);
+                  setPendingAction(null);
+                }}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowOngoingOrdersModal(false);
+                  setShowConfirmModal(true);
+                }}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Proceed with Grace Period
               </button>
             </div>
           </div>
@@ -597,7 +742,10 @@ export const AdminVendorApproval = () => {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
             <p className="text-gray-600 mb-4">
-              Vendor {selectedVendor?.store_name || 'application'} {pendingAction === 'approved' ? 'approved' : 'rejected'} successfully!
+              Vendor {selectedVendor?.store_name || 'application'} {
+                pendingAction === 'approved' ? 'approved' : 
+                pendingAction === 'suspended' ? 'suspended' : 'rejected'
+              } successfully!
             </p>
             <div className="animate-pulse text-sm text-green-600">
               ✅ Status updated

@@ -356,6 +356,48 @@ const updateVendorProfile = async (req, res) => {
     }
 };
 
+const setVendorPrimaryAddress = async (req, res) => {
+    try {
+        const { vendor_id, address_id } = req.params;
+        
+        console.log('Setting primary address for vendor:', vendor_id, 'address:', address_id);
+        
+        // Verify the address exists
+        const [address] = await pool.query(
+            'SELECT address_id FROM addresses WHERE address_id = ?',
+            [address_id]
+        );
+        
+        if (address.length === 0) {
+            return res.status(404).json({ error: 'Address not found' });
+        }
+        
+        // Update vendor's primary address
+        const [result] = await pool.query(
+            'UPDATE vendors SET primary_address_id = ? WHERE vendor_id = ?',
+            [address_id, vendor_id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        console.log('Vendor primary address updated successfully');
+        
+        res.json({
+            success: true,
+            message: 'Business location set successfully'
+        });
+        
+    } catch (err) {
+        console.error('Failed to set vendor primary address:', err);
+        res.status(500).json({
+            error: 'Failed to set business location',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
 const checkVendorSetupComplete = async (req, res) => {
     try {
         const { user_id } = req.params;
@@ -683,7 +725,10 @@ const getAllProducts = async (req, res) => {
 // Get vendors with their locations for map display
 const getVendorsWithLocations = async (req, res) => {
     try {
-        const [vendors] = await pool.query(`
+        // Get optional location filters from query parameters
+        const { city, province } = req.query;
+        
+        let query = `
             SELECT 
                 v.vendor_id,
                 v.store_name,
@@ -704,6 +749,8 @@ const getVendorsWithLocations = async (req, res) => {
                     COALESCE(NULLIF(a.province, ''), NULL)
                   )
                 END as location,
+                a.cityVillage,
+                a.province,
                 a.latitude,
                 a.longitude,
                 GROUP_CONCAT(DISTINCT f.flavor_name) as flavors
@@ -712,9 +759,27 @@ const getVendorsWithLocations = async (req, res) => {
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
             INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
             WHERE v.status = 'approved'
+        `;
+        
+        const params = [];
+        
+        // Add location filters if provided
+        if (city) {
+            query += ` AND a.cityVillage = ?`;
+            params.push(city);
+        }
+        
+        if (province) {
+            query += ` AND a.province = ?`;
+            params.push(province);
+        }
+        
+        query += `
             GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude
             ORDER BY v.store_name
-        `);
+        `;
+        
+        const [vendors] = await pool.query(query, params);
 
         // Process flavors data
         const processedVendors = vendors.map(vendor => ({
@@ -794,4 +859,4 @@ const getAllApprovedVendors = async (req, res) => {
     }
 };
 
-module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors };
+module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, setVendorPrimaryAddress, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors };

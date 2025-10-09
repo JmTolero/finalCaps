@@ -17,6 +17,7 @@ export const VendorStore = () => {
   const [vendor, setVendor] = useState(null);
   const [flavors, setFlavors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
   
   // Notification state
@@ -141,6 +142,13 @@ export const VendorStore = () => {
       if (response.data.success) {
         console.log('✅ Vendor data fetched:', response.data.vendor);
         console.log('🖼️ Vendor profile image URL:', response.data.vendor.profile_image_url);
+        
+        // Check if vendor is suspended - don't show store to customers
+        if (response.data.vendor.status === 'suspended') {
+          setError('This store is currently unavailable.');
+          return;
+        }
+        
         setVendor(response.data.vendor);
       } else {
         console.log('❌ Vendor data fetch failed:', response.data);
@@ -186,6 +194,27 @@ export const VendorStore = () => {
     );
   }
 
+  if (error) {
+    return (
+      <>
+        <NavWithLogo />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Store Unavailable</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <button
+              onClick={() => navigate('/all-vendor-stores')}
+              className="bg-orange-300 text-black px-6 py-2 rounded-lg hover:bg-orange-400 transition-colors"
+            >
+              Back to Stores
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (!vendor) {
     return (
       <>
@@ -226,7 +255,7 @@ export const VendorStore = () => {
 
             <div className="flex items-center space-x-4 ml-6">
               <Link
-                to="/all-vendor-stores"
+                to="/find-vendors"
                 className="text-blue-700 hover:text-blue-800 font-medium"
               >
                 Find nearby Vendors

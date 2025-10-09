@@ -21,6 +21,9 @@ router.put('/profile/:vendor_id', vendorController.upload.fields([
     { name: 'proof_image', maxCount: 1 }
 ]), vendorController.updateVendorProfile);
 
+// Set vendor primary address (business location)
+router.put('/:vendor_id/primary-address/:address_id', vendorController.setVendorPrimaryAddress);
+
 // Check if vendor setup is complete
 router.get('/setup-status/:user_id', vendorController.checkVendorSetupComplete);
 

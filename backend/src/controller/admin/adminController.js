@@ -92,6 +92,10 @@ const getVendorById = async (req, res) => {
             });
         }
         
+        // If vendor is suspended and this request is from customer (not admin), return 404
+        // Check if request is from customer by looking at the referer or user role
+        // For now, we'll return the vendor data but customers should handle suspended status in frontend
+        
         console.log('Vendor details fetched successfully');
         
         res.json({
@@ -116,8 +120,8 @@ const updateVendorStatus = async (req, res) => {
         console.log('Updating vendor status:', vendor_id, status);
         
         // Validate status
-        if (!['pending', 'approved', 'rejected'].includes(status.toLowerCase())) {
-            return res.status(400).json({ error: 'Invalid status. Must be pending, approved, or rejected' });
+        if (!['pending', 'approved', 'rejected', 'suspended'].includes(status.toLowerCase())) {
+            return res.status(400).json({ error: 'Invalid status. Must be pending, approved, rejected, or suspended' });
         }
         
         // Get vendor information before updating
@@ -191,6 +195,48 @@ const updateVendorStatus = async (req, res) => {
         console.error('Failed to update vendor status:', err);
         res.status(500).json({
             error: 'Failed to update vendor status',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+const checkVendorOngoingOrders = async (req, res) => {
+    try {
+        const { vendor_id } = req.params;
+        
+        console.log('Checking ongoing orders for vendor:', vendor_id);
+        
+        // Query to get ongoing orders (not delivered, not cancelled)
+        const [orders] = await pool.query(`
+            SELECT 
+                o.order_id,
+                o.total_amount,
+                o.status,
+                o.payment_status,
+                o.delivery_datetime,
+                o.created_at,
+                CONCAT(u.fname, ' ', COALESCE(u.lname, '')) as customer_name,
+                u.email as customer_email
+            FROM orders o
+            LEFT JOIN users u ON o.customer_id = u.user_id
+            WHERE o.vendor_id = ?
+            AND o.status NOT IN ('delivered', 'cancelled')
+            ORDER BY o.created_at DESC
+        `, [vendor_id]);
+        
+        console.log(`Found ${orders.length} ongoing orders for vendor ${vendor_id}`);
+        
+        res.json({
+            success: true,
+            hasOngoingOrders: orders.length > 0,
+            ongoingOrdersCount: orders.length,
+            orders: orders
+        });
+        
+    } catch (err) {
+        console.error('Failed to check vendor ongoing orders:', err);
+        res.status(500).json({
+            error: 'Failed to check vendor ongoing orders',
             message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
         });
     }
@@ -440,4 +486,4 @@ const updateUserStatus = async (req, res) => {
     }
 };
 
-module.exports = { countTotal, getAllVendors, getVendorById, updateVendorStatus, getAllUsers, getUserById, updateUser, updateUserStatus };
+module.exports = { countTotal, getAllVendors, getVendorById, updateVendorStatus, checkVendorOngoingOrders, getAllUsers, getUserById, updateUser, updateUserStatus };

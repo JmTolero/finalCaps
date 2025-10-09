@@ -351,7 +351,7 @@ export const Vendor = () => {
         if (response.data.vendor.profile_image_url) {
           const apiBase =
             process.env.REACT_APP_API_URL || "http://localhost:3001";
-          const imageUrl = `${apiBase}/uploads/vendor-documents/${response.data.vendor.profile_image_url}`;
+          const imageUrl = getImageUrl(response.data.vendor.profile_image_url, apiBase, 'vendor-documents');
           setProfileImage(imageUrl);
           setProfileImagePreview(imageUrl);
         }
@@ -2215,23 +2215,29 @@ export const Vendor = () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      if (!currentVendor?.user_id) {
+      if (!currentVendor?.user_id || !currentVendor?.vendor_id) {
         updateStatus("error", "Vendor information not loaded.");
         return;
       }
 
-      // Set as primary address for the user
+      // Set as primary address for both user and vendor
       await axios.put(
         `${apiBase}/api/addresses/user/${currentVendor.user_id}/primary-address/${addressId}`
       );
       
-      updateStatus("success", "Primary address set successfully!");
+      // Also set as primary address for vendor (business location)
+      await axios.put(
+        `${apiBase}/api/vendor/${currentVendor.vendor_id}/primary-address/${addressId}`
+      );
+      
+      updateStatus("success", "Business location set successfully!");
       fetchAddresses();
+      fetchCurrentVendor(); // Refresh vendor data to show updated primary address
     } catch (error) {
       console.error("Error setting primary address:", error);
       updateStatus(
         "error",
-        error.response?.data?.error || "Failed to set primary address"
+        error.response?.data?.error || "Failed to set business location"
       );
     }
   };
@@ -2332,12 +2338,13 @@ export const Vendor = () => {
         }));
         
         // Update profile image if changed
-        if (newProfileImage) {
-          const imageUrl = `${apiBase}/uploads/vendor-documents/${
-            response.data.profile_image_url || newProfileImage.name
-          }`;
+        if (newProfileImage && response.data.profile_image_url) {
+          const imageUrl = getImageUrl(response.data.profile_image_url, apiBase, 'vendor-documents');
           setProfileImage(imageUrl);
           setProfileImagePreview(imageUrl);
+          setNewProfileImage(null);
+        } else if (newProfileImage) {
+          // Fallback: keep the preview from FileReader if backend didn't return URL
           setNewProfileImage(null);
         } else {
           // If no new image was uploaded, keep the current profile image preview
@@ -2570,16 +2577,18 @@ export const Vendor = () => {
                         isSidebarOpen
                           ? "items-center gap-3 px-4 py-3"
                           : "items-center justify-center p-3"
-                      } rounded-lg transition-colors ${
+                      } rounded-lg transition-all duration-200 ${
                          activeView === item.id
-                          ? "bg-blue-200 text-blue-800 font-semibold"
-                          : "text-gray-700 hover:bg-blue-300 hover:text-gray-900"
+                          ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
+                          : "text-gray-700 hover:bg-blue-200 hover:text-gray-900"
                        }`}
                      >
                        <img 
                          src={item.icon} 
                          alt={item.label} 
-                         className="w-8 h-8 flex-shrink-0 object-contain" 
+                         className={`w-8 h-8 flex-shrink-0 object-contain ${
+                           activeView === item.id ? 'brightness-0 invert' : ''
+                         }`}
                        />
                        {isSidebarOpen && (
                          <span className="font-medium text-sm">{item.label}</span>
@@ -2604,16 +2613,18 @@ export const Vendor = () => {
                       : "items-center justify-center"
                   } p-3 ${
                     isSidebarOpen ? "text-left" : "text-center"
-                  } transition-colors hover:bg-blue-300 ${
-                    activeTab === "profile"
-                      ? "bg-blue-200 text-blue-800 font-semibold"
-                      : "text-gray-700 hover:text-gray-900"
+                  } rounded-lg transition-all duration-200 ${
+                    activeView === "settings"
+                      ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
+                      : "text-gray-700 hover:bg-blue-200 hover:text-gray-900"
                    }`}
                  >
                    <img 
                      src={profileIcon} 
                      alt="Profile" 
-                     className="w-8 h-8 flex-shrink-0 object-contain" 
+                     className={`w-8 h-8 flex-shrink-0 object-contain ${
+                       activeView === "settings" ? 'brightness-0 invert' : ''
+                     }`}
                    />
                   {isSidebarOpen && (
                     <span className="font-medium">Profile</span>
@@ -2985,11 +2996,18 @@ export const Vendor = () => {
                                         <h3 className="font-semibold text-lg">
                                           {address.address_type} Address
                                         </h3>
-                                      {address.is_default === 1 && (
-                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                                          ⭐ Default
-                                        </span>
-                                      )}
+                                      <div className="flex items-center space-x-2">
+                                        {address.is_default === 1 && (
+                                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                            ⭐ Default
+                                          </span>
+                                        )}
+                                        {currentVendor?.primary_address_id === address.address_id && (
+                                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                                            🏪 Business Location
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                     <p className="text-gray-600 mt-1">
                                         {address.unit_number &&
@@ -3006,27 +3024,36 @@ export const Vendor = () => {
                                         Landmark: {address.landmark}
                                       </p>
                                     )}
+                                    {currentVendor?.primary_address_id === address.address_id && (
+                                      <div className="mt-2 p-2 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                        <p className="text-xs text-blue-700">
+                                          ℹ️ This is what customers and admin see as your store location
+                                        </p>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="flex space-x-2">
+                                  <div className="flex flex-col space-y-2">
                                     <button
                                       onClick={() => editAddress(address)}
-                                      className="text-blue-600 hover:text-blue-800 mr-2"
+                                      className="text-blue-600 hover:text-blue-800 text-sm"
                                     >
                                       Edit
                                     </button>
-                                    <button
-                                        onClick={() =>
-                                          setPrimaryAddress(address.address_id)
-                                        }
-                                      className="text-green-600 hover:text-green-800 mr-2"
-                                    >
-                                      Set Primary
-                                    </button>
+                                    {currentVendor?.primary_address_id !== address.address_id && (
+                                      <button
+                                          onClick={() =>
+                                            setPrimaryAddress(address.address_id)
+                                          }
+                                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                      >
+                                        Set as Business Location
+                                      </button>
+                                    )}
                                     <button
                                         onClick={() =>
                                           deleteAddress(address.address_id)
                                         }
-                                      className="text-red-600 hover:text-red-800"
+                                      className="text-red-600 hover:text-red-800 text-sm"
                                     >
                                       Delete
                                     </button>
@@ -3494,16 +3521,18 @@ export const Vendor = () => {
                       isSidebarOpen
                         ? "items-center gap-3 px-4 py-3"
                         : "items-center justify-center p-3"
-                    } rounded-lg transition-colors ${
+                    } rounded-lg transition-all duration-200 ${
                        activeView === item.id
-                        ? "bg-blue-200 text-blue-800 font-semibold"
-                        : "text-gray-700 hover:bg-blue-300 hover:text-gray-900"
+                        ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
+                        : "text-gray-700 hover:bg-blue-200 hover:text-gray-900"
                      }`}
                    >
                      <img 
                        src={item.icon} 
                        alt={item.label} 
-                       className="w-8 h-8 flex-shrink-0 object-contain" 
+                       className={`w-8 h-8 flex-shrink-0 object-contain ${
+                         activeView === item.id ? 'brightness-0 invert' : ''
+                       }`}
                      />
                     {isSidebarOpen && (
                       <span className="font-medium text-sm">{item.label}</span>
@@ -3529,16 +3558,18 @@ export const Vendor = () => {
                     : "items-center justify-center"
                 } p-3 ${
                   isSidebarOpen ? "text-left" : "text-center"
-                } transition-colors hover:bg-blue-300 ${
-                  activeView === "settings" && activeTab === "profile"
-                    ? "bg-blue-200 text-blue-800 font-semibold"
-                    : "text-gray-700 hover:text-gray-900"
+                } rounded-lg transition-all duration-200 ${
+                  activeView === "settings"
+                    ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
+                    : "text-gray-700 hover:bg-blue-200 hover:text-gray-900"
                  }`}
                >
                  <img 
                    src={profileIcon} 
                    alt="Profile" 
-                   className="w-8 h-8 flex-shrink-0 object-contain" 
+                   className={`w-8 h-8 flex-shrink-0 object-contain ${
+                     activeView === "settings" ? 'brightness-0 invert' : ''
+                   }`}
                  />
                  {isSidebarOpen && <span className="font-medium">Profile</span>}
                </button>
@@ -3569,6 +3600,37 @@ export const Vendor = () => {
                     business here.
                   </p>
                 </div>
+
+                {/* Suspended Warning Banner */}
+                {currentVendor?.status === 'suspended' && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800">
+                          Account Suspended - Grace Period Active
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700">
+                          <p>
+                            Your account is currently suspended. You can still complete existing orders, but cannot:
+                          </p>
+                          <ul className="list-disc list-inside mt-1 ml-2">
+                            <li>Add or edit products/flavors</li>
+                            <li>Receive new customer orders</li>
+                            <li>Appear in customer search</li>
+                          </ul>
+                          <p className="mt-2 font-medium">
+                            Please contact admin for more information.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Quick Stats */}
                 <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -4060,6 +4122,29 @@ export const Vendor = () => {
 
             {activeView === "inventory" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50 p-6">
+                {/* Suspended Warning Banner */}
+                {currentVendor?.status === 'suspended' && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-lg max-w-7xl">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">
+                          Product Management Disabled
+                        </h3>
+                        <div className="mt-2 text-sm text-red-700">
+                          <p>
+                            Your account is suspended. You cannot add or edit products while suspended.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl">
                   {/* Available Drums with Gallon Capacity Section */}
                   <div className="bg-sky-100 border border-blue-300 rounded-lg p-4">
@@ -4067,7 +4152,7 @@ export const Vendor = () => {
                       <div className="text-blue-800 font-bold text-lg">
                         Available Drums
                       </div>
-                      {!isEditingDrums && (
+                      {!isEditingDrums && currentVendor?.status !== 'suspended' && (
                         <button
                           onClick={handleDrumsEdit}
                           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
@@ -4414,10 +4499,11 @@ export const Vendor = () => {
                 </div>
 
                 {/* Add/Edit Flavor Section */}
-                <div id="flavor-form" className="bg-sky-100 border border-blue-300 rounded-lg p-6 mt-4">
-                  <div className="text-blue-800 font-medium text-xl mb-4">
-                    {isEditingFlavor ? `Edit Flavor: ${editingFlavor?.flavor_name}` : "Add Flavor:"}
-                  </div>
+                {currentVendor?.status !== 'suspended' && (
+                  <div id="flavor-form" className="bg-sky-100 border border-blue-300 rounded-lg p-6 mt-4">
+                    <div className="text-blue-800 font-medium text-xl mb-4">
+                      {isEditingFlavor ? `Edit Flavor: ${editingFlavor?.flavor_name}` : "Add Flavor:"}
+                    </div>
 
                   <div className="flex items-start space-x-6">
                     {/* Flavor Images */}
@@ -4543,6 +4629,7 @@ export const Vendor = () => {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Saved Flavors Section */}
                 <div className="bg-[#D4F6FF] border border-blue-300 rounded-lg p-6 mt-4">

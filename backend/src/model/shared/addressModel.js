@@ -1,7 +1,8 @@
 const pool = require('../../db/config');
+const geocoder = require('../../utils/geocoder');
 
 const addressModel = {
-  // Create a new address
+  // Create a new address with automatic geocoding
   createAddress: async (addressData) => {
     try {
       const {
@@ -16,14 +17,37 @@ const addressModel = {
         address_type = 'residential'
       } = addressData;
 
+      // Auto-geocode the address to get coordinates
+      const coordinates = await geocoder.getCoordinatesForAddress(addressData);
+
       const [result] = await pool.query(
         `INSERT INTO addresses 
-         (unit_number, street_name, barangay, cityVillage, province, region, postal_code, landmark, address_type, is_active, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
-        [unit_number, street_name, barangay, cityVillage, province, region, postal_code, landmark, address_type]
+         (unit_number, street_name, barangay, cityVillage, province, region, postal_code, landmark, address_type, latitude, longitude, is_active, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+        [
+          unit_number, 
+          street_name, 
+          barangay, 
+          cityVillage, 
+          province, 
+          region, 
+          postal_code, 
+          landmark, 
+          address_type,
+          coordinates ? coordinates.lat : null,
+          coordinates ? coordinates.lon : null
+        ]
       );
 
-      return result.insertId;
+      const addressId = result.insertId;
+      
+      if (coordinates) {
+        console.log(`✅ Address ${addressId} created with coordinates: ${coordinates.lat}, ${coordinates.lon}`);
+      } else {
+        console.log(`⚠️ Address ${addressId} created without coordinates (geocoding failed)`);
+      }
+
+      return addressId;
     } catch (error) {
       console.error('Error creating address:', error);
       throw error;

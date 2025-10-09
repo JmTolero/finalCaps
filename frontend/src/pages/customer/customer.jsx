@@ -79,6 +79,10 @@ export const Customer = () => {
   const [infoModalTitle, setInfoModalTitle] = useState('');
   const [infoModalType, setInfoModalType] = useState('success'); // 'success' or 'error'
   
+  // Delete address confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState(null);
+  
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
     try {
@@ -740,18 +744,27 @@ export const Customer = () => {
   };
 
   const deleteAddress = async (addressId) => {
-    if (!window.confirm('Are you sure you want to delete this address?')) return;
+    setAddressToDelete(addressId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAddress = async () => {
+    if (!addressToDelete) return;   
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      await axios.delete(`${apiBase}/api/addresses/address/${addressId}`);
+      await axios.delete(`${apiBase}/api/addresses/address/${addressToDelete}`);
       setStatus({ type: 'success', message: 'Address deleted successfully!' });
       fetchAddresses();
+      setShowDeleteModal(false);
+      setAddressToDelete(null);
     } catch (error) {
       setStatus({ 
         type: 'error', 
         message: error.response?.data?.error || 'Failed to delete address' 
       });
+      setShowDeleteModal(false);
+      setAddressToDelete(null);
     }
   };
 
@@ -1930,6 +1943,45 @@ export const Customer = () => {
             </div>
           </div>
         </div>
+
+        {/* Delete Address Confirmation Modal - Settings View Only */}
+        {showDeleteModal && addressToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Address
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to delete this address? This action cannot be undone.
+                </p>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setAddressToDelete(null);
+                    }}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteAddress}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
