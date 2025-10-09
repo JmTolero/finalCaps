@@ -49,4 +49,10 @@ router.get('/with-locations', vendorController.getVendorsWithLocations);
 // Get all approved vendors for customer store listing
 router.get('/all-approved', vendorController.getAllApprovedVendors);
 
+// Set vendor's exact GPS location
+router.put('/:vendorId/exact-location', vendorController.setVendorExactLocation);
+
+// Get vendor's location info (both exact and approximate)
+router.get('/:vendorId/location-info', vendorController.getVendorLocationInfo);
+
 module.exports = router;

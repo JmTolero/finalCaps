@@ -133,40 +133,57 @@ const CustomerVendorMap = ({
       
       if (response.data.success && response.data.vendors) {
         // Transform API data to match expected format
-        const realVendors = response.data.vendors.map(vendor => ({
-          id: vendor.vendor_id,
-          name: vendor.store_name || 'Unnamed Store',
-          position: {
-            lat: parseFloat(vendor.latitude) || 14.5995,
-            lng: parseFloat(vendor.longitude) || 120.9842
-          },
-          infoWindow: `
-            <div class="p-4">
-              <h3 class="font-bold text-lg mb-2">${vendor.store_name || 'Unnamed Store'}</h3>
-              <p class="text-gray-600 mb-2">${vendor.contact_no || 'No contact info'}</p>
-              <p class="text-sm text-gray-500 mb-3">📍 ${vendor.location || 'Location not specified'}</p>
-              <p class="text-sm text-gray-600 mb-3">👤 ${vendor.fname} ${vendor.lname}</p>
-              ${vendor.flavors && vendor.flavors.length > 0 ? `
-                <p class="text-sm text-gray-600 mb-3">
-                  🍦 Flavors: ${vendor.flavors.map(f => f.flavor_name).join(', ')}
-                </p>
-              ` : ''}
-              <div class="flex gap-2">
-                <button onclick="selectVendor(${vendor.vendor_id})" 
-                        class="bg-orange-300 text-black px-3 py-1 rounded text-sm hover:bg-orange-400">
-                  View Shop
-                </button>
+        const realVendors = response.data.vendors.map(vendor => {
+          // Prioritize exact GPS coordinates over approximate
+          const displayLat = parseFloat(vendor.exact_latitude) || parseFloat(vendor.latitude) || 14.5995;
+          const displayLng = parseFloat(vendor.exact_longitude) || parseFloat(vendor.longitude) || 120.9842;
+          const locationType = vendor.exact_latitude && vendor.exact_longitude ? 'exact' : 
+                              (vendor.latitude && vendor.longitude ? 'approximate' : 'none');
+          
+          // Choose marker color based on location accuracy
+          const locationBadge = locationType === 'exact' ? 
+            '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">📍 Exact Location</span>' :
+            locationType === 'approximate' ? 
+            '<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">📍 Approximate Location</span>' :
+            '<span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">📍 Location Unverified</span>';
+
+          return {
+            id: vendor.vendor_id,
+            name: vendor.store_name || 'Unnamed Store',
+            position: {
+              lat: displayLat,
+              lng: displayLng
+            },
+            locationType: locationType, // Track location accuracy
+            infoWindow: `
+              <div class="p-4">
+                <h3 class="font-bold text-lg mb-2">${vendor.store_name || 'Unnamed Store'}</h3>
+                <div class="mb-3">${locationBadge}</div>
+                <p class="text-gray-600 mb-2">${vendor.contact_no || 'No contact info'}</p>
+                <p class="text-sm text-gray-500 mb-3">📍 ${vendor.location || 'Location not specified'}</p>
+                <p class="text-sm text-gray-600 mb-3">👤 ${vendor.fname} ${vendor.lname}</p>
+                ${vendor.flavors && vendor.flavors.length > 0 ? `
+                  <p class="text-sm text-gray-600 mb-3">
+                    🍦 Flavors: ${vendor.flavors.map(f => f.flavor_name).join(', ')}
+                  </p>
+                ` : ''}
+                <div class="flex gap-2">
+                  <button onclick="selectVendor(${vendor.vendor_id})" 
+                          class="bg-orange-300 text-black px-3 py-1 rounded text-sm hover:bg-orange-400">
+                    View Shop
+                  </button>
+                </div>
               </div>
-            </div>
-          `,
-          deliveryZones: [vendor.location],
-          isOpen: vendor.vendor_status === 'approved',
-          rating: 4.5, // Default rating since not in API
-          flavors: vendor.flavors || [],
-          drumSizes: ['Large', 'Medium', 'Small'], // Default sizes
-          location: vendor.location,
-          vendorData: vendor // Include original vendor data
-        }));
+            `,
+            deliveryZones: [vendor.location],
+            isOpen: vendor.vendor_status === 'approved',
+            rating: 4.5, // Default rating since not in API
+            flavors: vendor.flavors || [],
+            drumSizes: ['Large', 'Medium', 'Small'], // Default sizes
+            location: vendor.location,
+            vendorData: vendor // Include original vendor data
+          };
+        });
         
         setVendors(realVendors);
         setDeliveryZones(mockZones); // Keep mock zones for now
@@ -241,7 +258,7 @@ const CustomerVendorMap = ({
     };
   };
 
-  // Create map markers for vendors
+  // Create map markers for vendors with location accuracy visual indicators
   const createVendorMarkers = useMemo(() => {
     return vendors.map(vendor => ({
       id: vendor.id,
@@ -249,6 +266,25 @@ const CustomerVendorMap = ({
       title: vendor.name,
       infoWindow: vendor.infoWindow,
       isOpen: vendor.isOpen,
+      locationType: vendor.locationType,
+      // Use different marker colors based on location accuracy
+      icon: vendor.locationType === 'exact' ? {
+        path: 'M12 0C7.6 0 4 3.6 4 8c0 5.4 8 13 8 13s8-7.6 8-13c0-4.4-3.6-8-8-8z',
+        fillColor: '#10b981', // Green for exact location
+        fillOpacity: 1,
+        strokeColor: '#065f46',
+        strokeWeight: 2,
+        scale: 1.5,
+        anchor: { x: 12, y: 24 }
+      } : vendor.locationType === 'approximate' ? {
+        path: 'M12 0C7.6 0 4 3.6 4 8c0 5.4 8 13 8 13s8-7.6 8-13c0-4.4-3.6-8-8-8z',
+        fillColor: '#f59e0b', // Orange for approximate location
+        fillOpacity: 0.8,
+        strokeColor: '#b45309',
+        strokeWeight: 2,
+        scale: 1.3,
+        anchor: { x: 12, y: 24 }
+      } : undefined, // Use default marker for unverified
       vendorData: vendor // Include full vendor data for click handler
     }));
   }, [vendors]); // Only recalculate when vendors change

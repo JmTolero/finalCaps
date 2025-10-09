@@ -753,6 +753,9 @@ const getVendorsWithLocations = async (req, res) => {
                 a.province,
                 a.latitude,
                 a.longitude,
+                v.exact_latitude,
+                v.exact_longitude,
+                v.location_accuracy,
                 GROUP_CONCAT(DISTINCT f.flavor_name) as flavors
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
@@ -775,15 +778,20 @@ const getVendorsWithLocations = async (req, res) => {
         }
         
         query += `
-            GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude
+            GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude, v.exact_latitude, v.exact_longitude, v.location_accuracy
             ORDER BY v.store_name
         `;
         
         const [vendors] = await pool.query(query, params);
 
-        // Process flavors data
+        // Process flavors data and prioritize exact location
         const processedVendors = vendors.map(vendor => ({
             ...vendor,
+            // Use exact coordinates if available, otherwise fall back to geocoded address coordinates
+            latitude: vendor.exact_latitude || vendor.latitude,
+            longitude: vendor.exact_longitude || vendor.longitude,
+            location_type: vendor.exact_latitude && vendor.exact_longitude ? 'exact' : 
+                          (vendor.latitude && vendor.longitude ? 'approximate' : 'none'),
             flavors: vendor.flavors ? vendor.flavors.split(',').map(flavor => ({ flavor_name: flavor.trim() })) : []
         }));
 
@@ -859,4 +867,157 @@ const getAllApprovedVendors = async (req, res) => {
     }
 };
 
-module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, setVendorPrimaryAddress, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors };
+// Set vendor's exact GPS location
+const setVendorExactLocation = async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        const { latitude, longitude } = req.body;
+
+        // Validate coordinates
+        if (!latitude || !longitude) {
+            return res.status(400).json({
+                success: false,
+                error: 'Latitude and longitude are required'
+            });
+        }
+
+        // Validate coordinate ranges
+        if (latitude < -90 || latitude > 90) {
+            return res.status(400).json({
+                success: false,
+                error: 'Latitude must be between -90 and 90'
+            });
+        }
+
+        if (longitude < -180 || longitude > 180) {
+            return res.status(400).json({
+                success: false,
+                error: 'Longitude must be between -180 and 180'
+            });
+        }
+
+        console.log(`📍 Setting exact location for vendor ${vendorId}:`, { latitude, longitude });
+
+        // Update vendor's exact location
+        const [result] = await pool.query(`
+            UPDATE vendors 
+            SET 
+                exact_latitude = ?,
+                exact_longitude = ?,
+                location_accuracy = 'exact',
+                location_set_at = NOW()
+            WHERE vendor_id = ?
+        `, [latitude, longitude, vendorId]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Vendor not found'
+            });
+        }
+
+        console.log(`✅ Exact location set successfully for vendor ${vendorId}`);
+
+        res.json({
+            success: true,
+            message: 'Exact location set successfully',
+            data: {
+                vendor_id: vendorId,
+                exact_latitude: latitude,
+                exact_longitude: longitude,
+                location_accuracy: 'exact',
+                location_set_at: new Date()
+            }
+        });
+    } catch (error) {
+        console.error('Error setting vendor exact location:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to set exact location',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+// Get vendor's location info (both exact and approximate)
+const getVendorLocationInfo = async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+
+        console.log(`📍 Fetching location info for vendor ${vendorId}`);
+
+        const [vendors] = await pool.query(`
+            SELECT 
+                v.vendor_id,
+                v.store_name,
+                v.exact_latitude,
+                v.exact_longitude,
+                v.location_accuracy,
+                v.location_set_at,
+                a.latitude as address_latitude,
+                a.longitude as address_longitude,
+                a.cityVillage,
+                a.province,
+                a.street_name,
+                a.barangay,
+                CONCAT_WS(', ',
+                    NULLIF(a.unit_number, ''),
+                    a.street_name,
+                    a.barangay,
+                    a.cityVillage,
+                    a.province
+                ) as full_address
+            FROM vendors v
+            LEFT JOIN addresses a ON v.primary_address_id = a.address_id
+            WHERE v.vendor_id = ?
+        `, [vendorId]);
+
+        if (vendors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Vendor not found'
+            });
+        }
+
+        const vendor = vendors[0];
+
+        // Determine which coordinates to use for display
+        const displayLocation = {
+            latitude: vendor.exact_latitude || vendor.address_latitude,
+            longitude: vendor.exact_longitude || vendor.address_longitude,
+            accuracy: vendor.location_accuracy || 'none',
+            has_exact: vendor.exact_latitude !== null && vendor.exact_longitude !== null,
+            has_approximate: vendor.address_latitude !== null && vendor.address_longitude !== null
+        };
+
+        res.json({
+            success: true,
+            data: {
+                vendor_id: vendor.vendor_id,
+                store_name: vendor.store_name,
+                exact_location: {
+                    latitude: vendor.exact_latitude,
+                    longitude: vendor.exact_longitude,
+                    set_at: vendor.location_set_at
+                },
+                approximate_location: {
+                    latitude: vendor.address_latitude,
+                    longitude: vendor.address_longitude,
+                    city: vendor.cityVillage,
+                    province: vendor.province
+                },
+                full_address: vendor.full_address,
+                display_location: displayLocation
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching vendor location info:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch location info',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, setVendorPrimaryAddress, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors, setVendorExactLocation, getVendorLocationInfo };

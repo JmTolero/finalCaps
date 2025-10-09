@@ -40,13 +40,18 @@ CREATE TABLE IF NOT EXISTS vendors (
     profile_image_url VARCHAR(100),
     status VARCHAR(45) DEFAULT 'pending',
     primary_address_id INT(11),
+    exact_latitude DECIMAL(10, 8) NULL COMMENT 'Exact GPS latitude from vendor device',
+    exact_longitude DECIMAL(11, 8) NULL COMMENT 'Exact GPS longitude from vendor device',
+    location_accuracy VARCHAR(20) DEFAULT 'approximate' COMMENT 'Location type: exact or approximate',
+    location_set_at TIMESTAMP NULL COMMENT 'When vendor set their exact location',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (primary_address_id) REFERENCES addresses(address_id) ON DELETE SET NULL,
     INDEX idx_vendors_user_id (user_id),
     INDEX idx_vendors_status (status),
-    INDEX idx_vendors_primary_address (primary_address_id)
+    INDEX idx_vendors_primary_address (primary_address_id),
+    INDEX idx_vendors_exact_coords (exact_latitude, exact_longitude)
 );
 
 -- Addresses table (structured address system)

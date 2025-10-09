@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AddressForm from "../../components/shared/AddressForm";
+import SetExactLocationModal from "../../components/vendor/SetExactLocationModal";
 import logoImage from "../../assets/images/LOGO.png";
 import { getImageUrl } from "../../utils/imageUtils";
 import axios from "axios";
@@ -255,6 +256,10 @@ export const Vendor = () => {
   // Profile dropdown state
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
+  
+  // Location modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationInfo, setLocationInfo] = useState(null);
   
   // Sidebar state - always closed on initial load for clean login experience
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -2930,6 +2935,32 @@ export const Vendor = () => {
                               />
                             </div>
                           </div>
+
+                          {/* Set Exact Location Section */}
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-8 border border-green-100">
+                            <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                              <svg className="w-6 h-6 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              Shop Location on Map
+                            </h3>
+                            <p className="text-gray-600 mb-4">
+                              Set your exact shop location to help customers find you easily on the map. 
+                              Use your phone's GPS at your shop for best accuracy.
+                            </p>
+                            <button
+                              onClick={() => setShowLocationModal(true)}
+                              className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span>Set Exact Shop Location</span>
+                            </button>
+                          </div>
+
                           <div className="flex justify-end">
                             <button 
                               onClick={handleSaveProfile}
@@ -7239,6 +7270,23 @@ export const Vendor = () => {
           </div>
         </div>
       )}
+
+      {/* Set Exact Location Modal */}
+      <SetExactLocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        vendorId={currentVendor?.vendor_id}
+        onLocationSet={(data) => {
+          console.log('✅ Location set successfully:', data);
+          // Refresh vendor data or show success message
+          setShowStatus(true);
+          setStatus({
+            type: 'success',
+            message: 'Exact shop location set successfully!'
+          });
+          setTimeout(() => setShowStatus(false), 3000);
+        }}
+      />
     </>
   );
 };
