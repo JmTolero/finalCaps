@@ -2116,7 +2116,7 @@ export const Customer = () => {
                   <div className="mb-2">
                     {imageUrls.length > 0 ? (
                       <img
-                        src={getImageUrl(imageUrls[0], process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
+                        src={getImageUrl(imageUrls[0], process.env.REACT_APP_API_URL || "http://localhost:3001", 'flavor-images') || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
                         alt={flavor.flavor_name}
                         className="w-full h-32 object-cover rounded-md"
                         onError={(e) => {

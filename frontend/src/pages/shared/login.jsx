@@ -10,6 +10,7 @@ export const Login = () => {
     const navigate = useNavigate();
     const [form, setForm] = useState({ username: '', password: '' });
     const [status, setStatus] = useState({ type: null, message: '' });
+    const [loading, setLoading] = useState(false);
 
     // Auto-hide error messages after 3 seconds and scroll to top when error occurs
     useEffect(() => {
@@ -34,11 +35,13 @@ export const Login = () => {
     const handleSubmit = async (e) => {
       e.preventDefault();
       setStatus({ type: null, message: "" });
+      setLoading(true);
 
       // Validate form data
       const validation = validateFormData(form, ['username', 'password']);
       if (!validation.isValid) {
         setStatus({ type: 'error', message: validation.message });
+        setLoading(false);
         return;
       }
 
@@ -162,6 +165,7 @@ export const Login = () => {
           type: "error",
           message: err.response?.data?.error || err.message || "Something went wrong",
         });
+        setLoading(false);
       }
     };
 
@@ -327,10 +331,35 @@ export const Login = () => {
               <div className="flex justify-center mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-sky-200 relative z-10 bg-white/20 rounded-lg sm:rounded-xl py-4 sm:py-6 mx-2 sm:mx-4">
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-extrabold py-2 sm:py-3 px-6 sm:px-8 text-base sm:text-lg rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl w-full sm:min-w-[160px] sm:w-auto border-2 border-gray-700 drop-shadow-lg"
+                  disabled={loading}
+                  className={`bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white font-extrabold py-2 sm:py-3 px-6 sm:px-8 text-base sm:text-lg rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl w-full sm:min-w-[160px] sm:w-auto border-2 border-gray-700 drop-shadow-lg flex items-center justify-center ${
+                    loading ? 'opacity-80 cursor-not-allowed' : ''
+                  }`}
                   style={{textShadow: '2px 2px 4px rgba(0,0,0,0.8)'}}
                 >
-                  LOGIN
+                  {loading && (
+                    <svg 
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      fill="none" 
+                      viewBox="0 0 24 24"
+                    >
+                      <circle 
+                        className="opacity-25" 
+                        cx="12" 
+                        cy="12" 
+                        r="10" 
+                        stroke="currentColor" 
+                        strokeWidth="4"
+                      ></circle>
+                      <path 
+                        className="opacity-75" 
+                        fill="currentColor" 
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  )}
+                  {loading ? 'LOGGING IN...' : 'LOGIN'}
                 </button>
               </div>
             </form>
