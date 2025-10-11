@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
+import { useCart } from "../../contexts/CartContext";
 import CustomerVendorMap from "../../components/customer/CustomerVendorMap";
 import axios from "axios";
 
@@ -13,6 +14,8 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 
 export const FindNearbyVendors = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { totalItems } = useCart();
   const [vendors, setVendors] = useState([]);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -269,7 +272,11 @@ export const FindNearbyVendors = () => {
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`p-2 rounded-lg transition-colors ${
+                    location.pathname === '/customer' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img src={productsIcon} alt="Products" className="w-5 h-5" />
                 </button>
@@ -277,7 +284,11 @@ export const FindNearbyVendors = () => {
                 {/* Shops Icon */}
                 <button 
                   onClick={() => navigate("/all-vendor-stores")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`p-2 rounded-lg transition-colors ${
+                    location.pathname === '/all-vendor-stores' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
                 </button>
@@ -285,7 +296,11 @@ export const FindNearbyVendors = () => {
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className={`p-2 rounded-lg transition-colors relative ${
+                    location.pathname === '/customer/notifications' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img
                     src={notifIcon}
@@ -301,10 +316,24 @@ export const FindNearbyVendors = () => {
 
                 {/* Cart Icon */}
                 <button 
-                  onClick={() => navigate("/customer/cart")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  onClick={() => navigate("/cart")}
+                  className={`p-2 rounded-lg transition-all duration-200 relative ${
+                    location.pathname === '/cart'
+                      ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
-                  <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className="w-5 h-5 transition-transform duration-200"
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
                 </button>
 
                 {/* Feedback Icon */}
@@ -476,7 +505,7 @@ export const FindNearbyVendors = () => {
                         <div className="flex space-x-3">
                           <button 
                             onClick={() => navigate(`/vendor/${vendor.vendor_id}/store`)}
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-sm"
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm"
                           >
                             View Shop
                           </button>

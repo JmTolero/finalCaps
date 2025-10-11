@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { NavWithLogo } from '../../components/shared/nav';
 import StarRating from '../../components/shared/StarRating';
@@ -16,6 +16,7 @@ import shopsIcon from '../../assets/images/customerIcon/shops.png';
 export const FlavorDetail = () => {
   const { flavorId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart, totalItems } = useCart();
   const [flavor, setFlavor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -397,27 +398,38 @@ export const FlavorDetail = () => {
       <NavWithLogo />
       
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-end mb-6">
-            <div className="flex items-center space-x-4">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+            <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                 Find nearby Vendors
               </Link>
               
               {/* Navigation Icons */}
-              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                 {/* Products/Flavors Icon - Navigate back to customer dashboard */}
                 <button 
                   onClick={() => navigate('/customer')}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+                    location.pathname === '/customer' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
-                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                <Link 
+                  to="/all-vendor-stores" 
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
+                    location.pathname === '/all-vendor-stores' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
                 
                 {/* Notification Bell */}
@@ -426,11 +438,15 @@ export const FlavorDetail = () => {
                     console.log('🔔 FlavorDetail: Notification button clicked');
                     navigate('/customer/notifications');
                   }}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors relative ${
+                    location.pathname === '/customer/notifications' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
-                  <img src={notifIcon} alt="Notifications" className="w-5 h-5" />
+                  <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -442,9 +458,9 @@ export const FlavorDetail = () => {
                     console.log('🛒 FlavorDetail: Cart button clicked');
                     navigate('/cart');
                   }}
-                  className={`p-2 rounded-lg transition-all duration-200 relative ${
-                    totalItems > 0
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm'
+                  className={`p-1.5 sm:p-2 rounded-lg transition-all duration-200 relative ${
+                    location.pathname === '/cart'
+                      ? 'bg-blue-100 hover:bg-blue-200 shadow-sm'
                       : 'hover:bg-gray-100'
                   }`}
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
@@ -452,12 +468,10 @@ export const FlavorDetail = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-5 h-5 transition-transform duration-200 ${
-                      totalItems > 0 ? 'scale-110' : ''
-                    }`}
+                    className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200"
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -469,9 +483,9 @@ export const FlavorDetail = () => {
                     console.log('💬 FlavorDetail: Feedback button clicked');
                     navigate('/customer?view=feedback');
                   }}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -480,16 +494,16 @@ export const FlavorDetail = () => {
       </div>
 
       {/* Main Content */}
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8">
-        <div className="max-w-6xl mx-auto px-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 md:py-8">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6">
           {/* Main Product Card */}
-          <div className="bg-sky-100 rounded-2xl shadow-xl overflow-hidden mb-6">
+          <div className="bg-sky-100 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex flex-col lg:flex-row">
               {/* Product Images */}
-              <div className="lg:w-1/2 p-8">
-                 <div className="space-y-4">
+              <div className="lg:w-1/2 p-3 sm:p-4 md:p-6">
+                 <div className="space-y-2 sm:space-y-3">
                    {/* Main Image */}
-                   <div className="aspect-square bg-gray-100 rounded-xl overflow-hidden relative">
+                   <div className="aspect-square bg-gray-100 rounded-lg sm:rounded-xl overflow-hidden relative max-w-xs sm:max-w-sm mx-auto lg:max-w-none">
                      {selectedImages[currentImageIndex] ? (
                        <img 
                          src={getImageUrl(selectedImages[currentImageIndex], process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${selectedImages[currentImageIndex]}`}
@@ -510,17 +524,17 @@ export const FlavorDetail = () => {
                        <>
                          <button
                            onClick={() => setCurrentImageIndex(prev => prev > 0 ? prev - 1 : selectedImages.length - 1)}
-                           className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                           className="absolute left-1 sm:left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1.5 sm:p-2 rounded-full hover:bg-opacity-70 transition-all"
                          >
-                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                            </svg>
                          </button>
                          <button
                            onClick={() => setCurrentImageIndex(prev => prev < selectedImages.length - 1 ? prev + 1 : 0)}
-                           className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                           className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1.5 sm:p-2 rounded-full hover:bg-opacity-70 transition-all"
                          >
-                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                            </svg>
                          </button>
@@ -530,12 +544,12 @@ export const FlavorDetail = () => {
                    
                    {/* Thumbnail Images */}
                    {selectedImages.length > 1 && (
-                     <div className="flex space-x-2 overflow-x-auto pb-2">
+                     <div className="flex space-x-1.5 sm:space-x-2 overflow-x-auto pb-2 justify-center lg:justify-start">
                        {selectedImages.map((image, index) => (
                          <button
                            key={index}
                            onClick={() => setCurrentImageIndex(index)}
-                           className={`w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
+                           className={`w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-md sm:rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
                              currentImageIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
                            }`}
                          >
@@ -554,7 +568,7 @@ export const FlavorDetail = () => {
                    
                    {/* Image counter */}
                    {selectedImages.length > 1 && (
-                     <div className="text-center text-sm text-gray-500">
+                     <div className="text-center text-xs sm:text-sm text-gray-500">
                        {currentImageIndex + 1} of {selectedImages.length}
                      </div>
                    )}
@@ -562,14 +576,14 @@ export const FlavorDetail = () => {
               </div>
 
               {/* Product Details */}
-              <div className="lg:w-1/2 p-8">
-                <div className="space-y-6">
+              <div className="lg:w-1/2 p-4 sm:p-6 md:p-8">
+                <div className="space-y-4 sm:space-y-5 md:space-y-6">
                    {/* Product Title */}
                    <div>
-                     <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                     <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-2">
                        {flavor.flavor_name}
                      </h1>
-                     <div className="flex items-center space-x-2 mb-3">
+                     <div className="flex items-center space-x-2 mb-2 sm:mb-3">
                        <StarRating 
                          rating={parseFloat(flavor.average_rating) || 0}
                          size="md"
@@ -579,24 +593,24 @@ export const FlavorDetail = () => {
                      </div>
                      {/* Flavor Description */}
                      {flavor.flavor_description && (
-                       <p className="text-gray-600 text-base leading-relaxed">
+                       <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
                          {flavor.flavor_description}
                        </p>
                      )}
                    </div>
 
                    {/* Price */}
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-2xl sm:text-3xl font-bold text-blue-600">
                     {getPrice()}
                   </div>
 
                    {/* Quantity Selector */}
-                   <div className="flex items-center space-x-4">
-                     <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2">
+                   <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                     <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 self-start sm:self-auto">
                        <button 
                          onClick={() => handleQuantityChange(-1)}
                          disabled={quantity <= 1}
-                         className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                         className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${
                            quantity <= 1 
                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -604,11 +618,11 @@ export const FlavorDetail = () => {
                        >
                          -
                        </button>
-                       <span className="text-lg font-medium w-8 text-center">{quantity}</span>
+                       <span className="text-base sm:text-lg font-medium w-7 sm:w-8 text-center">{quantity}</span>
                        <button 
                          onClick={() => handleQuantityChange(1)}
                          disabled={quantity >= getAvailableDrums()}
-                         className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                         className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${
                            quantity >= getAvailableDrums()
                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
@@ -617,25 +631,22 @@ export const FlavorDetail = () => {
                          +
                        </button>
                      </div>
-                     <span className="text-gray-600">{getAvailableDrums()} drums available</span>
+                     <span className="text-sm sm:text-base text-gray-600">{getAvailableDrums()} drums available</span>
                    </div>
 
                   {/* Size Selection */}
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Select Size</h3>
-                    <div className="flex space-x-3">
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Select Size</h3>
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
                       {flavor.available_sizes.map((size) => (
                          <button
                            key={size}
                            onClick={() => handleSizeChange(size)}
-                           className={`px-6 py-3 rounded-full font-medium transition-colors ${
+                           className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full font-medium transition-colors text-sm sm:text-base ${
                              selectedSize === size
-                               ? 'text-gray-800'
-                               : 'bg-white text-gray-700 hover:bg-gray-100'
+                               ? 'bg-blue-100 text-blue-700 border-2 border-blue-200'
+                               : 'bg-white text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                            }`}
-                           style={{
-                             backgroundColor: selectedSize === size ? '#FFDDAE' : 'white'
-                           }}
                          >
                           {size.charAt(0).toUpperCase() + size.slice(1)}
                         </button>
@@ -644,23 +655,23 @@ export const FlavorDetail = () => {
                   </div>
 
                    {/* Schedule Delivery */}
-                   <div className="space-y-3">
+                   <div className="space-y-2 sm:space-y-3">
                      <div className="flex items-center space-x-2 text-gray-600">
-                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                        </svg>
-                       <span>Schedule to Deliver <span className="text-red-500">*</span></span>
+                       <span className="text-sm sm:text-base">Schedule to Deliver <span className="text-red-500">*</span></span>
                      </div>
-                     <div className="flex space-x-3">
+                     <div className="flex space-x-2 sm:space-x-3">
                        <div className="flex-1">
-                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                            Date <span className="text-red-500">*</span>
                          </label>
                          <input
                            type="date"
                            value={deliveryDate}
                            onChange={(e) => setDeliveryDate(e.target.value)}
-                           className={`w-full px-4 py-2 bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                           className={`w-full px-2 py-2 text-xs sm:px-3 sm:text-base bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                              !deliveryDate ? 'border-red-300' : 'border-gray-300'
                            }`}
                            min={new Date().toISOString().split('T')[0]}
@@ -668,14 +679,14 @@ export const FlavorDetail = () => {
                          />
                        </div>
                        <div className="flex-1">
-                         <label className="block text-sm font-medium text-gray-700 mb-1">
+                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                            Time <span className="text-red-500">*</span>
                          </label>
                          <input
                            type="time"
                            value={deliveryTime}
                            onChange={(e) => setDeliveryTime(e.target.value)}
-                           className={`w-full px-4 py-2 bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                           className={`w-full px-2 py-2 text-xs sm:px-3 sm:text-base bg-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                              !deliveryTime ? 'border-red-300' : 'border-gray-300'
                            }`}
                            required
@@ -683,24 +694,23 @@ export const FlavorDetail = () => {
                        </div>
                      </div>
                      {(!deliveryDate || !deliveryTime) && (
-                       <p className="text-sm text-red-600">
+                       <p className="text-xs sm:text-sm text-red-600">
                          Please select both date and time to proceed with booking
                        </p>
                      )}
                    </div>
 
                    {/* Action Buttons */}
-                   <div className="flex justify-end space-x-4 pt-16">
+                   <div className="flex justify-end space-x-3 sm:space-x-4 pt-8 sm:pt-12 lg:pt-16">
                      <button 
                        onClick={handleReserve}
-                         className="px-8 py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors"
+                         className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
                      >
                        Reserve
                      </button>
                      <button 
                        onClick={handleBookNow}
-                       className="px-8 py-3 text-gray-800 rounded-full font-medium hover:opacity-80 transition-colors"
-                       style={{ backgroundColor: '#FFDDAE' }}
+                       className="px-4 py-2 sm:px-8 sm:py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
                      >
                        Book now
                      </button>
@@ -711,10 +721,10 @@ export const FlavorDetail = () => {
           </div>
 
           {/* Vendor Information Card */}
-          <div className="bg-sky-100 rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+          <div className="bg-sky-100 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-5 md:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   {flavor.profile_image_url ? (
                     <img 
                       src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${flavor.profile_image_url}`}
@@ -722,29 +732,29 @@ export const FlavorDetail = () => {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                     </svg>
                   )}
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800">{flavor.store_name}</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800 truncate">{flavor.store_name}</h3>
                   <div className="flex items-center space-x-1">
-                    <span className="text-yellow-500">★★★★★</span>
-                    <span className="text-gray-600">5.0</span>
+                    <span className="text-yellow-500 text-sm sm:text-base">★★★★★</span>
+                    <span className="text-gray-600 text-sm sm:text-base">5.0</span>
                   </div>
                 </div>
               </div>
-              <div className="flex space-x-3">
+              <div className="flex space-x-2 sm:space-x-3 w-full sm:w-auto">
                 <button 
                   onClick={() => navigate(`/vendor/${flavor.vendor_id}/store`)}
-                  className="px-6 py-2 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors"
+                  className="flex-1 sm:flex-initial px-3 py-2 sm:px-6 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors text-xs sm:text-base whitespace-nowrap"
                 >
                   View Shop
                 </button>
                 <button 
                   onClick={() => setShowContactModal(true)}
-                  className="px-6 py-2 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors"
+                  className="flex-1 sm:flex-initial px-3 py-2 sm:px-6 bg-blue-50 text-blue-700 rounded-full font-medium border-2 border-blue-200 hover:bg-blue-100 transition-colors text-xs sm:text-base whitespace-nowrap"
                 >
                   Contact Shop
                 </button>
@@ -756,65 +766,65 @@ export const FlavorDetail = () => {
 
       {/* Contact Shop Modal */}
       {showContactModal && flavor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+            <div className="p-4 sm:p-5 md:p-6">
               {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Contact {flavor.store_name}</h2>
+              <div className="flex justify-between items-center mb-4 sm:mb-5 md:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 pr-2 break-words">Contact {flavor.store_name}</h2>
                 <button 
                   onClick={() => setShowContactModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Vendor Info */}
-              <div className="mb-6">
-                <div className="flex items-center space-x-4 mb-4">
+              <div className="mb-4 sm:mb-5 md:mb-6">
+                <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
                   {flavor.profile_image_url ? (
                     <img 
                       src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${flavor.profile_image_url}`}
                       alt={flavor.store_name}
-                      className="w-16 h-16 rounded-full object-cover"
+                      className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     </div>
                   )}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{flavor.store_name}</h3>
-                    <p className="text-sm text-gray-600">{flavor.fname} {flavor.lname}</p>
-                    <p className="text-sm text-gray-500">{flavor.location}</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{flavor.store_name}</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{flavor.fname} {flavor.lname}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 line-clamp-1">{flavor.location}</p>
                   </div>
                 </div>
               </div>
 
               {/* Contact Information */}
-              <div className="space-y-4 mb-6">
-                <h4 className="font-semibold text-gray-900">Contact Information</h4>
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-5 md:mb-6">
+                <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Contact Information</h4>
                 
                 {/* Phone Number */}
                 {flavor.contact_no && (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">Phone Number</p>
-                      <p className="font-medium text-gray-900">{flavor.contact_no}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-gray-600">Phone Number</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{flavor.contact_no}</p>
                     </div>
                     <a 
                       href={`tel:${flavor.contact_no}`}
-                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                      className="px-2.5 py-1 sm:px-3 bg-green-600 text-white text-xs sm:text-sm rounded-lg hover:bg-green-700 transition-colors flex-shrink-0"
                     >
                       Call
                     </a>
@@ -823,19 +833,19 @@ export const FlavorDetail = () => {
 
                 {/* Email */}
                 {flavor.email && (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center space-x-2 sm:space-x-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">Email Address</p>
-                      <p className="font-medium text-gray-900">{flavor.email}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm text-gray-600">Email Address</p>
+                      <p className="font-medium text-gray-900 text-sm sm:text-base break-words">{flavor.email}</p>
                     </div>
                     <a 
                       href={`mailto:${flavor.email}`}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-2.5 py-1 sm:px-3 bg-blue-600 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
                     >
                       Email
                     </a>
@@ -845,14 +855,14 @@ export const FlavorDetail = () => {
               </div>
 
               {/* Business Hours Note */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
                 <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <p className="text-sm font-medium text-yellow-800">Business Hours</p>
-                    <p className="text-sm text-yellow-700 mt-1">
+                    <p className="text-xs sm:text-sm font-medium text-yellow-800">Business Hours</p>
+                    <p className="text-xs sm:text-sm text-yellow-700 mt-1">
                       Please contact during business hours for the best response time. 
                       Most vendors respond within 24 hours.
                     </p>
@@ -861,10 +871,10 @@ export const FlavorDetail = () => {
               </div>
 
               {/* Close Button */}
-              <div className="mt-6 flex justify-end">
+              <div className="mt-4 sm:mt-5 md:mt-6 flex justify-end">
                 <button 
                   onClick={() => setShowContactModal(false)}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm sm:text-base"
                 >
                   Close
                 </button>
@@ -876,25 +886,25 @@ export const FlavorDetail = () => {
 
       {/* Rating Modal */}
       {showRatingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+            <div className="p-4 sm:p-5 md:p-6">
               {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Rate {flavor?.flavor_name}</h2>
+              <div className="flex justify-between items-center mb-4 sm:mb-5 md:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 pr-2 break-words">Rate {flavor?.flavor_name}</h2>
                 <button 
                   onClick={() => setShowRatingModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Rating Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="mb-4 sm:mb-5 md:mb-6">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                   Your Rating
                 </label>
                 <StarRating 
@@ -906,31 +916,31 @@ export const FlavorDetail = () => {
               </div>
 
               {/* Review Text */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-4 sm:mb-5 md:mb-6">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   Review (Optional)
                 </label>
                 <textarea
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
                   placeholder="Share your experience with this flavor..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   rows={4}
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button 
                   onClick={() => setShowRatingModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleRateFlavor}
                   disabled={ratingLoading || newRating === 0}
-                  className={`flex-1 px-4 py-2 rounded-lg transition-colors ${
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
                     ratingLoading || newRating === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -945,47 +955,47 @@ export const FlavorDetail = () => {
       )}
 
       {/* Reviews Section */}
-      <div className="max-w-6xl mx-auto px-6 mb-8">
-        <div className="bg-sky-100 rounded-2xl shadow-xl p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Customer Reviews</h2>
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 mb-4 sm:mb-6 md:mb-8">
+        <div className="bg-sky-100 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-5 md:mb-6 space-y-3 sm:space-y-0">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Customer Reviews</h2>
             <button 
               onClick={() => setShowRatingModal(true)}
-              className="px-4 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border-2 border-blue-200 hover:bg-blue-100 transition-colors text-sm sm:text-base"
             >
               Rate This Flavor
             </button>
           </div>
           
           {ratings.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {ratings.map((rating) => (
-                <div key={rating.rating_id} className="bg-white rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
+                <div key={rating.rating_id} className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium text-gray-800 text-sm sm:text-base truncate">
                         {rating.fname} {rating.lname}
                       </span>
                       <StarRating rating={rating.rating} size="sm" />
                     </div>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs sm:text-sm text-gray-500">
                       {new Date(rating.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   {rating.review_text && (
-                    <p className="text-gray-600 text-sm">{rating.review_text}</p>
+                    <p className="text-gray-600 text-xs sm:text-sm break-words">{rating.review_text}</p>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-4">⭐</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
-              <p className="text-gray-600 mb-4">Be the first to rate this flavor!</p>
+            <div className="text-center py-6 sm:py-8">
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐</div>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">Be the first to rate this flavor!</p>
               <button 
                 onClick={() => setShowRatingModal(true)}
-                className="px-6 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
+                className="px-4 sm:px-6 py-2 bg-blue-50 text-blue-700 rounded-lg border-2 border-blue-200 hover:bg-blue-100 transition-colors text-sm sm:text-base"
               >
                 Rate This Flavor
               </button>
@@ -996,23 +1006,23 @@ export const FlavorDetail = () => {
 
       {/* Validation Modal */}
       {showValidationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 md:p-6 max-w-md w-full">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
-                <svg className="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-orange-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                 Missing Information
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
                 {validationMessage}
               </p>
               <button
                 onClick={() => setShowValidationModal(false)}
-                className="w-full bg-orange-300 hover:bg-orange-400 text-black font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg border-2 border-blue-200 transition-colors duration-200 text-sm sm:text-base"
               >
                 OK
               </button>
@@ -1023,42 +1033,42 @@ export const FlavorDetail = () => {
 
       {/* Reserve Confirmation Modal */}
       {showReserveModal && flavor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
+            <div className="p-4 sm:p-5 md:p-6">
               {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Item Reserved!</h2>
+              <div className="flex justify-between items-center mb-4 sm:mb-5 md:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Item Reserved!</h2>
                 <button 
                   onClick={() => setShowReserveModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Success Icon */}
-              <div className="text-center mb-6">
-                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
-                  <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="text-center mb-4 sm:mb-5 md:mb-6">
+                <div className="mx-auto flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-green-100 mb-3 sm:mb-4">
+                  <svg className="h-7 w-7 sm:h-8 sm:w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                   Successfully Added to Cart
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs sm:text-sm text-gray-500">
                   Added {quantity} {selectedSize} {flavor.flavor_name} to your cart!
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={() => setShowReserveModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
                 >
                   Continue Shopping
                 </button>
@@ -1067,7 +1077,7 @@ export const FlavorDetail = () => {
                     setShowReserveModal(false);
                     navigate('/cart');
                   }}
-                  className="flex-1 px-4 py-2 bg-orange-300 text-black rounded-lg font-medium hover:bg-orange-400 transition-colors"
+                  className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium border-2 border-blue-200 hover:bg-blue-100 transition-colors text-sm sm:text-base"
                 >
                   Go to Cart
                 </button>

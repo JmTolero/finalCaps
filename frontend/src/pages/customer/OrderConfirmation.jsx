@@ -107,14 +107,14 @@ export const OrderConfirmation = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleGoHome}
-                className="flex-1 bg-orange-300 hover:bg-orange-400 text-black font-medium py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+                className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-3 px-6 rounded-lg border-2 border-blue-200 transition-colors duration-200 shadow-md"
               >
                 Browse Flavors
               </button>
               
               <button
                 onClick={handleViewOrders}
-                className="flex-1 bg-orange-300 hover:bg-orange-400 text-black font-medium py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+                className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-3 px-6 rounded-lg border-2 border-blue-200 transition-colors duration-200 shadow-md"
               >
                 My Orders
               </button>

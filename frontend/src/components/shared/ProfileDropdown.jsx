@@ -109,13 +109,13 @@ export const ProfileDropdown = () => {
   const getRoleColor = (role) => {
     switch (role?.toLowerCase()) {
       case 'admin':
-        return 'bg-blue-500 hover:bg-blue-600';
+        return 'bg-blue-500 hover:bg-blue-600 text-white';
       case 'vendor':
-        return 'bg-green-500 hover:bg-green-600';
+        return 'bg-green-500 hover:bg-green-600 text-white';
       case 'customer':
-        return 'bg-purple-500 hover:bg-purple-600';
+        return 'bg-white hover:bg-gray-50 text-blue-600 border-2 border-blue-600';
       default:
-        return 'bg-gray-500 hover:bg-gray-600';
+        return 'bg-gray-500 hover:bg-gray-600 text-white';
     }
   };
 
@@ -123,26 +123,34 @@ export const ProfileDropdown = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Profile Icon */}
+      {/* Profile Icon/Picture */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-center w-10 h-10 ${getRoleColor(user.role)} text-white rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300`}
+        className={`flex items-center justify-center w-10 h-10 ${getRoleColor(user.role)} rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 overflow-hidden`}
         aria-label="Profile menu"
       >
-        <svg
-          className="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        {user.profile_image_url ? (
+          <img 
+            src={user.profile_image_url} 
+            alt="Profile" 
+            className="w-full h-full object-cover"
           />
-        </svg>
+        ) : (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
+          </svg>
+        )}
       </button>
 
       {/* Dropdown Menu */}

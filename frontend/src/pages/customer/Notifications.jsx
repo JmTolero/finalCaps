@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav';
 import { useCart } from '../../contexts/CartContext';
 import axios from 'axios';
@@ -13,6 +13,7 @@ import shopsIcon from '../../assets/images/customerIcon/shops.png';
 
 export const Notifications = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { totalItems } = useCart();
   const [customerData, setCustomerData] = useState({
     fname: '',
@@ -473,20 +474,35 @@ export const Notifications = () => {
                 {/* Products/Flavors Icon */}
                 <button 
                   onClick={() => navigate('/customer')}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                  className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                    location.pathname === '/customer' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                <Link 
+                  to="/all-vendor-stores" 
+                  className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                    location.pathname === '/all-vendor-stores' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
                 
                 {/* Notification Bell - Active on notifications page */}
                 <button 
-                  onClick={() => navigate('/customer')}
-                  className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors relative sm:p-2"
+                  onClick={() => navigate('/customer/notifications')}
+                  className={`p-1.5 rounded-lg transition-colors relative sm:p-2 ${
+                    location.pathname === '/customer/notifications' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (
@@ -500,8 +516,8 @@ export const Notifications = () => {
                 <button 
                   onClick={() => navigate('/cart')}
                   className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
-                    totalItems > 0 
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                    location.pathname === '/cart'
+                      ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
                   }`}
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
@@ -509,12 +525,10 @@ export const Notifications = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
-                      totalItems > 0 ? 'scale-110' : ''
-                    }`} 
+                    className="w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5" 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -555,9 +569,9 @@ export const Notifications = () => {
 
                 {/* Navigation Menu */}
                 <div className="space-y-1 sm:space-y-2">
-                  <button
+                  <button 
                     onClick={handleViewProfile}
-                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base"
+                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base border-2 border-blue-200"
                   >
                     My Account
                   </button>
@@ -565,8 +579,8 @@ export const Notifications = () => {
                     onClick={handleViewOrder}
                     className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                       activeView === 'orders' 
-                        ? 'bg-orange-100 text-orange-700 border border-orange-200' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        ? 'bg-blue-600 text-white border-2 border-blue-600' 
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200' 
                     }`}
                   >
                     My Order
@@ -575,13 +589,13 @@ export const Notifications = () => {
                     onClick={() => setActiveView('notifications')}
                     className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                       activeView === 'notifications' 
-                        ? 'bg-orange-100 text-orange-700 border border-orange-200' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        ? 'bg-blue-600 text-white border-2 border-blue-600' 
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200'
                     }`}
                   >
                     Notifications
                   </button>
-                  <button className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base">
+                  <button className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base border-2 border-blue-200">
                     Customer Support
                   </button>
                 </div>
@@ -708,28 +722,28 @@ export const Notifications = () => {
                       orders.map((order) => (
                         <div
                           key={order.order_id}
-                          className="p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors"
+                          className="p-3 sm:p-4 hover:bg-gray-50 transition-colors"
                         >
-                          <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
+                          <div className="flex items-start space-x-2 sm:space-x-3">
                             {/* Order Icon */}
-                            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg sm:text-xl lg:text-2xl">📦</span>
+                            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg sm:text-xl">📦</span>
                             </div>
                             
                             {/* Order Content */}
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                  <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">
+                                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1">
                                     Order #{order.order_id}
                                   </h3>
-                                  <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-3">
+                                  <p className="text-xs sm:text-sm text-gray-600 mb-2">
                                     {order.vendor_name} • ₱{parseFloat(order.total_amount).toFixed(2)}
                                   </p>
                                   
                                   {/* Order Status & Tracking */}
-                                  <div className="mb-2 sm:mb-3 lg:mb-4">
-                                    <span className={`inline-flex px-2 py-1 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium rounded-full mb-2 sm:mb-3 ${
+                                  <div className="mb-2 sm:mb-3">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full mb-2 ${
                                       order.status === 'pending' 
                                         ? 'bg-yellow-100 text-yellow-800' 
                                         : order.status === 'confirmed'
@@ -746,21 +760,27 @@ export const Notifications = () => {
                                     </span>
                                     
                                     {/* Tracking Progress Bar */}
-                                    <div className="mt-2 sm:mt-3">
-                                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1 sm:mb-2">
-                                        <span className={`text-xs ${order.status === 'pending' || order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                    <div className="mt-2">
+                                      <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 mb-1">
+                                        <span className={order.status === 'pending' || order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                                           Order Placed
                                         </span>
-                                        <span className={`text-xs ${order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                                           Confirmed
                                         </span>
-                                        <span className={`text-xs ${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`hidden sm:inline ${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
                                           Preparing
                                         </span>
-                                        <span className={`text-xs ${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`sm:hidden ${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                          Prep
+                                        </span>
+                                        <span className={`hidden sm:inline ${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
                                           Out for Delivery
                                         </span>
-                                        <span className={`text-xs ${order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`sm:hidden ${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                          Out
+                                        </span>
+                                        <span className={order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                                           Delivered
                                         </span>
                                       </div>
@@ -781,15 +801,15 @@ export const Notifications = () => {
                                   
                                   {/* Delivery Information */}
                                   {order.delivery_address && (
-                                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                                    <div className="bg-gray-50 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3">
                                       <div className="flex items-start space-x-2">
                                         <svg className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        <div>
-                                          <p className="text-sm font-medium text-gray-700">Delivery Address</p>
-                                          <p className="text-sm text-gray-600">{order.delivery_address}</p>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs sm:text-sm font-medium text-gray-700">Delivery Address</p>
+                                          <p className="text-xs sm:text-sm text-gray-600 break-words">{order.delivery_address}</p>
                                         </div>
                                       </div>
                                     </div>
@@ -797,43 +817,43 @@ export const Notifications = () => {
                                   
                                   {/* Drum Return Section for Delivered Orders */}
                                   {order.status === 'delivered' && (
-                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <p className="text-sm font-medium text-blue-800">📦 Container Return</p>
+                                    <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                                        <div className="flex-1">
+                                          <p className="text-xs sm:text-sm font-medium text-blue-800">📦 Container Return</p>
                                           {order.drum_status === 'return_requested' && (
-                                            <p className="text-xs text-blue-600">Return requested - vendor notified</p>
+                                            <p className="text-[10px] sm:text-xs text-blue-600">Return requested - vendor notified</p>
                                           )}
                                           {order.drum_status === 'returned' && (
-                                            <p className="text-xs text-green-600">Container successfully returned</p>
+                                            <p className="text-[10px] sm:text-xs text-green-600">Container successfully returned</p>
                                           )}
                                           {!order.drum_status && (
-                                            <p className="text-xs text-gray-600">Click to request container pickup</p>
+                                            <p className="text-[10px] sm:text-xs text-gray-600">Click to request container pickup</p>
                                           )}
                                         </div>
                                         {order.drum_status === 'return_requested' ? (
-                                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                          <span className="inline-flex px-2 py-1 text-[10px] sm:text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 self-start">
                                             Requested
                                           </span>
                                         ) : order.drum_status === 'returned' ? (
-                                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                          <span className="inline-flex px-2 py-1 text-[10px] sm:text-xs font-medium rounded-full bg-green-100 text-green-800 self-start">
                                             Returned
                                           </span>
                                         ) : (
                                           <button 
                                             onClick={() => handleDrumReturn(order)}
                                             disabled={drumReturnLoading === order.order_id}
-                                            className="bg-orange-600 text-white px-3 py-1 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center space-x-1"
+                                            className="bg-orange-600 text-white px-2 sm:px-3 py-1 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs flex items-center space-x-1 self-start"
                                           >
                                             {drumReturnLoading === order.order_id ? (
                                               <>
                                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                                                <span>Requesting...</span>
+                                                <span className="text-[10px] sm:text-xs">Requesting...</span>
                                               </>
                                             ) : (
                                               <>
                                                 <span>📦</span>
-                                                <span>Return</span>
+                                                <span className="text-[10px] sm:text-xs">Return</span>
                                               </>
                                             )}
                                           </button>
@@ -846,11 +866,11 @@ export const Notifications = () => {
                                   <div className="flex justify-between items-center">
                                     <button 
                                       onClick={() => handleViewOrderDetails(order)}
-                                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                      className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
                                     >
                                       View Details
                                     </button>
-                                    <span className="text-sm text-gray-500">
+                                    <span className="text-xs sm:text-sm text-gray-500">
                                       {new Date(order.created_at).toLocaleDateString()}
                                     </span>
                                   </div>
@@ -871,32 +891,32 @@ export const Notifications = () => {
 
       {/* Order Details Modal */}
       {showOrderDetails && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Order Details</h2>
                 <button
                   onClick={closeOrderDetails}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Order Information */}
-              <div className="space-y-6">
+              <div className="space-y-3 sm:space-y-4 md:space-y-6">
                 {/* Order ID and Status */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 space-y-2 sm:space-y-0">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Order #{selectedOrder.order_id}</h3>
-                      <p className="text-sm text-gray-600">Placed on {new Date(selectedOrder.created_at).toLocaleDateString()}</p>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">Order #{selectedOrder.order_id}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600">Placed on {new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                     </div>
-                    <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                    <span className={`inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full self-start ${
                       selectedOrder.status === 'pending' 
                         ? 'bg-yellow-100 text-yellow-800' 
                         : selectedOrder.status === 'confirmed'
@@ -914,27 +934,33 @@ export const Notifications = () => {
                   </div>
                   
                   {/* Progress Bar */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <div className="mt-3 sm:mt-4">
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 mb-1 sm:mb-2">
                       <span className={selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                         Order Placed
                       </span>
                       <span className={selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                         Confirmed
                       </span>
-                      <span className={selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
+                      <span className={`hidden sm:inline ${selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
                         Preparing
                       </span>
-                      <span className={selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
+                      <span className={`sm:hidden ${selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                        Prep
+                      </span>
+                      <span className={`hidden sm:inline ${selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
                         Out for Delivery
+                      </span>
+                      <span className={`sm:hidden ${selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                        Out
                       </span>
                       <span className={selectedOrder.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
                         Delivered
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-1 sm:h-2">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-blue-600 h-1 sm:h-2 rounded-full transition-all duration-300"
                         style={{
                           width: selectedOrder.status === 'pending' ? '20%' :
                                  selectedOrder.status === 'confirmed' ? '40%' :
@@ -948,39 +974,39 @@ export const Notifications = () => {
                 </div>
 
                 {/* Vendor Information */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Vendor Information</h3>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Vendor Information</h3>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">{selectedOrder.vendor_name || 'Vendor Name'}</h4>
-                      <p className="text-sm text-gray-600">Ice Cream Vendor</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm sm:text-base font-medium text-gray-900 truncate">{selectedOrder.vendor_name || 'Vendor Name'}</h4>
+                      <p className="text-xs sm:text-sm text-gray-600">Ice Cream Vendor</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Order Items */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Items</h3>
-                  <div className="space-y-3">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Order Items</h3>
+                  <div className="space-y-2 sm:space-y-3">
                     {/* Show detailed order items if available, otherwise show basic info */}
                     {selectedOrder.order_items_details ? (
-                      <div className="bg-pink-50 rounded-lg p-3 border border-pink-200">
-                        <p className="font-medium text-gray-900">{selectedOrder.order_items_details}</p>
-                        <p className="text-sm text-gray-600 mt-1">Order ID: #{selectedOrder.order_id}</p>
+                      <div className="bg-pink-50 rounded-lg p-2 sm:p-3 border border-pink-200">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 break-words">{selectedOrder.order_items_details}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-600 mt-1">Order ID: #{selectedOrder.order_id}</p>
                       </div>
                     ) : (
                       <div className="flex justify-between items-center py-2 border-b border-gray-200">
                         <div>
-                          <p className="font-medium text-gray-900">Ice Cream Order</p>
-                          <p className="text-sm text-gray-600">Order ID: #{selectedOrder.order_id}</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-900">Ice Cream Order</p>
+                          <p className="text-[10px] sm:text-xs text-gray-600">Order ID: #{selectedOrder.order_id}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium text-gray-900">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-900">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
                         </div>
                       </div>
                     )}
@@ -988,26 +1014,26 @@ export const Notifications = () => {
                 </div>
 
                 {/* Delivery Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Delivery Information</h3>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Delivery Information</h3>
                   <div className="space-y-2">
                     <div className="flex items-start space-x-2">
-                      <svg className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <div>
-                        <p className="font-medium text-gray-700">Delivery Address</p>
-                        <p className="text-sm text-gray-600">{selectedOrder.delivery_address || 'No address provided'}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">Delivery Address</p>
+                        <p className="text-xs sm:text-sm text-gray-600 break-words">{selectedOrder.delivery_address || 'No address provided'}</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-2">
-                      <svg className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <div>
-                        <p className="font-medium text-gray-700">Delivery Date & Time</p>
-                        <p className="text-sm text-gray-600">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">Delivery Date & Time</p>
+                        <p className="text-xs sm:text-sm text-gray-600 break-words">
                           {selectedOrder.delivery_datetime 
                             ? new Date(selectedOrder.delivery_datetime).toLocaleString()
                             : 'No delivery time set'
@@ -1019,12 +1045,12 @@ export const Notifications = () => {
                 </div>
 
                 {/* Payment Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Information</h3>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Payment Information</h3>
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Payment Status:</span>
-                      <span className={`font-medium ${
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs sm:text-sm text-gray-600">Payment Status:</span>
+                      <span className={`text-xs sm:text-sm font-medium ${
                         selectedOrder.payment_status === 'paid' 
                           ? 'text-green-600' 
                           : selectedOrder.payment_status === 'partial'
@@ -1034,23 +1060,23 @@ export const Notifications = () => {
                         {selectedOrder.payment_status.charAt(0).toUpperCase() + selectedOrder.payment_status.slice(1)}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Amount:</span>
-                      <span className="font-bold text-lg">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs sm:text-sm text-gray-600">Total Amount:</span>
+                      <span className="text-base sm:text-lg font-bold">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Button for Unpaid Confirmed Orders */}
                 {selectedOrder.status === 'confirmed' && selectedOrder.payment_status === 'unpaid' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                    <p className="text-green-800 font-medium mb-2">Order Approved! Payment Required</p>
-                    <p className="text-green-700 text-sm mb-3">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <p className="text-sm sm:text-base text-green-800 font-medium mb-2">Order Approved! Payment Required</p>
+                    <p className="text-xs sm:text-sm text-green-700 mb-3">
                       Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
                     </p>
                     <button 
                       onClick={() => handlePayment(selectedOrder)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
                     >
                       💳 Pay Now via GCash
                     </button>
@@ -1058,10 +1084,10 @@ export const Notifications = () => {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                   <button
                     onClick={closeOrderDetails}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
                   >
                     Close
                   </button>
@@ -1072,7 +1098,7 @@ export const Notifications = () => {
                         setReviewRating(0);
                         setReviewComment('');
                       }}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                      className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white py-2 sm:py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
                     >
                       Rate Order
                     </button>
@@ -1210,10 +1236,10 @@ export const Notifications = () => {
                 >
                   Cancel
                 </button>
-                <button
+                  <button
                   onClick={confirmDrumReturn}
                   disabled={drumReturnLoading === selectedOrderForReturn.order_id}
-                  className="flex-1 bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg border-2 border-blue-200 transition-colors duration-200 disabled:opacity-50"
                 >
                   {drumReturnLoading === selectedOrderForReturn.order_id ? 'Processing...' : 'Confirm Return'}
                 </button>
@@ -1248,7 +1274,7 @@ export const Notifications = () => {
                     // Refresh orders to ensure UI is up to date
                     fetchOrders();
                   }}
-                  className="w-full bg-orange-300 hover:bg-orange-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg border-2 border-blue-200 transition-colors duration-200"
                 >
                   OK
                 </button>

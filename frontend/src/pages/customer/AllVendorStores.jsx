@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { useCart } from "../../contexts/CartContext";
 import axios from "axios";
@@ -13,6 +13,7 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 
 export const AllVendorStores = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { totalItems } = useCart();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +147,7 @@ export const AllVendorStores = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+            <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-8">
               <button
                 onClick={() => navigate("/find-vendors")}
                 className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base"
@@ -159,20 +160,34 @@ export const AllVendorStores = () => {
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                  className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                    location.pathname === '/customer' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 {/* Shops Icon */}
-                <button className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors sm:p-2">
+                <button 
+                  className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                    location.pathname === '/all-vendor-stores' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
+                  className={`p-1.5 rounded-lg transition-colors relative sm:p-2 ${
+                    location.pathname === '/customer/notifications' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
                 >
                   <img
                     src={notifIcon}
@@ -190,8 +205,8 @@ export const AllVendorStores = () => {
                 <button 
                   onClick={() => navigate("/cart")}
                   className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
-                    totalItems > 0 
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                    location.pathname === '/cart'
+                      ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
                   }`}
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
@@ -199,12 +214,10 @@ export const AllVendorStores = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
-                      totalItems > 0 ? 'scale-110' : ''
-                    }`} 
+                    className="w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5" 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -291,7 +304,7 @@ export const AllVendorStores = () => {
                   </div>
 
                   {/* View Shop Button */}
-                  <button className="w-full px-2 py-1.5 bg-orange-300 hover:bg-orange-400 text-black font-medium text-xs rounded-md transition-colors">
+                  <button className="w-full px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-md transition-colors">
                     View Shop
                   </button>
                 </div>

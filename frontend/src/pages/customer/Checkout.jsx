@@ -1014,8 +1014,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               </div>
               <button
                 onClick={handleNext}
-                className="px-8 py-3 text-black rounded-lg font-medium hover:opacity-80 transition-colors"
-                style={{ backgroundColor: '#FFDDAE' }}
+                className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
                 Place Order
               </button>
