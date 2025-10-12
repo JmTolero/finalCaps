@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AddressForm from "../../components/shared/AddressForm";
+import FeedbackModal from "../../components/shared/FeedbackModal";
 import logoImage from "../../assets/images/LOGO.png";
 import { getImageUrl } from "../../utils/imageUtils";
 import axios from "axios";
@@ -255,6 +256,9 @@ export const Vendor = () => {
   // Profile dropdown state
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
   // Sidebar state - always closed on initial load for clean login experience
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -2527,6 +2531,54 @@ export const Vendor = () => {
                     Settings
                   </button>
                   
+                  {/* My Feedback */}
+                  <button
+                    onClick={() => {
+                      navigate('/customer/my-feedback');
+                      setIsProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      />
+                    </svg>
+                    My Feedback
+                  </button>
+                  
+                  {/* Customer Support */}
+                  <button
+                    onClick={() => {
+                      setShowFeedbackModal(true);
+                      setIsProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    Customer Support
+                  </button>
+                  
                   {/* Logout */}
                   <button
                     onClick={handleLogout}
@@ -3463,6 +3515,54 @@ export const Vendor = () => {
                     />
                   </svg>
                   Settings
+                </button>
+                
+                {/* My Feedback */}
+                <button
+                  onClick={() => {
+                    navigate('/customer/my-feedback');
+                    setIsProfileDropdownOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
+                  </svg>
+                  My Feedback
+                </button>
+                
+                {/* Customer Support */}
+                <button
+                  onClick={() => {
+                    setShowFeedbackModal(true);
+                    setIsProfileDropdownOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                  Customer Support
                 </button>
                 
                 {/* Logout */}
@@ -7239,6 +7339,13 @@ export const Vendor = () => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userRole="vendor"
+      />
     </>
   );
 };

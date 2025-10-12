@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
 import StarRating from '../../components/shared/StarRating';
+import FeedbackModal from '../../components/shared/FeedbackModal';
 import { useCart } from '../../contexts/CartContext';
 import { getImageUrl } from '../../utils/imageUtils';
 import axios from 'axios';
@@ -82,6 +83,9 @@ export const Customer = () => {
   // Delete address confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
@@ -1667,7 +1671,11 @@ export const Customer = () => {
                   
                   
                   {/* Feedback Icon */}
-                  <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <button 
+                    onClick={() => setShowFeedbackModal(true)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                    title="Submit Feedback"
+                  >
                     <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
@@ -2072,7 +2080,11 @@ export const Customer = () => {
                 
                 
                 {/* Feedback Icon */}
-                <button className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                <button 
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                  title="Submit Feedback"
+                >
                   <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
@@ -2288,6 +2300,13 @@ export const Customer = () => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userRole="customer"
+      />
 
     </>
   );
