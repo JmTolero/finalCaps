@@ -5,6 +5,7 @@ import { NavWithLogo } from '../../components/shared/nav';
 import StarRating from '../../components/shared/StarRating';
 import { useCart } from '../../contexts/CartContext';
 import { getImageUrl } from '../../utils/imageUtils';
+import FeedbackModal from '../../components/shared/FeedbackModal';
 
 // Import customer icons
 import cartIcon from '../../assets/images/customerIcon/cart.png';
@@ -44,6 +45,34 @@ export const FlavorDetail = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Feedback dropdown state
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+
+  // Handle feedback dropdown actions
+  const handleFeedbackAction = (action) => {
+    setShowFeedbackDropdown(false);
+    if (action === 'submit') {
+      setShowFeedbackModal(true);
+    } else if (action === 'view') {
+      navigate('/customer/my-feedback');
+    }
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFeedbackDropdown && !event.target.closest('.feedback-dropdown')) {
+        setShowFeedbackDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFeedbackDropdown]);
 
   useEffect(() => {
     fetchFlavorDetails();
@@ -477,16 +506,40 @@ export const FlavorDetail = () => {
                   )}
                 </button>
                 
-                {/* Feedback Icon */}
-                <button 
-                  onClick={() => {
-                    console.log('💬 FlavorDetail: Feedback button clicked');
-                    navigate('/customer?view=feedback');
-                  }}
-                  className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1086,6 +1139,13 @@ export const FlavorDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userRole="customer"
+      />
     </>
   );
 };

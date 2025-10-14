@@ -51,7 +51,7 @@ export const Nav = () => {
                                 About Us
                             </button>
                             <button 
-                                onClick={() => scrollToSection('drums')}
+                                onClick={() => scrollToSection('features')}
                                 className="text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium text-lg"
                             >
                                 Features
@@ -104,7 +104,7 @@ export const Nav = () => {
                                     About Us
                                 </button>
                                 <button 
-                                    onClick={() => scrollToSection('drums')}
+                                    onClick={() => scrollToSection('features')}
                                     className="block px-3 py-2 text-gray-700 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors duration-200 font-medium"
                                 >
                                     Features

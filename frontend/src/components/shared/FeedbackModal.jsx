@@ -6,6 +6,7 @@ import axios from 'axios';
  * Reusable modal for submitting feedback (used by customers and vendors)
  */
 export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
+  console.log('🎯 FeedbackModal: Component called with isOpen:', isOpen, 'userRole:', userRole);
   const [formData, setFormData] = useState({
     subject: '',
     category: 'question',
@@ -112,11 +113,42 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('🎯 FeedbackModal: Not rendering because isOpen is false');
+    return null;
+  }
 
+  console.log('🎯 FeedbackModal: Rendering modal');
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem'
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '0.5rem',
+          maxWidth: '42rem',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          position: 'relative',
+          zIndex: 100000
+        }}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-lg">
           <div>

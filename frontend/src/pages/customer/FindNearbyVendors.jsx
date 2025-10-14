@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { useCart } from "../../contexts/CartContext";
 import CustomerVendorMap from "../../components/customer/CustomerVendorMap";
+import FeedbackModal from '../../components/shared/FeedbackModal';
 import axios from "axios";
 
 // Import customer icons
@@ -30,6 +31,34 @@ export const FindNearbyVendors = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Feedback dropdown state
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+
+  // Handle feedback dropdown actions
+  const handleFeedbackAction = (action) => {
+    setShowFeedbackDropdown(false);
+    if (action === 'submit') {
+      setShowFeedbackModal(true);
+    } else if (action === 'view') {
+      navigate('/customer/my-feedback');
+    }
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFeedbackDropdown && !event.target.closest('.feedback-dropdown')) {
+        setShowFeedbackDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFeedbackDropdown]);
 
   useEffect(() => {
     fetchVendors();
@@ -229,9 +258,156 @@ export const FindNearbyVendors = () => {
       <NavWithLogo />
 
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-between mb-6">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-6 sm:py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          {/* Mobile Layout - Stacked */}
+          <div className="flex flex-col gap-3 sm:hidden mb-3">
+            {/* Top Row: Find nearby Vendors + Icons */}
+            <div className="flex items-center justify-between">
+              <Link
+                to="/find-vendors"
+                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
+              >
+                Find nearby Vendors
+              </Link>
+              
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                {/* Products/Flavors Icon */}
+                <button
+                  onClick={() => navigate("/customer")}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    location.pathname === '/customer' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <img src={productsIcon} alt="Products" className="w-4 h-4" />
+                </button>
+
+                {/* Shops Icon */}
+                <button 
+                  onClick={() => navigate("/all-vendor-stores")}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    location.pathname === '/all-vendor-stores' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
+                </button>
+
+                {/* Notification Bell */}
+                <button
+                  onClick={() => navigate("/customer/notifications")}
+                  className={`p-1.5 rounded-lg transition-colors relative ${
+                    location.pathname === '/customer/notifications' 
+                      ? 'bg-blue-100 hover:bg-blue-200' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <img
+                    src={notifIcon}
+                    alt="Notifications"
+                    className="w-4 h-4"
+                  />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Cart Icon */}
+                <button 
+                  onClick={() => navigate("/cart")}
+                  className={`p-1.5 rounded-lg transition-all duration-200 relative ${
+                    location.pathname === '/cart'
+                      ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                >
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className="w-4 h-4 transition-transform duration-200"
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
+                </button>
+
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Bottom Row: Search Bar */}
+            <div className="w-full">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search vendor nearby..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden sm:flex flex-row items-center justify-between mb-4 lg:mb-6 gap-4 lg:gap-6">
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <input
@@ -239,7 +415,7 @@ export const FindNearbyVendors = () => {
                   placeholder="Search vendor nearby..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-10 pr-4 text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
@@ -258,17 +434,17 @@ export const FindNearbyVendors = () => {
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center space-x-4 ml-6">
+            
+            <div className="flex items-center space-x-4 lg:space-x-8">
               <Link
                 to="/find-vendors"
-                className="text-blue-700 hover:text-blue-800 font-medium underline"
+                className="text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap"
               >
                 Find nearby Vendors
               </Link>
 
               {/* Navigation Icons */}
-              <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
@@ -336,10 +512,40 @@ export const FindNearbyVendors = () => {
                   )}
                 </button>
 
-                {/* Feedback Icon */}
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
-                </button>
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -348,17 +554,76 @@ export const FindNearbyVendors = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Mobile Layout - Map on Top */}
+        <div className="lg:hidden mb-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white">
+                Find Vendors Near You
+              </h3>
+              <p className="text-blue-100 text-sm">
+                Click on markers to view vendor details and delivery options
+              </p>
+            </div>
+            
+            <div className="p-4">
+              <CustomerVendorMap
+                onVendorSelect={handleVendorSelect}
+                onLocationChange={handleLocationChange}
+                className="w-full h-60"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Side - Vendor Information */}
           <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-blue-600 mb-6">
-              Find nearby Vendors
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+              <h2 className="text-3xl font-bold text-blue-600">
+                Find nearby Vendors
+              </h2>
+              
+              {/* Location Accuracy Legend */}
+              <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+                <div className="flex items-center gap-1 text-xs">
+                  <div className="w-3 h-3 bg-green-100 border border-green-300 rounded-full"></div>
+                  <span className="text-gray-600">Exact Location</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-full"></div>
+                  <span className="text-gray-600">Approximate</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-full"></div>
+                  <span className="text-gray-600">Location Needed</span>
+                </div>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p className="ml-4 text-gray-600">Loading vendors...</p>
+              </div>
+            ) : filteredVendors.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No Vendors Found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm ? 
+                    `No vendors match "${searchTerm}". Try searching with different keywords or check your location.` :
+                    "No vendors found in your area. Try adjusting your location or search criteria."
+                  }
+                </p>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Clear Search
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -437,6 +702,31 @@ export const FindNearbyVendors = () => {
                           <span className="text-sm text-gray-600">
                             {vendor.location || 'Location not specified'}
                           </span>
+                          
+                          {/* Location Accuracy Badge */}
+                          {vendor.exact_latitude && vendor.exact_longitude ? (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Exact Location
+                            </span>
+                          ) : vendor.latitude && vendor.longitude ? (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Approximate
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              Location Needed
+                            </span>
+                          )}
+                          
                           {userLocation && vendor.latitude && vendor.longitude && (
                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                               {calculateDistance(
@@ -518,8 +808,8 @@ export const FindNearbyVendors = () => {
             )}
           </div>
 
-          {/* Right Side - Map */}
-          <div className="space-y-4">
+          {/* Right Side - Map (Desktop Only) */}
+          <div className="hidden lg:block space-y-4">
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
                 <h3 className="text-xl font-bold text-white">
@@ -541,6 +831,13 @@ export const FindNearbyVendors = () => {
           </div>
         </div>
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userRole="customer"
+      />
     </>
   );
 };

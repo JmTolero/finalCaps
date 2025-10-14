@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { getImageUrl } from "../../utils/imageUtils";
+import FeedbackModal from '../../components/shared/FeedbackModal';
 import axios from "axios";
 
 // Import customer icons
@@ -24,6 +25,34 @@ export const VendorStore = () => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Feedback dropdown state
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+
+  // Handle feedback dropdown actions
+  const handleFeedbackAction = (action) => {
+    setShowFeedbackDropdown(false);
+    if (action === 'submit') {
+      setShowFeedbackModal(true);
+    } else if (action === 'view') {
+      navigate('/customer/my-feedback');
+    }
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFeedbackDropdown && !event.target.closest('.feedback-dropdown')) {
+        setShowFeedbackDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFeedbackDropdown]);
 
   // Shop Reviews state
   const [shopReviews, setShopReviews] = useState([]);
@@ -241,9 +270,109 @@ export const VendorStore = () => {
       <NavWithLogo />
 
       {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-between mb-6">
+      <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Mobile Layout - Stacked */}
+          <div className="flex flex-col gap-3 sm:hidden mb-3">
+            {/* Top Row: Find nearby Vendors + Icons */}
+            <div className="flex items-center justify-between">
+              <Link
+                to="/find-vendors"
+                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
+              >
+                Find nearby Vendors
+              </Link>
+              
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                {/* Products/Flavors Icon */}
+                <button
+                  onClick={() => navigate("/customer")}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <img src={productsIcon} alt="Products" className="w-4 h-4" />
+                </button>
+
+                {/* Shops Icon */}
+                <button className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
+                </button>
+
+                {/* Notification Bell */}
+                <button
+                  onClick={() => navigate("/customer/notifications")}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <img
+                    src={notifIcon}
+                    alt="Notifications"
+                    className="w-4 h-4"
+                  />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Cart Icon */}
+                <button 
+                  onClick={() => navigate("/cart")}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <img src={cartIcon} alt="Cart" className="w-4 h-4" />
+                </button>
+
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Bottom Row: Back to Stores */}
+            <div className="w-full">
+              <button
+                onClick={() => navigate('/all-vendor-stores')}
+                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
+              >
+                ← Back to Stores
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden sm:flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/all-vendor-stores')}
@@ -301,13 +430,40 @@ export const VendorStore = () => {
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
                 </button>
 
-                {/* Feedback Icon */}
-                <button 
-                  onClick={() => navigate("/customer?view=feedback")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
-                </button>
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -317,8 +473,75 @@ export const VendorStore = () => {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Vendor Information Card */}
-        <div className="bg-sky-100 rounded-2xl p-6 mb-8">
-          <div className="flex items-center space-x-6">
+        <div className="bg-sky-100 rounded-2xl p-4 sm:p-6 mb-8">
+          {/* Mobile Layout - Stacked */}
+          <div className="flex flex-col sm:hidden">
+            {/* Top Section: Profile Image + Vendor Info */}
+            <div className="flex items-center space-x-4 mb-4">
+              {/* Vendor Profile Image */}
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                {vendor.profile_image_url ? (
+                  <img
+                    src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`}
+                    alt={vendor.store_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl">🍦</span>
+                )}
+              </div>
+
+              {/* Vendor Info */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-gray-900 mb-1 truncate">
+                  {vendor.store_name?.toUpperCase() || 'VENDOR STORE'}
+                </h1>
+                
+                {/* Shop Rating */}
+                {reviewsSummary.total_reviews > 0 && (
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={`text-sm ${
+                            star <= Math.round(reviewsSummary.average_rating)
+                              ? 'text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">
+                      {parseFloat(reviewsSummary.average_rating).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      ({reviewsSummary.total_reviews} review{reviewsSummary.total_reviews !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                )}
+                
+                <p className="text-sm text-gray-600">
+                  ID: {vendor.vendor_id}
+                </p>
+              </div>
+            </div>
+            
+            {/* Bottom Section: Contact Shop Button */}
+            <div className="w-full">
+              <button 
+                onClick={() => setShowContactModal(true)}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors shadow-lg"
+              >
+                Contact Shop
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden sm:flex items-center space-x-6">
             {/* Vendor Profile Image */}
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center overflow-hidden">
               {vendor.profile_image_url ? (
@@ -373,7 +596,7 @@ export const VendorStore = () => {
             <div className="flex-shrink-0">
               <button 
                 onClick={() => setShowContactModal(true)}
-                className="px-6 py-3 bg-orange-300 text-black rounded-full font-medium hover:bg-orange-400 transition-colors shadow-lg"
+                className="px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors shadow-lg"
               >
                 Contact Shop
               </button>
@@ -383,7 +606,7 @@ export const VendorStore = () => {
 
         {/* Products Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Available Products</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8 text-left">Available Products</h2>
           
           {flavors.length === 0 ? (
             <div className="text-center py-12">
@@ -393,7 +616,7 @@ export const VendorStore = () => {
             </div>
           ) : (
             <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
                 {flavors.map((flavor) => {
                   return (
                     <div 
@@ -432,18 +655,18 @@ export const VendorStore = () => {
                       </div>
 
                       {/* Product Information Section */}
-                      <div className="p-4 space-y-3">
+                      <div className="p-3 space-y-2">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">
                             {flavor.flavor_name}
                           </h3>
-                          <p className="text-sm text-gray-700 mb-2">
+                          <p className="text-xs text-gray-700 mb-1 line-clamp-2">
                             {flavor.flavor_description}
                           </p>
                         </div>
 
                         {/* Price Range */}
-                        <div className="text-sm font-bold text-gray-900">
+                        <div className="text-xs font-bold text-gray-900">
                           {flavor.small_price && flavor.large_price 
                             ? `₱${parseInt(flavor.small_price)} - ₱${parseInt(flavor.large_price)}`
                             : flavor.small_price 
@@ -453,7 +676,7 @@ export const VendorStore = () => {
                         </div>
 
                         {/* Location */}
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs text-gray-600 line-clamp-1">
                           {flavor.location || 'Location not specified'}
                         </div>
 
@@ -462,13 +685,13 @@ export const VendorStore = () => {
                           <div className="flex items-center">
                             <div className="flex text-yellow-400">
                               {[...Array(5)].map((_, i) => (
-                                <svg key={i} className="w-4 h-4" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                <svg key={i} className="w-3 h-3" fill={i < 3 ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                 </svg>
                               ))}
                             </div>
                           </div>
-                          <span className="text-sm text-gray-600 font-medium">
+                          <span className="text-xs text-gray-600 font-medium">
                             {flavor.sold_count || 0} sold
                           </span>
                         </div>
@@ -483,24 +706,76 @@ export const VendorStore = () => {
 
         {/* Shop Reviews Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Shop Reviews</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8 text-left">Shop Reviews</h2>
           
           {reviewsLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading reviews...</p>
+            <div className="text-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-sm sm:text-base text-gray-600">Loading reviews...</p>
             </div>
           ) : reviewsSummary.total_reviews === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <div className="text-6xl mb-4">⭐</div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No Reviews Yet</h3>
-              <p className="text-gray-500">Be the first to leave a review for this shop!</p>
+            <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg mx-4 sm:mx-0">
+              <div className="text-4xl sm:text-6xl mb-4">⭐</div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">No Reviews Yet</h3>
+              <p className="text-sm sm:text-base text-gray-500">Be the first to leave a review for this shop!</p>
             </div>
           ) : (
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-6xl mx-auto px-4 sm:px-0">
               {/* Rating Summary Card */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 border-2 border-blue-200">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 border-2 border-blue-200">
+                {/* Mobile Layout - Stacked */}
+                <div className="flex flex-col sm:hidden gap-4">
+                  {/* Average Rating */}
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="text-4xl font-bold text-blue-600">
+                      {parseFloat(reviewsSummary.average_rating).toFixed(1)}
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`text-lg ${
+                              star <= Math.round(reviewsSummary.average_rating)
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-sm text-gray-700 font-medium">
+                        Based on {reviewsSummary.total_reviews} review{reviewsSummary.total_reviews !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Star Breakdown */}
+                  <div className="space-y-2">
+                    {[5, 4, 3, 2, 1].map((stars) => {
+                      const count = reviewsSummary[`${['one', 'two', 'three', 'four', 'five'][stars - 1]}_star`] || 0;
+                      const percentage = reviewsSummary.total_reviews > 0 
+                        ? (count / reviewsSummary.total_reviews) * 100 
+                        : 0;
+                      return (
+                        <div key={stars} className="flex items-center space-x-2">
+                          <span className="w-8 text-xs text-gray-700">{stars} ★</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-yellow-400 h-2 rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <span className="w-8 text-xs text-gray-600 text-right">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop Layout - Side by Side */}
+                <div className="hidden sm:flex flex-row items-center justify-between gap-6">
                   {/* Average Rating */}
                   <div className="flex items-center space-x-4">
                     <div className="text-6xl font-bold text-blue-600">
@@ -552,7 +827,7 @@ export const VendorStore = () => {
               </div>
 
               {/* Individual Reviews */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {shopReviews.map((review) => {
                   const reviewDate = new Date(review.created_at);
                   const now = new Date();
@@ -578,23 +853,23 @@ export const VendorStore = () => {
                   }
                   
                   return (
-                    <div key={review.review_id} className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
+                    <div key={review.review_id} className="bg-white rounded-xl p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow border border-gray-200">
                       {/* Customer Info */}
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-bold text-lg">
+                      <div className="flex items-center space-x-3 mb-3 sm:mb-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-sm sm:text-lg">
                             {review.customer_fname?.[0] || '?'}{review.customer_lname?.[0] || ''}
                           </span>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
                             {review.customer_fname} {review.customer_lname || ''}
                           </h4>
                           <div className="flex items-center space-x-1">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <span
                                 key={star}
-                                className={`text-lg ${
+                                className={`text-sm sm:text-lg ${
                                   star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
                                 }`}
                               >
@@ -607,13 +882,13 @@ export const VendorStore = () => {
                       
                       {/* Review Comment */}
                       {review.comment && (
-                        <p className="text-gray-700 mb-4 italic">
+                        <p className="text-gray-700 mb-3 sm:mb-4 italic text-sm sm:text-base line-clamp-3">
                           "{review.comment}"
                         </p>
                       )}
                       
                       {/* Review Date */}
-                      <p className="text-sm text-gray-500">{timeAgo}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">{timeAgo}</p>
                     </div>
                   );
                 })}
@@ -683,7 +958,7 @@ export const VendorStore = () => {
                     </div>
                     <a 
                       href={`tel:${vendor.contact_no}`}
-                      className="px-3 py-1 bg-orange-300 text-black text-sm rounded-lg hover:bg-orange-400 transition-colors"
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Call
                     </a>
@@ -704,7 +979,7 @@ export const VendorStore = () => {
                     </div>
                     <a 
                       href={`mailto:${vendor.email}`}
-                      className="px-3 py-1 bg-orange-300 text-black text-sm rounded-lg hover:bg-orange-400 transition-colors"
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Email
                     </a>
@@ -732,7 +1007,7 @@ export const VendorStore = () => {
               <div className="mt-6 flex justify-end">
                 <button 
                   onClick={() => setShowContactModal(false)}
-                  className="px-4 py-2 bg-orange-300 text-black rounded-lg hover:bg-orange-400 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Close
                 </button>
@@ -741,6 +1016,13 @@ export const VendorStore = () => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userRole="customer"
+      />
     </>
   );
 };

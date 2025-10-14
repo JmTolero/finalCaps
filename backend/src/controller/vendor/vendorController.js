@@ -748,13 +748,17 @@ const getVendorsWithLocations = async (req, res) => {
                 END as location,
                 a.latitude,
                 a.longitude,
+                a.exact_latitude,
+                a.exact_longitude,
+                a.coordinate_accuracy,
+                a.coordinate_source,
                 GROUP_CONCAT(DISTINCT f.flavor_name) as flavors
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
             INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
             WHERE v.status = 'approved'
-            GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude
+            GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude, a.exact_latitude, a.exact_longitude, a.coordinate_accuracy, a.coordinate_source
             ORDER BY v.store_name
         `);
 

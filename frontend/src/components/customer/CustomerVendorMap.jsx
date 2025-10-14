@@ -139,12 +139,14 @@ const CustomerVendorMap = ({
           const displayLng = parseFloat(vendor.exact_longitude) || parseFloat(vendor.longitude) || 120.9842;
           const locationType = vendor.exact_latitude && vendor.exact_longitude ? 'exact' : 
                               (vendor.latitude && vendor.longitude ? 'approximate' : 'none');
+          const coordinateSource = vendor.coordinate_source || 'geocoding';
           
-          // Choose marker color based on location accuracy
+          // Choose marker color based on location accuracy with source info
+          const sourceIcon = coordinateSource === 'gps' ? '🎯' : coordinateSource === 'vendor_pin' ? '📍' : '🌐';
           const locationBadge = locationType === 'exact' ? 
-            '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">📍 Exact Location</span>' :
+            `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">${sourceIcon} Exact Location</span>` :
             locationType === 'approximate' ? 
-            '<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">📍 Approximate Location</span>' :
+            `<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">${sourceIcon} Approximate Location</span>` :
             '<span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">📍 Location Unverified</span>';
 
           return {

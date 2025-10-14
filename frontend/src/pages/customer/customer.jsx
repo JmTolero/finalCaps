@@ -87,6 +87,31 @@ export const Customer = () => {
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
+  // Feedback dropdown state
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+  
+  // Handle feedback dropdown actions
+  const handleFeedbackAction = (action) => {
+    setShowFeedbackDropdown(false);
+    if (action === 'submit') {
+      setShowFeedbackModal(true);
+    } else if (action === 'view') {
+      navigate('/customer/my-feedback');
+    }
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFeedbackDropdown && !event.target.closest('.feedback-dropdown')) {
+        setShowFeedbackDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFeedbackDropdown]);
+  
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
     try {
@@ -565,7 +590,39 @@ export const Customer = () => {
     navigate(`/customer/payment/${order.order_id}`);
   };
 
+  // Handle cancel order
+  const handleCancelOrder = async (orderId) => {
+    console.log('🚫 Cancel order button clicked for order:', orderId);
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      console.log('🚫 Making API call to:', `${apiBase}/api/orders/${orderId}/status`);
+      
+      const response = await axios.put(`${apiBase}/api/orders/${orderId}/status`, {
+        status: 'cancelled'
+      });
+      
+      console.log('🚫 API response:', response.data);
+      
+      if (response.data.success) {
+        console.log('Order cancelled successfully:', orderId);
+        
+        // Refresh orders to show updated status
+        fetchCustomerOrders();
+        
+        setStatus({ type: 'success', message: 'Order cancelled successfully!' });
+      } else {
+        throw new Error(response.data.error || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      console.error('Error details:', error.response?.data);
+      setStatus({ type: 'error', message: `Failed to cancel order: ${error.response?.data?.error || error.message}` });
+    }
+  };
 
+  
   const updateOrderPaymentStatus = async (orderId, paymentStatus) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -1226,6 +1283,32 @@ export const Customer = () => {
                         </div>
                       )}
 
+                      {order.status === 'pending' && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="text-yellow-800 font-medium mb-1">⏳ Order Pending Approval</p>
+                              <p className="text-yellow-700 text-sm">
+                                Your order is waiting for vendor approval. You can cancel it if needed.
+                              </p>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                console.log('🚫 Cancel button clicked for order:', order.order_id);
+                                handleCancelOrder(order.order_id);
+                              }}
+                              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                            >
+                              <span>❌</span>
+                              <span>Cancel Order</span>
+                            </button>
+                          </div>
+                          <p className="text-yellow-600 text-sm">
+                            The vendor will review your order and notify you once it's approved or if any changes are needed.
+                          </p>
+                        </div>
+                      )}
+
                       {order.status === 'delivered' && (
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
@@ -1329,13 +1412,20 @@ export const Customer = () => {
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <div>
-                              <p className="text-red-800 font-medium mb-1">❌ Order Declined</p>
-                              <p className="text-red-700 text-sm">This order has been declined by the vendor.</p>
-                              {order.decline_reason && (
-                                <div className="mt-2 p-3 bg-red-100 rounded-lg">
-                                  <p className="text-red-800 text-sm font-medium mb-1">Reason for decline:</p>
-                                  <p className="text-red-700 text-sm">{order.decline_reason}</p>
-                                </div>
+                              {order.decline_reason ? (
+                                <>
+                                  <p className="text-red-800 font-medium mb-1">❌ Order Declined by Vendor</p>
+                                  <p className="text-red-700 text-sm">This order has been declined by the vendor.</p>
+                                  <div className="mt-2 p-3 bg-red-100 rounded-lg">
+                                    <p className="text-red-800 text-sm font-medium mb-1">Reason for decline:</p>
+                                    <p className="text-red-700 text-sm">{order.decline_reason}</p>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-red-800 font-medium mb-1">❌ Order Cancelled</p>
+                                  <p className="text-red-700 text-sm">This order has been cancelled.</p>
+                                </>
                               )}
                             </div>
                           </div>
@@ -1670,14 +1760,40 @@ export const Customer = () => {
                   </button>
                   
                   
-                  {/* Feedback Icon */}
-                  <button 
-                    onClick={() => setShowFeedbackModal(true)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
-                    title="Submit Feedback"
-                  >
-                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+                  {/* Feedback Icon with Dropdown */}
+                  <div className="relative feedback-dropdown">
+                    <button 
+                      onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                      title="Feedback Options"
+                    >
+                      <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {showFeedbackDropdown && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                        <button
+                          onClick={() => handleFeedbackAction('submit')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Submit Feedback
+                        </button>
+                        <button
+                          onClick={() => handleFeedbackAction('view')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          </svg>
+                          My Feedback
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2002,26 +2118,144 @@ export const Customer = () => {
       {/* Header Section */}
       <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-3 sm:gap-4 lg:gap-6">
-            <div className="w-full sm:flex-1 sm:max-w-md">
+          {/* Mobile Layout - Stacked */}
+          <div className="flex flex-col gap-3 sm:hidden mb-3">
+            {/* Top Row: Find nearby Vendors + Icons */}
+            <div className="flex items-center justify-between">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm">
+                Find nearby Vendors
+              </Link>
+              
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                {/* Products/Flavors Icon - Navigate to customer main dashboard */}
+                <button 
+                  onClick={() => navigate('/customer')}
+                  className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors"
+                  title="Browse Products"
+                >
+                  <img src={productsIcon} alt="Products" className="w-4 h-4" />
+                </button>
+                
+                {/* Shops Icon */}
+                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
+                </Link>
+                
+                {/* Notification Bell */}
+                <button 
+                  onClick={() => navigate('/customer/notifications')}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <img src={notifIcon} alt="Notifications" className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Cart Icon */}
+                <button 
+                  onClick={() => navigate('/cart')}
+                  className={`p-1.5 rounded-lg transition-all duration-200 relative ${
+                    totalItems > 0 
+                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
+                      : 'hover:bg-gray-100'
+                  }`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                >
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      totalItems > 0 ? 'scale-110' : ''
+                    }`} 
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Bottom Row: Search Bar */}
+            <div className="w-full">
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search ice cream flavors..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 sm:px-4 sm:py-3 sm:pl-10 sm:text-base"
+                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none sm:pl-3">
-                  <svg className="h-4 w-4 text-gray-400 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden sm:flex flex-row items-center justify-between mb-4 lg:mb-6 gap-4 lg:gap-6">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search ice cream flavors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
+            <div className="flex items-center space-x-4 lg:space-x-6">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap">
                 Find nearby Vendors
               </Link>
               
@@ -2030,7 +2264,7 @@ export const Customer = () => {
                 {/* Products/Flavors Icon - Navigate to customer main dashboard */}
                 <button 
                   onClick={() => navigate('/customer')}
-                  className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors sm:p-2"
+                  className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors sm:p-2"
                   title="Browse Products"
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -2079,14 +2313,40 @@ export const Customer = () => {
                 </button>
                 
                 
-                {/* Feedback Icon */}
-                <button 
-                  onClick={() => setShowFeedbackModal(true)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
-                  title="Submit Feedback"
-                >
-                  <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

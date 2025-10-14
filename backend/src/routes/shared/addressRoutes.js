@@ -252,4 +252,125 @@ router.delete('/address/:addressId', async (req, res) => {
   }
 });
 
+// Set exact location coordinates for an address
+router.put('/:addressId/exact-location', async (req, res) => {
+  try {
+    const { addressId } = req.params;
+    const { exact_latitude, exact_longitude, coordinate_accuracy, coordinate_source } = req.body;
+    
+    console.log('Setting exact location for address:', addressId, {
+      exact_latitude,
+      exact_longitude,
+      coordinate_accuracy,
+      coordinate_source
+    });
+    
+    // Validate coordinates
+    if (!exact_latitude || !exact_longitude) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Exact latitude and longitude are required' 
+      });
+    }
+    
+    // Validate coordinate ranges
+    const lat = parseFloat(exact_latitude);
+    const lng = parseFloat(exact_longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid coordinate values' 
+      });
+    }
+    
+    if (lat < -90 || lat > 90) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Latitude must be between -90 and 90' 
+      });
+    }
+    
+    if (lng < -180 || lng > 180) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Longitude must be between -180 and 180' 
+      });
+    }
+    
+    // Check if exact coordinate columns exist, if not, add them
+    try {
+      console.log('Attempting to add exact coordinate columns...');
+      
+      // Add columns one by one to avoid syntax issues
+      const columns = [
+        "ADD COLUMN  exact_latitude DECIMAL(10, 8) NULL COMMENT 'Exact GPS latitude from vendor pin'",
+        "ADD COLUMN  exact_longitude DECIMAL(11, 8) NULL COMMENT 'Exact GPS longitude from vendor pin'", 
+        "ADD COLUMN coordinate_accuracy ENUM('exact', 'approximate', 'estimated') DEFAULT 'estimated' COMMENT 'Accuracy level of coordinates'",
+        "ADD COLUMN  coordinate_source ENUM('gps', 'geocoding', 'manual', 'vendor_pin') DEFAULT 'geocoding' COMMENT 'Source of coordinate data'",
+        "ADD COLUMN  coordinate_updated_at TIMESTAMP NULL COMMENT 'When coordinates were last updated'"
+      ];
+      
+      for (const column of columns) {
+        try {
+          await pool.query(`ALTER TABLE addresses ${column}`);
+        } catch (err) {
+          if (err.code !== 'ER_DUP_FIELDNAME') {
+            console.log(`Column might already exist: ${column}`);
+          }
+        }
+      }
+      
+      console.log('✅ Exact coordinate columns added successfully');
+    } catch (alterError) {
+      console.log('Columns might already exist or error adding columns:', alterError.message);
+    }
+    
+    // Update the address with exact coordinates
+    const [result] = await pool.query(`
+      UPDATE addresses 
+      SET 
+        exact_latitude = ?,
+        exact_longitude = ?,
+        coordinate_accuracy = ?,
+        coordinate_source = ?,
+        coordinate_updated_at = NOW(),
+        updated_at = NOW()
+      WHERE address_id = ? AND is_active = 1
+    `, [
+      lat,
+      lng,
+      coordinate_accuracy || 'exact',
+      coordinate_source || 'vendor_pin',
+      addressId
+    ]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Address not found or inactive' 
+      });
+    }
+    
+    console.log(`✅ Exact location set for address ${addressId}: ${lat}, ${lng}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Exact location saved successfully',
+      coordinates: {
+        exact_latitude: lat,
+        exact_longitude: lng,
+        coordinate_accuracy: coordinate_accuracy || 'exact',
+        coordinate_source: coordinate_source || 'vendor_pin'
+      }
+    });
+  } catch (error) {
+    console.error('Error setting exact location:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to save exact location' 
+    });
+  }
+});
+
 module.exports = router;
