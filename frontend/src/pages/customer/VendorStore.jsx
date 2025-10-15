@@ -482,7 +482,11 @@ export const VendorStore = () => {
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                 {vendor.profile_image_url ? (
                   <img
-                    src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`}
+                    src={
+                      vendor.profile_image_url.startsWith('http') 
+                        ? vendor.profile_image_url 
+                        : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                    }
                     alt={vendor.store_name}
                     className="w-full h-full object-cover"
                   />
@@ -546,7 +550,11 @@ export const VendorStore = () => {
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center overflow-hidden">
               {vendor.profile_image_url ? (
                 <img
-                  src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`}
+                  src={
+                    vendor.profile_image_url.startsWith('http') 
+                      ? vendor.profile_image_url 
+                      : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                  }
                   alt={vendor.store_name}
                   className="w-full h-full object-cover"
                 />
@@ -921,7 +929,11 @@ export const VendorStore = () => {
                 <div className="flex items-center space-x-4 mb-4">
                   {vendor.profile_image_url ? (
                     <img 
-                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`}
+                      src={
+                        vendor.profile_image_url.startsWith('http') 
+                          ? vendor.profile_image_url 
+                          : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                      }
                       alt={vendor.store_name}
                       className="w-16 h-16 rounded-full object-cover"
                     />

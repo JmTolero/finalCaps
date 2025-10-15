@@ -460,12 +460,11 @@ export const AllVendorStores = () => {
                 <div className="relative w-full h-24 bg-white rounded-md flex items-center justify-center mb-2">
                   {vendor.profile_image_url ? (
                     <img
-                      src={`${
-                        process.env.REACT_APP_API_URL ||
-                        "http://localhost:3001"
-                      }/uploads/vendor-documents/${
-                        vendor.profile_image_url
-                      }`}
+                      src={
+                        vendor.profile_image_url.startsWith('http') 
+                          ? vendor.profile_image_url 
+                          : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                      }
                       alt={vendor.store_name || "Vendor Store"}
                       className="w-full h-full object-cover rounded-md"
                     />
