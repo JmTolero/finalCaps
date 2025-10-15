@@ -2713,7 +2713,7 @@ export const Vendor = () => {
           {/* Main Content */}
           <div className="flex-1 w-full">
             <div className="p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28">
-              <div className="max-w-6xl mx-auto">
+              <div className="max-w-6xl mx-auto mt-8 sm:mt-6">
               {/* Header - Mobile Responsive */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-100 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
                 {/* Mobile Layout */}
@@ -2786,7 +2786,7 @@ export const Vendor = () => {
                   <div className="flex-1">
                     
                     {currentVendor && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:mt-6">
                         <div className="bg-white/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                           <div className="flex items-center space-x-2 mb-2">
                             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
