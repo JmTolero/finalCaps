@@ -34,16 +34,44 @@ const CustomerVendorMap = ({
           lng: 120.9842
         },
         infoWindow: `
-          <div class="p-4">
-            <h3 class="font-bold text-lg mb-2">ChillNet Ice Cream Shop</h3>
-            <p class="text-gray-600 mb-2">+63 912 345 6789</p>
-            <p class="text-sm text-gray-500 mb-3">📍 Cordova, Cebu</p>
-            <p class="text-sm text-gray-600 mb-3">⭐ 4.5/5 (55 reviews)</p>
-            <div class="flex gap-2">
-              <button onclick="selectVendor(1)" 
-                      class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
-                View Shop
-              </button>
+          <div class="p-1.5 sm:p-4 max-w-[240px] sm:max-w-sm">
+            <!-- Mobile: Single Row Layout -->
+            <div class="sm:hidden flex items-center gap-1.5">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-[10px] text-gray-800 truncate">ChillNet Ice Cream Shop</h3>
+                <div class="flex items-center gap-1 mt-0.5">
+                  <span class="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 rounded-full">📍 Exact</span>
+                  <button onclick="selectVendor(1)" 
+                          class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                    View Shop
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Desktop: Full Layout -->
+            <div class="hidden sm:block">
+              <h3 class="font-bold text-lg mb-2 text-gray-800">ChillNet Ice Cream Shop</h3>
+              <div class="mb-3">
+                <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">📍 Exact Location</span>
+              </div>
+              <p class="text-gray-600 mb-2 text-base">📞 +63 912 345 6789</p>
+              <p class="text-sm text-gray-500 mb-2">📍 Cordova, Cebu</p>
+              <p class="text-sm text-gray-600 mb-3">⭐ 4.5/5 (55 reviews)</p>
+              <div class="mb-3">
+                <p class="text-sm text-gray-600 mb-1">🍦 Flavors:</p>
+                <div class="flex flex-wrap gap-1">
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Mango</span>
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Ube</span>
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Choco</span>
+                </div>
+              </div>
+              <div class="flex justify-start">
+                <button onclick="selectVendor(1)" 
+                        class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                  View Shop
+                </button>
+              </div>
             </div>
           </div>
         `,
@@ -61,16 +89,44 @@ const CustomerVendorMap = ({
           lng: 120.9822
         },
         infoWindow: `
-          <div class="p-4">
-            <h3 class="font-bold text-lg mb-2">Frozen Delights</h3>
-            <p class="text-gray-600 mb-2">+63 917 654 3210</p>
-            <p class="text-sm text-gray-500 mb-3">📍 Location not specified</p>
-            <p class="text-sm text-gray-600 mb-3">⭐ 4.2/5 (32 reviews)</p>
-            <div class="flex gap-2">
-              <button onclick="selectVendor(2)" 
-                      class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
-                View Shop
-              </button>
+          <div class="p-1.5 sm:p-4 max-w-[240px] sm:max-w-sm">
+            <!-- Mobile: Single Row Layout -->
+            <div class="sm:hidden flex items-center gap-1.5">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-[10px] text-gray-800 truncate">Frozen Delights</h3>
+                <div class="flex items-center gap-1 mt-0.5">
+                  <span class="text-[8px] bg-gray-100 text-gray-800 px-1 py-0.5 rounded-full">📍 Unverified</span>
+                  <button onclick="selectVendor(2)" 
+                          class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                    View Shop
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Desktop: Full Layout -->
+            <div class="hidden sm:block">
+              <h3 class="font-bold text-lg mb-2 text-gray-800">Frozen Delights</h3>
+              <div class="mb-3">
+                <span class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">📍 Location Unverified</span>
+              </div>
+              <p class="text-gray-600 mb-2 text-base">📞 +63 917 654 3210</p>
+              <p class="text-sm text-gray-500 mb-2">📍 Location not specified</p>
+              <p class="text-sm text-gray-600 mb-3">⭐ 4.2/5 (32 reviews)</p>
+              <div class="mb-3">
+                <p class="text-sm text-gray-600 mb-1">🍦 Flavors:</p>
+                <div class="flex flex-wrap gap-1">
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Vanilla</span>
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Strawberry</span>
+                  <span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Cookies & Cream</span>
+                </div>
+              </div>
+              <div class="flex justify-start">
+                <button onclick="selectVendor(2)" 
+                        class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                  View Shop
+                </button>
+              </div>
             </div>
           </div>
         `,
@@ -143,7 +199,14 @@ const CustomerVendorMap = ({
           
           // Choose marker color based on location accuracy with source info
           const sourceIcon = coordinateSource === 'gps' ? '🎯' : coordinateSource === 'vendor_pin' ? '📍' : '🌐';
-          const locationBadge = locationType === 'exact' ? 
+          // Create separate badges for mobile and desktop
+          const mobileLocationBadge = locationType === 'exact' ? 
+            `<span class="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 rounded-full">${sourceIcon} Exact</span>` :
+            locationType === 'approximate' ? 
+            `<span class="text-[8px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded-full">${sourceIcon} ~</span>` :
+            '<span class="text-[8px] bg-gray-100 text-gray-800 px-1 py-0.5 rounded-full">📍 Unverified</span>';
+            
+          const desktopLocationBadge = locationType === 'exact' ? 
             `<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">${sourceIcon} Exact Location</span>` :
             locationType === 'approximate' ? 
             `<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">${sourceIcon} Approximate Location</span>` :
@@ -158,22 +221,43 @@ const CustomerVendorMap = ({
             },
             locationType: locationType, // Track location accuracy
             infoWindow: `
-              <div class="p-4">
-                <h3 class="font-bold text-lg mb-2">${vendor.store_name || 'Unnamed Store'}</h3>
-                <div class="mb-3">${locationBadge}</div>
-                <p class="text-gray-600 mb-2">${vendor.contact_no || 'No contact info'}</p>
-                <p class="text-sm text-gray-500 mb-3">📍 ${vendor.location || 'Location not specified'}</p>
-                <p class="text-sm text-gray-600 mb-3">👤 ${vendor.fname} ${vendor.lname}</p>
-                ${vendor.flavors && vendor.flavors.length > 0 ? `
-                  <p class="text-sm text-gray-600 mb-3">
-                    🍦 Flavors: ${vendor.flavors.map(f => f.flavor_name).join(', ')}
-                  </p>
-                ` : ''}
-                <div class="flex gap-2">
-                  <button onclick="selectVendor(${vendor.vendor_id})" 
-                          class="bg-orange-300 text-black px-3 py-1 rounded text-sm hover:bg-orange-400">
-                    View Shop
-                  </button>
+              <div class="p-1 sm:p-4 max-w-[220px] sm:max-w-sm">
+                <!-- Mobile: Single Row Layout -->
+                <div class="sm:hidden flex items-center gap-1.5">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-[10px] text-gray-800 truncate">${vendor.store_name || 'Unnamed Store'}</h3>
+                    <div class="flex items-center gap-1 mt-0.5">
+                      ${mobileLocationBadge}
+                      <button onclick="selectVendor(${vendor.vendor_id})" 
+                              class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                        View Shop
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Desktop: Full Layout -->
+                <div class="hidden sm:block">
+                  <h3 class="font-bold text-lg mb-2 text-gray-800">${vendor.store_name || 'Unnamed Store'}</h3>
+                  <div class="mb-3 flex flex-wrap gap-1">${desktopLocationBadge}</div>
+                  ${vendor.contact_no ? `<p class="text-gray-600 mb-2 text-base">📞 ${vendor.contact_no}</p>` : ''}
+                  <p class="text-sm text-gray-500 mb-2">📍 ${vendor.location || 'Location not specified'}</p>
+                  <p class="text-sm text-gray-600 mb-2">👤 ${vendor.fname} ${vendor.lname}</p>
+                  ${vendor.flavors && vendor.flavors.length > 0 ? `
+                    <div class="mb-3">
+                      <p class="text-sm text-gray-600 mb-1">🍦 Flavors:</p>
+                      <div class="flex flex-wrap gap-1">
+                        ${vendor.flavors.slice(0, 3).map(f => `<span class="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">${f.flavor_name}</span>`).join('')}
+                        ${vendor.flavors.length > 3 ? `<span class="text-xs text-gray-500">+${vendor.flavors.length - 3} more</span>` : ''}
+                      </div>
+                    </div>
+                  ` : ''}
+                  <div class="flex justify-start">
+                    <button onclick="selectVendor(${vendor.vendor_id})" 
+                            class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                      View Shop
+                    </button>
+                  </div>
                 </div>
               </div>
             `,

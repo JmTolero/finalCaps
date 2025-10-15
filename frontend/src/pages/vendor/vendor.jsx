@@ -2289,6 +2289,10 @@ export const Vendor = () => {
   const handleSettingsClick = () => {
     setActiveView("settings");
     setIsProfileDropdownOpen(false);
+    // Close sidebar on mobile after selection
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleProfileImageChange = (e) => {
@@ -2671,9 +2675,14 @@ export const Vendor = () => {
                  <button
                    onClick={() => {
                     console.log(
-                      "Profile button clicked in settings - navigating to profile tab"
+                      "Profile button clicked in sidebar - navigating to settings/profile"
                     );
+                    setActiveView("settings");
                     setActiveTab("profile");
+                    // Close sidebar on mobile after selection
+                    if (window.innerWidth < 1024) {
+                      setIsSidebarOpen(false);
+                    }
                   }}
                   className={`w-full flex ${
                     isSidebarOpen
@@ -3799,8 +3808,15 @@ export const Vendor = () => {
              <div className="mt-4">
                  <button
                    onClick={() => {
+                  console.log(
+                    "Profile button clicked in sidebar - navigating to settings/profile"
+                  );
                   setActiveView("settings");
-                  setActiveTab("addresses");
+                  setActiveTab("profile");
+                  // Close sidebar on mobile after selection
+                  if (window.innerWidth < 1024) {
+                    setIsSidebarOpen(false);
+                  }
                 }}
                 className={`w-full flex ${
                   isSidebarOpen
@@ -3841,11 +3857,11 @@ export const Vendor = () => {
             {/* Dashboard Content */}
             {activeView === "dashboard" && (
               <div>
-                <div className="mb-6 sm:mb-8">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                <div className="mb-4 sm:mb-6 md:mb-8">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                     Vendor Dashboard
                   </h1>
-                  <p className="text-sm sm:text-base text-gray-600">
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600">
                     Welcome to your vendor dashboard. Manage your ice cream
                     business here.
                   </p>
@@ -3853,27 +3869,27 @@ export const Vendor = () => {
 
                 {/* Suspended Warning Banner */}
                 {currentVendor?.status === 'suspended' && (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-yellow-800">
+                      <div className="ml-2 sm:ml-3">
+                        <h3 className="text-xs sm:text-sm font-medium text-yellow-800">
                           Account Suspended - Grace Period Active
                         </h3>
-                        <div className="mt-2 text-sm text-yellow-700">
+                        <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-yellow-700">
                           <p>
                             Your account is currently suspended. You can still complete existing orders, but cannot:
                           </p>
-                          <ul className="list-disc list-inside mt-1 ml-2">
+                          <ul className="list-disc list-inside mt-1 ml-1 sm:ml-2">
                             <li>Add or edit products/flavors</li>
                             <li>Receive new customer orders</li>
                             <li>Appear in customer search</li>
                           </ul>
-                          <p className="mt-2 font-medium">
+                          <p className="mt-1 sm:mt-2 font-medium">
                             Please contact admin for more information.
                           </p>
                         </div>
@@ -3883,19 +3899,19 @@ export const Vendor = () => {
                 )}
 
                 {/* Quick Stats */}
-                <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+                <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+                  <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
                         <img
                           src={ordersIcon}
                           alt="Orders"
-                          className="w-6 h-6 sm:w-5 sm:h-5"
+                          className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6"
                         />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs sm:text-sm text-gray-600">Total Orders</p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.total_orders}
@@ -3904,18 +3920,18 @@ export const Vendor = () => {
                     </div>
                   </div>
                   
-                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+                  <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
                         <img
                           src={paymentsIcon}
                           alt="Revenue"
-                          className="w-6 h-6 sm:w-5 sm:h-5"
+                          className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6"
                         />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs sm:text-sm text-gray-600">Total Revenue</p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : `₱${dashboardData.total_revenue.toLocaleString()}`}
@@ -3924,18 +3940,18 @@ export const Vendor = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm sm:col-span-2 lg:col-span-1">
+                  <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm sm:col-span-2 lg:col-span-1">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 sm:w-8 sm:h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
                         <img
                           src={inventoryIcon}
                           alt="Products"
-                          className="w-6 h-6 sm:w-5 sm:h-5"
+                          className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6"
                         />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs sm:text-sm text-gray-600">Total Flavors</p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                        <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.product_count}
@@ -3946,56 +3962,56 @@ export const Vendor = () => {
                   </div>
                   
                 {/* Other Details and Upcoming Deliveries */}
-                <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
                   {/* Other Details Card */}
-                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+                  <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 md:mb-4">
                       Other Details
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs sm:text-sm text-gray-600">
                           Pending Orders:
                         </span>
-                        <span className="text-sm font-semibold text-orange-600">
+                        <span className="text-xs sm:text-sm font-semibold text-orange-600">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.pending_orders}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs sm:text-sm text-gray-600">
                           Confirm Orders:
                         </span>
-                        <span className="text-sm font-semibold text-green-600">
+                        <span className="text-xs sm:text-sm font-semibold text-green-600">
                           {dashboardLoading
                             ? "..."
                             : dashboardData.confirmed_orders}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs sm:text-sm text-gray-600">
                           Top Flavor:
                         </span>
-                        <span className="text-sm font-semibold text-blue-600">
+                        <span className="text-xs sm:text-sm font-semibold text-blue-600 truncate ml-2">
                           {dashboardLoading ? "..." : dashboardData.top_flavor}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs sm:text-sm text-gray-600">
                           Sales Today:
                         </span>
-                        <span className="text-sm font-semibold text-green-600">
+                        <span className="text-xs sm:text-sm font-semibold text-green-600">
                           {dashboardLoading
                             ? "..."
                             : `₱${dashboardData.sales_today.toLocaleString()}`}
                         </span> 
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs sm:text-sm text-gray-600">
                           Sales this Month:
                         </span>
-                        <span className="text-sm font-semibold text-blue-600">
+                        <span className="text-xs sm:text-sm font-semibold text-blue-600">
                           {dashboardLoading
                             ? "..."
                             : `₱${dashboardData.sales_this_month.toLocaleString()}`}
@@ -4005,9 +4021,9 @@ export const Vendor = () => {
                   </div>
                   
                    {/* Upcoming Deliveries Card */}
-                   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
-                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2">
-                       <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                   <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm">
+                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3 md:mb-4 gap-2">
+                       <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
                          Upcoming Deliveries
                        </h3>
                        <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full w-fit">
@@ -4016,14 +4032,14 @@ export const Vendor = () => {
                      </div>
                      
                      {/* Filter Controls */}
-                     <div className="mb-3 sm:mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
+                     <div className="mb-2 sm:mb-3 md:mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
                        {/* Status Filter */}
                        <div className="flex items-center space-x-2 w-full sm:w-auto">
-                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Status:</label>
+                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap flex-shrink-0">Status:</label>
                          <select
                            value={deliveryFilter.status}
                            onChange={(e) => setDeliveryFilter(prev => ({ ...prev, status: e.target.value }))}
-                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none"
+                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none min-w-0"
                          >
                            <option value="all">All Status</option>
                            <option value="confirmed">Confirmed</option>
@@ -4034,11 +4050,11 @@ export const Vendor = () => {
                        
                        {/* Urgency Filter */}
                        <div className="flex items-center space-x-2 w-full sm:w-auto">
-                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Urgency:</label>
+                         <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap flex-shrink-0">Urgency:</label>
                          <select
                            value={deliveryFilter.urgency}
                            onChange={(e) => setDeliveryFilter(prev => ({ ...prev, urgency: e.target.value }))}
-                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none"
+                           className="text-xs sm:text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1 sm:flex-none min-w-0"
                          >
                            <option value="all">All Time</option>
                            <option value="overdue">Overdue</option>

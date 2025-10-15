@@ -553,64 +553,64 @@ export const FindNearbyVendors = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Mobile Layout - Map on Top */}
-        <div className="lg:hidden mb-8">
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-              <h3 className="text-xl font-bold text-white">
+        <div className="xl:hidden mb-6 lg:mb-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden mx-2 sm:mx-0">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 sm:px-6 py-3 sm:py-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white">
                 Find Vendors Near You
               </h3>
-              <p className="text-blue-100 text-sm">
+              <p className="text-blue-100 text-xs sm:text-sm">
                 Click on markers to view vendor details and delivery options
               </p>
             </div>
             
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <CustomerVendorMap
                 onVendorSelect={handleVendorSelect}
                 onLocationChange={handleLocationChange}
-                className="w-full h-60"
+                className="w-full h-48 sm:h-60"
               />
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-8">
           {/* Left Side - Vendor Information */}
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-              <h2 className="text-3xl font-bold text-blue-600">
+          <div className="space-y-4 lg:space-y-6">
+            <div className="flex flex-col gap-4 mb-4 lg:mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-blue-600">
                 Find nearby Vendors
               </h2>
               
               {/* Location Accuracy Legend */}
-              <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
+              <div className="flex flex-wrap gap-2 lg:gap-3">
                 <div className="flex items-center gap-1 text-xs">
-                  <div className="w-3 h-3 bg-green-100 border border-green-300 rounded-full"></div>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-100 border border-green-300 rounded-full"></div>
                   <span className="text-gray-600">Exact Location</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs">
-                  <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded-full"></div>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-100 border border-yellow-300 rounded-full"></div>
                   <span className="text-gray-600">Approximate</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs">
-                  <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded-full"></div>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-100 border border-gray-300 rounded-full"></div>
                   <span className="text-gray-600">Location Needed</span>
                 </div>
               </div>
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="ml-4 text-gray-600">Loading vendors...</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center py-8 sm:py-12 gap-3 sm:gap-4">
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+                <p className="text-sm sm:text-base text-gray-600">Loading vendors...</p>
               </div>
             ) : filteredVendors.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">No Vendors Found</h3>
-                <p className="text-gray-500 mb-4">
+              <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg mx-2 sm:mx-0">
+                <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">🔍</div>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2 px-4">No Vendors Found</h3>
+                <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
                   {searchTerm ? 
                     `No vendors match "${searchTerm}". Try searching with different keywords or check your location.` :
                     "No vendors found in your area. Try adjusting your location or search criteria."
@@ -619,27 +619,27 @@ export const FindNearbyVendors = () => {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                   >
                     Clear Search
                   </button>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {filteredVendors.map((vendor) => (
                   <div
                     key={vendor.vendor_id}
-                    className={`bg-blue-50 rounded-lg p-6 cursor-pointer transition-all duration-200 ${
+                    className={`bg-blue-50 rounded-lg p-4 sm:p-6 cursor-pointer transition-all duration-200 mx-2 sm:mx-0 ${
                       selectedVendor?.vendor_id === vendor.vendor_id
                         ? "ring-2 ring-blue-500 shadow-lg"
                         : "hover:shadow-md"
                     }`}
                     onClick={() => setSelectedVendor(vendor)}
                   >
-                    <div className="flex items-start space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                       {/* Vendor Logo */}
-                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 mx-auto sm:mx-0">
                         {vendor.profile_image_url ? (
                           <img
                             src={`${
@@ -653,26 +653,26 @@ export const FindNearbyVendors = () => {
                           />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-pink-200 to-orange-200 flex items-center justify-center">
-                            <span className="text-2xl">🍦</span>
+                            <span className="text-lg sm:text-2xl">🍦</span>
                           </div>
                         )}
                       </div>
 
                       {/* Vendor Details */}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xl font-bold text-gray-800">
+                      <div className="flex-1 text-center sm:text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1 sm:gap-2">
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-800">
                             {vendor.store_name || 'Unnamed Store'}
                           </h3>
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center justify-center sm:justify-end space-x-1">
                             <svg
-                              className="w-4 h-4 text-yellow-400"
+                              className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400"
                               fill="currentColor"
                               viewBox="0 0 20 20"
                             >
                               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                             </svg>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {vendorReviews[vendor.vendor_id] ? (
                                 <>
                                   {parseFloat(vendorReviews[vendor.vendor_id].average_rating).toFixed(1)}{" "}
@@ -687,64 +687,72 @@ export const FindNearbyVendors = () => {
                         </div>
 
                         {/* Location */}
-                        <div className="flex items-center space-x-2 mb-3">
-                          <svg
-                            className="w-4 h-4 text-red-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span className="text-sm text-gray-600">
-                            {vendor.location || 'Location not specified'}
-                          </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                          <div className="flex items-center justify-center sm:justify-start space-x-2">
+                            <svg
+                              className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 flex-shrink-0"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
+                              {vendor.location || 'Location not specified'}
+                            </span>
+                          </div>
                           
-                          {/* Location Accuracy Badge */}
-                          {vendor.exact_latitude && vendor.exact_longitude ? (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              Exact Location
-                            </span>
-                          ) : vendor.latitude && vendor.longitude ? (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              Approximate
-                            </span>
-                          ) : (
-                            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              Location Needed
-                            </span>
-                          )}
-                          
-                          {userLocation && vendor.latitude && vendor.longitude && (
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                              {calculateDistance(
-                                userLocation.lat,
-                                userLocation.lng,
-                                parseFloat(vendor.latitude),
-                                parseFloat(vendor.longitude)
-                              ).toFixed(1)} km away
-                            </span>
-                          )}
+                          {/* Badges Container */}
+                          <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2">
+                            {/* Location Accuracy Badge */}
+                            {vendor.exact_latitude && vendor.exact_longitude ? (
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center gap-1">
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="hidden sm:inline">Exact Location</span>
+                                <span className="sm:hidden">Exact</span>
+                              </span>
+                            ) : vendor.latitude && vendor.longitude ? (
+                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center gap-1">
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="hidden sm:inline">Approximate</span>
+                                <span className="sm:hidden">~</span>
+                              </span>
+                            ) : (
+                              <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full flex items-center gap-1">
+                                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="hidden sm:inline">Location Needed</span>
+                                <span className="sm:hidden">Need Loc</span>
+                              </span>
+                            )}
+                            
+                            {userLocation && vendor.latitude && vendor.longitude && (
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                {calculateDistance(
+                                  userLocation.lat,
+                                  userLocation.lng,
+                                  parseFloat(vendor.latitude),
+                                  parseFloat(vendor.longitude)
+                                ).toFixed(1)} km
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Drum Sizes */}
                         <div className="mb-3">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-1">
+                          <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 text-center sm:text-left">
                             Available Drum Sizes:
                           </h4>
-                          <div className="flex space-x-2">
+                          <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2">
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
                               Large
                             </span>
@@ -759,10 +767,10 @@ export const FindNearbyVendors = () => {
 
                         {/* Flavors */}
                         <div className="mb-3">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-1">
+                          <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 text-center sm:text-left">
                             Flavors:
                           </h4>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap justify-center sm:justify-start gap-1">
                             {vendor.flavors && vendor.flavors.length > 0 ? (
                               vendor.flavors
                                 .slice(0, 3)
@@ -792,10 +800,10 @@ export const FindNearbyVendors = () => {
 
 
                         {/* Action Buttons */}
-                        <div className="flex space-x-3">
+                        <div className="flex justify-center sm:justify-start">
                           <button 
                             onClick={() => navigate(`/vendor/${vendor.vendor_id}/store`)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm"
+                            className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm text-sm sm:text-base"
                           >
                             View Shop
                           </button>
@@ -809,22 +817,22 @@ export const FindNearbyVendors = () => {
           </div>
 
           {/* Right Side - Map (Desktop Only) */}
-          <div className="hidden lg:block space-y-4">
+          <div className="hidden xl:block space-y-4">
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                <h3 className="text-xl font-bold text-white">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 lg:px-6 py-3 lg:py-4">
+                <h3 className="text-lg lg:text-xl font-bold text-white">
                   Find Vendors Near You
                 </h3>
-                <p className="text-blue-100 text-sm">
+                <p className="text-blue-100 text-xs lg:text-sm">
                   Click on markers to view vendor details and delivery options
                 </p>
               </div>
               
-              <div className="p-4">
+              <div className="p-3 lg:p-4">
                 <CustomerVendorMap
                   onVendorSelect={handleVendorSelect}
                   onLocationChange={handleLocationChange}
-                  className="w-full h-96"
+                  className="w-full h-80 lg:h-96"
                 />
               </div>
             </div>
