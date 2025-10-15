@@ -2712,11 +2712,67 @@ export const Vendor = () => {
 
           {/* Main Content */}
           <div className="flex-1 w-full">
-            <div className="p-8 pt-28">
+            <div className="p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28">
               <div className="max-w-6xl mx-auto">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-100 p-8 mb-8">
-                <div className="flex items-center space-x-6">
+              {/* Header - Mobile Responsive */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow-lg border border-blue-100 p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8">
+                {/* Mobile Layout */}
+                <div className="block md:hidden">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    {/* Icon - Smaller */}
+                    <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    
+                    {currentVendor && (
+                      <div className="w-full space-y-3">
+                        {/* Store Information Card - Mobile - Smaller */}
+                        <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-white/30 shadow-sm">
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-700">Store Information</span>
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="text-base font-bold text-gray-800 text-center">{currentVendor.store_name}</h3>
+                            <p className="text-xs text-gray-600 text-center">Owner: {currentVendor.fname}</p>
+                            <div className="flex justify-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                currentVendor.status === 'active' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : currentVendor.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {currentVendor.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Contact Details Card - Mobile - Smaller */}
+                        <div className="bg-white/70 backdrop-blur-sm rounded-lg p-3 border border-white/30 shadow-sm">
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-700">Contact Details</span>
+                          </div>
+                          <div className="space-y-1 text-center">
+                            <p className="text-sm text-gray-700 font-medium break-all">{currentVendor.email}</p>
+                            <p className="text-xs text-gray-600">{currentVendor.contact_no || "Contact not provided"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden md:flex items-center space-x-6">
                   {/* Icon */}
                   <div className="flex-shrink-0">
                     <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -2794,32 +2850,50 @@ export const Vendor = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
                 {/* Settings Sidebar */}
-                <div className="lg:col-span-1">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 sticky top-8">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="lg:col-span-1 order-1">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:sticky lg:top-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       Settings
                     </h3>
-                    <nav className="space-y-3">
+                    {/* Mobile: Horizontal row layout */}
+                    <nav className="flex flex-wrap gap-2 sm:gap-3 lg:hidden">
+                      {settingsTabs.map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`flex-1 min-w-0 px-2 sm:px-3 py-2 sm:py-3 rounded-xl transition-all duration-200 flex flex-col items-center justify-center touch-manipulation ${
+                            activeTab === tab.id
+                                ? "bg-blue-500 text-white border border-blue-600 shadow-lg transform scale-[1.02]"
+                                : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-md active:bg-blue-100"
+                          }`}
+                        >
+                          <span className="text-lg sm:text-xl mb-1 flex-shrink-0">{tab.icon}</span>
+                          <span className="font-medium text-xs sm:text-sm text-center leading-tight">{tab.label}</span>
+                        </button>
+                      ))}
+                    </nav>
+                    {/* Desktop: Vertical sidebar layout */}
+                    <nav className="hidden lg:block space-y-2">
                       {settingsTabs.map((tab) => (
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
                           className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center ${
                             activeTab === tab.id
-                                ? "bg-blue-500 text-white border border-blue-600 shadow-sm transform scale-[1.02]"
-                                : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-sm"
+                                ? "bg-blue-500 text-white border border-blue-600 shadow-lg transform scale-[1.02]"
+                                : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-md active:bg-blue-100"
                           }`}
                         >
-                          <span className="text-xl mr-3">{tab.icon}</span>
-                          <span className="font-medium">{tab.label}</span>
+                          <span className="text-xl mr-3 flex-shrink-0">{tab.icon}</span>
+                          <span className="font-medium text-base flex-1">{tab.label}</span>
                           {activeTab === tab.id && (
-                            <svg className="w-4 h-4 ml-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 ml-auto text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           )}
@@ -2830,8 +2904,8 @@ export const Vendor = () => {
                 </div>
 
                 {/* Settings Content */}
-                <div className="lg:col-span-3">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+                <div className="lg:col-span-3 order-2">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8">
                     {/* Profile Tab */}
                       {activeTab === "profile" && (
                       <div>
@@ -2840,18 +2914,18 @@ export const Vendor = () => {
                           </h2>
                         <div className="space-y-6">
                           {/* Profile Image Upload Section */}
-                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
-                              <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                                <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 sm:p-6 lg:p-8 border border-blue-100">
+                              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                                 Profile Picture
                               </h3>
-                            <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
+                            <div className="flex flex-col md:flex-row items-center space-y-4 sm:space-y-6 md:space-y-0 md:space-x-8">
                               {/* Current/Preview Image */}
                               <div className="flex-shrink-0">
                                 <div className="relative">
-                                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-white shadow-lg border-4 border-white flex items-center justify-center">
+                                  <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-lg border-2 sm:border-4 border-white flex items-center justify-center">
                                     {profileImagePreview ? (
                                       <img 
                                         src={profileImagePreview} 
@@ -2860,7 +2934,7 @@ export const Vendor = () => {
                                       />
                                     ) : (
                                         <svg
-                                          className="w-16 h-16 text-gray-400"
+                                          className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-gray-400"
                                           fill="currentColor"
                                           viewBox="0 0 20 20"
                                         >
@@ -2869,8 +2943,8 @@ export const Vendor = () => {
                                             d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                                             clipRule="evenodd"
                                           />
-                                      </svg>
-                                    )}
+                                        </svg>
+                                      )}
                                   </div>
                                   {profileImagePreview && (
                                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
@@ -2888,13 +2962,13 @@ export const Vendor = () => {
                                     <span className="sr-only">
                                       Choose profile photo
                                     </span>
-                                  <div className="bg-white rounded-xl p-6 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors duration-200">
+                                  <div className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors duration-200">
                                     <div className="text-center">
-                                      <svg className="mx-auto h-12 w-12 text-blue-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="mx-auto h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-blue-400 mb-2 sm:mb-3 md:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                       </svg>
                                       <div className="flex justify-center">
-                                        <span className="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200">
+                                        <span className="bg-blue-500 text-white px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 md:py-2 rounded-md sm:rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 text-sm sm:text-base">
                                           Choose File
                                         </span>
                                       </div>
@@ -2926,7 +3000,7 @@ export const Vendor = () => {
                             </div>
                           </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Owner Name
@@ -2940,7 +3014,7 @@ export const Vendor = () => {
                                       fname: e.target.value,
                                     })
                                   }
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="Your full name"
                               />
                             </div>
@@ -2957,12 +3031,12 @@ export const Vendor = () => {
                                       store_name: e.target.value,
                                     })
                                   }
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="Your store name"
                               />
                             </div>
                           </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Email Address
@@ -2976,7 +3050,7 @@ export const Vendor = () => {
                                       email: e.target.value,
                                     })
                                   }
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="your@email.com"
                               />
                             </div>
@@ -2993,15 +3067,15 @@ export const Vendor = () => {
                                       contact_no: e.target.value,
                                     })
                                   }
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="09123456789"
                               />
                             </div>
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex justify-center sm:justify-end">
                             <button 
                               onClick={handleSaveProfile}
-                              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md hover:shadow-lg"
+                              className="bg-blue-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md hover:shadow-lg text-sm sm:text-base w-full sm:w-auto"
                             >
                               Save Profile
                             </button>
@@ -3013,8 +3087,8 @@ export const Vendor = () => {
                     {/* Addresses Tab */}
                       {activeTab === "addresses" && (
                       <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
+                            <h2 className="text-xl sm:text-2xl font-semibold">
                               Store Addresses
                             </h2>
                           <button
@@ -3033,21 +3107,21 @@ export const Vendor = () => {
                                   address_type: "business",
                               });
                             }}
-                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg"
+                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg text-sm sm:text-base w-full sm:w-auto"
                           >
                             + Add Store Address
                           </button>
                         </div>
 
                         {/* Address List */}
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                           {addresses.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">
-                              <div className="text-4xl mb-4">🏪</div>
-                                <p className="text-lg">
+                            <div className="text-center py-6 sm:py-8 text-gray-500">
+                              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">🏪</div>
+                                <p className="text-base sm:text-lg">
                                   No store addresses added yet
                                 </p>
-                                <p className="text-sm">
+                                <p className="text-xs sm:text-sm">
                                   Add your store address to help customers find
                                   you
                                 </p>
@@ -3056,15 +3130,15 @@ export const Vendor = () => {
                             addresses.map((address, index) => (
                                 <div
                                   key={index}
-                                  className="border border-gray-200 rounded-lg p-4"
+                                  className="border border-gray-200 rounded-lg p-3 sm:p-4"
                                 >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="flex items-center space-x-2 mb-1">
-                                        <h3 className="font-semibold text-lg">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
+                                  <div className="flex-1">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2 mb-2">
+                                        <h3 className="font-semibold text-base sm:text-lg">
                                           {address.address_type} Address
                                         </h3>
-                                      <div className="flex items-center space-x-2">
+                                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                                         {address.is_default === 1 && (
                                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
                                             ⭐ Default
@@ -3077,7 +3151,7 @@ export const Vendor = () => {
                                         )}
                                       </div>
                                     </div>
-                                    <p className="text-gray-600 mt-1">
+                                    <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">
                                         {address.unit_number &&
                                           `${address.unit_number}, `}
                                         {address.street_name},{" "}
@@ -3088,7 +3162,7 @@ export const Vendor = () => {
                                           ` ${address.postal_code}`}
                                     </p>
                                     {address.landmark && (
-                                      <p className="text-sm text-gray-500 mt-1">
+                                      <p className="text-xs sm:text-sm text-gray-500 mt-1">
                                         Landmark: {address.landmark}
                                       </p>
                                     )}
@@ -3127,20 +3201,23 @@ export const Vendor = () => {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="flex flex-col space-y-2">
+                                  <div className="flex flex-row sm:flex-row md:flex-col gap-2 flex-wrap md:flex-nowrap">
                                     <button
                                       onClick={() => editAddress(address)}
-                                      className="text-blue-600 hover:text-blue-800 text-sm"
+                                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 sm:px-4 py-2 sm:py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 flex-1 sm:flex-none md:w-full flex items-center justify-center gap-1 sm:gap-2"
                                     >
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
                                       Edit
                                     </button>
                                     
                                     {/* Set Exact Location Button */}
                                     <button
                                       onClick={() => handleSetExactLocation(address)}
-                                      className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                                      className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-2 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-1 sm:gap-2 shadow-md hover:shadow-lg transition-all duration-200 flex-1 sm:flex-none md:w-full"
                                     >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                       </svg>
@@ -3152,17 +3229,25 @@ export const Vendor = () => {
                                           onClick={() =>
                                             setPrimaryAddress(address.address_id)
                                           }
-                                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-medium px-2 sm:px-4 py-2 sm:py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex-1 sm:flex-none md:w-full flex items-center justify-center gap-1 sm:gap-2"
                                       >
-                                        Set as Business Location
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="hidden sm:inline">Set as Business Location</span>
+                                        <span className="sm:hidden">Set Primary</span>
                                       </button>
                                     )}
+                                    
                                     <button
                                         onClick={() =>
                                           deleteAddress(address.address_id)
                                         }
-                                      className="text-red-600 hover:text-red-800 text-sm"
+                                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-2 sm:px-4 py-2 sm:py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex-1 sm:flex-none md:w-full flex items-center justify-center gap-1 sm:gap-2"
                                     >
+                                      <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
                                       Delete
                                     </button>
                                   </div>
@@ -3174,8 +3259,8 @@ export const Vendor = () => {
 
                         {/* Address Form */}
                         {showAddressForm && (
-                          <div className="border-t pt-6">
-                            <h3 className="text-lg font-semibold mb-4">
+                          <div className="border-t pt-4 sm:pt-6">
+                            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
                                 {editingAddress
                                   ? "Edit Store Address"
                                   : "Add New Store Address"}
@@ -3188,19 +3273,19 @@ export const Vendor = () => {
                               required={true}
                               labelPrefix="Store "
                             />
-                            <div className="flex justify-end space-x-4 mt-6">
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
                               <button
                                 onClick={() => {
                                   setShowAddressForm(false);
                                   setEditingAddress(null);
                                 }}
-                                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base w-full sm:w-auto"
                               >
                                 Cancel
                               </button>
                               <button
                                 onClick={saveAddress}
-                                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg"
+                                className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg text-sm sm:text-base w-full sm:w-auto"
                               >
                                   {editingAddress
                                     ? "Update Address"
@@ -3215,25 +3300,25 @@ export const Vendor = () => {
                     {/* Documents Tab */}
                       {activeTab === "documents" && (
                       <div>
-                          <h2 className="text-2xl font-semibold mb-6">
+                          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
                             Documents
                           </h2>
-                          <p className="text-gray-600 mb-8">
+                          <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base">
                             View your uploaded business documents and identification.
                           </p>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                             {/* Business Permit */}
-                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center space-x-3 mb-4">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">Business Permit</h3>
-                                  <p className="text-sm text-gray-500">Legal business registration</p>
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Business Permit</h3>
+                                  <p className="text-xs sm:text-sm text-gray-500">Legal business registration</p>
                                 </div>
                               </div>
                               
@@ -3243,13 +3328,13 @@ export const Vendor = () => {
                                     <img
                                       src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`}
                                       alt="Business Permit"
-                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                       }}
                                     />
-                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                    <div className="w-full h-24 sm:h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
                                       <div className="text-center">
                                         <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -3260,7 +3345,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+                                    className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -3276,16 +3361,16 @@ export const Vendor = () => {
                             </div>
 
                             {/* Valid ID */}
-                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center space-x-3 mb-4">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                                   </svg>
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">Valid ID</h3>
-                                  <p className="text-sm text-gray-500">Government issued ID</p>
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Valid ID</h3>
+                                  <p className="text-xs sm:text-sm text-gray-500">Government issued ID</p>
                                 </div>
                               </div>
                               
@@ -3295,13 +3380,13 @@ export const Vendor = () => {
                                     <img
                                       src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`}
                                       alt="Valid ID"
-                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                       }}
                                     />
-                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                    <div className="w-full h-24 sm:h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
                                       <div className="text-center">
                                         <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
@@ -3312,7 +3397,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+                                    className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -3328,17 +3413,17 @@ export const Vendor = () => {
                             </div>
 
                             {/* Proof of Address */}
-                            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
                               <div className="flex items-center space-x-3 mb-4">
-                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">Proof of Address</h3>
-                                  <p className="text-sm text-gray-500">Address verification document</p>
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Proof of Address</h3>
+                                  <p className="text-xs sm:text-sm text-gray-500">Address verification document</p>
                                 </div>
                               </div>
                               
@@ -3348,13 +3433,13 @@ export const Vendor = () => {
                                     <img
                                       src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`}
                                       alt="Proof of Address"
-                                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                      className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
                                         e.target.style.display = 'none';
                                         e.target.nextSibling.style.display = 'flex';
                                       }}
                                     />
-                                    <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
+                                    <div className="w-full h-24 sm:h-32 bg-gray-100 rounded-lg border border-gray-200 hidden items-center justify-center">
                                       <div className="text-center">
                                         <svg className="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -3366,7 +3451,7 @@ export const Vendor = () => {
                                   </div>
                                   <button
                                     onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`, '_blank')}
-                                    className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+                                    className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
                                   </button>
@@ -3384,24 +3469,24 @@ export const Vendor = () => {
                           </div>
                           
                           {/* Document Status Summary */}
-                          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                            <h3 className="font-semibold text-blue-900 mb-3">Document Status</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="mt-6 sm:mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+                            <h3 className="font-semibold text-blue-900 mb-3 text-sm sm:text-base">Document Status</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                               <div className="flex items-center space-x-2">
-                                <div className={`w-3 h-3 rounded-full ${currentVendor?.business_permit_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <span className="text-sm text-blue-800">
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 ${currentVendor?.business_permit_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-xs sm:text-sm text-blue-800">
                                   Business Permit: {currentVendor?.business_permit_url ? 'Uploaded' : 'Missing'}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <div className={`w-3 h-3 rounded-full ${currentVendor?.valid_id_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <span className="text-sm text-blue-800">
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 ${currentVendor?.valid_id_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-xs sm:text-sm text-blue-800">
                                   Valid ID: {currentVendor?.valid_id_url ? 'Uploaded' : 'Missing'}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <div className={`w-3 h-3 rounded-full ${currentVendor?.proof_image_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                <span className="text-sm text-blue-800">
+                                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0 ${currentVendor?.proof_image_url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span className="text-xs sm:text-sm text-blue-800">
                                   Proof of Address: {currentVendor?.proof_image_url ? 'Uploaded' : 'Missing'}
                                 </span>
                               </div>
@@ -3418,7 +3503,7 @@ export const Vendor = () => {
           </div>
         </div>
         </div>
-
+                    
         {/* Location Picker Modal */}
         <LocationPickerModal
           isOpen={showLocationPicker}
