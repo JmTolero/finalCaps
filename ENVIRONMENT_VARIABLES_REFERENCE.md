@@ -14,6 +14,13 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=YOUR_SECURE_PASSWORD_HERE
 FRONTEND_URL=https://your-app.vercel.app
 UPLOAD_DIR=/app/uploads/vendor-documents/
+
+# Email Configuration (NEW!)
+EMAIL_SERVICE=gmail
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=ChillNet Admin <noreply@chillnet.com>
+ENABLE_EMAIL_NOTIFICATIONS=true
 ```
 
 **Note:** Replace `your-app.vercel.app` with your actual Vercel URL after deploying frontend.
@@ -176,6 +183,13 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 FRONTEND_URL=http://localhost:3000
 UPLOAD_DIR=uploads/vendor-documents/
+
+# Email Configuration (NEW!)
+EMAIL_SERVICE=gmail
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=ChillNet Admin <noreply@chillnet.com>
+ENABLE_EMAIL_NOTIFICATIONS=true
 ```
 
 ### Frontend (`.env` in frontend folder)

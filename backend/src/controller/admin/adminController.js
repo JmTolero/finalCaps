@@ -1,6 +1,7 @@
 const pool = require('../../db/config');
 const { createNotification } = require('../shared/notificationController');
 const { User } = require('../../model/shared/userModel');
+const { sendVendorApprovalEmail, sendVendorRejectionEmail } = require('../../utils/emailService');
 
 const countTotal = async (req, res) => {
     try{
@@ -156,6 +157,24 @@ const updateVendorStatus = async (req, res) => {
                 notification_type: 'system_announcement',
                 related_vendor_id: vendor_id
             });
+
+            // Send approval email
+            try {
+                const emailResult = await sendVendorApprovalEmail({
+                    fname: vendor.fname,
+                    email: vendor.email,
+                    store_name: vendor.store_name || 'Your Store'
+                });
+                
+                if (emailResult.success) {
+                    console.log(`📧 Approval email sent successfully to ${vendor.email}`);
+                } else {
+                    console.error(`❌ Failed to send approval email to ${vendor.email}:`, emailResult.error);
+                }
+            } catch (emailError) {
+                console.error(`❌ Error sending approval email to ${vendor.email}:`, emailError.message);
+                // Don't fail the approval if email fails
+            }
         } else if (status.toLowerCase() === 'rejected') {
             // Calculate auto-return date (TESTING: 5 seconds from now)
             const autoReturnDate = new Date();
@@ -182,6 +201,26 @@ const updateVendorStatus = async (req, res) => {
                 notification_type: 'system_announcement',
                 related_vendor_id: vendor_id
             });
+
+            // Send rejection email
+            try {
+                const emailResult = await sendVendorRejectionEmail({
+                    fname: vendor.fname,
+                    email: vendor.email,
+                    store_name: vendor.store_name || 'Your Store',
+                    rejectionReason: req.body.rejection_reason || 'Application requires additional review and improvements.',
+                    autoReturnDate: autoReturnDate.toLocaleDateString()
+                });
+                
+                if (emailResult.success) {
+                    console.log(`📧 Rejection email sent successfully to ${vendor.email}`);
+                } else {
+                    console.error(`❌ Failed to send rejection email to ${vendor.email}:`, emailResult.error);
+                }
+            } catch (emailError) {
+                console.error(`❌ Error sending rejection email to ${vendor.email}:`, emailError.message);
+                // Don't fail the rejection if email fails
+            }
         }
         
         console.log('Vendor status updated successfully');
