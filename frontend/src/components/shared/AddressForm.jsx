@@ -61,15 +61,15 @@ const AddressForm = ({
   ];
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+    <div className="space-y-4 sm:space-y-6">
+      <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 border-b border-gray-300 pb-2">
         {labelPrefix}Address Information
       </h3>
       
       {/* Unit Number and Street Name */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="unit_number">
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="unit_number">
             Unit/House Number
           </label>
           <input
@@ -77,24 +77,24 @@ const AddressForm = ({
             name="unit_number"
             id="unit_number"
             placeholder="Unit 123, Blk 5"
-            className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+            className="w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 hover:border-gray-500"
             value={address.unit_number}
             onChange={handleChange}
           />
         </div>
         
-        <div className="md:col-span-2">
-          <label className="block text-sm font-semibold mb-1" htmlFor="street_name">
-            Street Name {required && <span className="text-red-500">*</span>}
-            {required && !address.street_name && <span className="text-red-500 text-xs ml-2">(Required)</span>}
+        <div className="sm:col-span-2">
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="street_name">
+            Street Name {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.street_name && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
           </label>
           <input
             type="text"
             name="street_name"
             id="street_name"
             placeholder="e.g., Rizal Street, EDSA"
-            className={`w-full px-4 py-2 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white ${
-              required && !address.street_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
+              required && !address.street_name ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
             }`}
             value={address.street_name}
             onChange={handleChange}
@@ -104,19 +104,19 @@ const AddressForm = ({
       </div>
 
       {/* Barangay and City */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="barangay">
-            Barangay {required && <span className="text-red-500">*</span>}
-            {required && !address.barangay && <span className="text-red-500 text-xs ml-2">(Required)</span>}
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="barangay">
+            Barangay {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.barangay && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
           </label>
           <input
             type="text"
             name="barangay"
             id="barangay"
             placeholder="e.g., Poblacion, Barangay 1"
-            className={`w-full px-4 py-2 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white ${
-              required && !address.barangay ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
+              required && !address.barangay ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
             }`}
             value={address.barangay}
             onChange={handleChange}
@@ -125,17 +125,17 @@ const AddressForm = ({
         </div>
         
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="cityVillage">
-            City/Municipality {required && <span className="text-red-500">*</span>}
-            {required && !address.cityVillage && <span className="text-red-500 text-xs ml-2">(Required)</span>}
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="cityVillage">
+            City/Municipality {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.cityVillage && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
           </label>
           <input
             type="text"
             name="cityVillage"
             id="cityVillage"
             placeholder="e.g., Makati City, Quezon City"
-            className={`w-full px-4 py-2 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white ${
-              required && !address.cityVillage ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
+              required && !address.cityVillage ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
             }`}
             value={address.cityVillage}
             onChange={handleChange}
@@ -145,19 +145,19 @@ const AddressForm = ({
       </div>
 
       {/* Province and Region */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="province">
-            Province {required && <span className="text-red-500">*</span>}
-            {required && !address.province && <span className="text-red-500 text-xs ml-2">(Required)</span>}
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="province">
+            Province {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.province && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
           </label>
           <input
             type="text"
             name="province"
             id="province"
             placeholder="e.g., Metro Manila, Cebu"
-            className={`w-full px-4 py-2 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white ${
-              required && !address.province ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
+              required && !address.province ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
             }`}
             value={address.province}
             onChange={handleChange}
@@ -166,15 +166,15 @@ const AddressForm = ({
         </div>
         
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="region">
-            Region {required && <span className="text-red-500">*</span>}
-            {required && !address.region && <span className="text-red-500 text-xs ml-2">(Required)</span>}
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="region">
+            Region {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.region && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
           </label>
           <select
             name="region"
             id="region"
-            className={`w-full px-4 py-2 text-sm rounded border focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white ${
-              required && !address.region ? 'border-red-300 bg-red-50' : 'border-gray-300'
+            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
+              required && !address.region ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
             }`}
             value={address.region}
             onChange={handleChange}
@@ -191,9 +191,9 @@ const AddressForm = ({
       </div>
 
       {/* Postal Code and Landmark */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="postal_code">
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="postal_code">
             Postal Code
           </label>
           <input
@@ -202,14 +202,14 @@ const AddressForm = ({
             id="postal_code"
             placeholder="e.g., 1200, 6000"
             maxLength="10"
-            className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+            className="w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 hover:border-gray-500"
             value={address.postal_code}
             onChange={handleChange}
           />
         </div>
         
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="landmark">
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="landmark">
             Landmark (Optional)
           </label>
           <input
@@ -217,7 +217,7 @@ const AddressForm = ({
             name="landmark"
             id="landmark"
             placeholder="e.g., Near SM Mall, Beside Jollibee"
-            className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+            className="w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 hover:border-gray-500"
             value={address.landmark}
             onChange={handleChange}
           />
@@ -227,13 +227,13 @@ const AddressForm = ({
       {/* Address Type */}
       {showAddressType && (
         <div>
-          <label className="block text-sm font-semibold mb-1" htmlFor="address_type">
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="address_type">
             Address Type
           </label>
           <select
             name="address_type"
             id="address_type"
-            className="w-full px-4 py-2 text-sm rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white"
+            className="w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 hover:border-gray-500"
             value={address.address_type}
             onChange={handleChange}
           >
