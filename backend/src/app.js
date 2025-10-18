@@ -1,8 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const session = require('express-session');
+const passport = require('./config/passport');
 const pool = require('./db/config');
 // Import new organized routes
 const authRoutes = require('./routes/shared/authRoutes');
+const googleAuthRoutes = require('./routes/shared/googleAuthRoutes');
 const orderRoutes = require('./routes/shared/orderRoutes');
 const addressRoutes = require('./routes/shared/addressRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
@@ -19,6 +22,7 @@ const ratingRoutes = require('./routes/shared/ratingRoutes');
 const cartRoutes = require('./routes/shared/cartRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const feedbackRoutes = require('./routes/feedback');
+const passwordResetRoutes = require('./routes/shared/passwordResetRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -59,6 +63,22 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200
 }));
+
+// Session configuration for Passport
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
 
@@ -79,6 +99,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', googleAuthRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);
@@ -95,6 +116,7 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api', reviewRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/auth', passwordResetRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

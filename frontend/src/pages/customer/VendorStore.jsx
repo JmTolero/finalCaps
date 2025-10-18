@@ -288,7 +288,7 @@ export const VendorStore = () => {
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4" />
                 </button>
@@ -301,7 +301,7 @@ export const VendorStore = () => {
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors relative"
                 >
                   <img
                     src={notifIcon}
@@ -318,7 +318,7 @@ export const VendorStore = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate("/cart")}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <img src={cartIcon} alt="Cart" className="w-4 h-4" />
                 </button>
@@ -327,7 +327,7 @@ export const VendorStore = () => {
                 <div className="relative feedback-dropdown">
                   <button 
                     onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                     title="Feedback Options"
                   >
                     <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
@@ -395,7 +395,7 @@ export const VendorStore = () => {
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <img src={productsIcon} alt="Products" className="w-5 h-5" />
                 </button>
@@ -408,7 +408,7 @@ export const VendorStore = () => {
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors relative"
                 >
                   <img
                     src={notifIcon}
@@ -425,7 +425,7 @@ export const VendorStore = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate("/cart")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
                 </button>
@@ -434,7 +434,7 @@ export const VendorStore = () => {
                 <div className="relative feedback-dropdown">
                   <button 
                     onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                     title="Feedback Options"
                   >
                     <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />

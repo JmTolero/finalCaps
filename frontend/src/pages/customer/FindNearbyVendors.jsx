@@ -266,7 +266,9 @@ export const FindNearbyVendors = () => {
             <div className="flex items-center justify-between">
               <Link
                 to="/find-vendors"
-                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
+                className={`text-blue-700 hover:text-blue-800 font-medium text-sm ${
+                  location.pathname === '/find-vendors' ? 'underline' : ''
+                }`}
               >
                 Find nearby Vendors
               </Link>
@@ -435,10 +437,12 @@ export const FindNearbyVendors = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-4 lg:space-x-8">
+            <div className="flex items-center space-x-4 lg:space-x-4">
               <Link
                 to="/find-vendors"
-                className="text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap"
+                className={`text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap ${
+                  location.pathname === '/find-vendors' ? 'underline' : ''
+                }`}
               >
                 Find nearby Vendors
               </Link>
@@ -642,12 +646,7 @@ export const FindNearbyVendors = () => {
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 mx-auto sm:mx-0">
                         {vendor.profile_image_url ? (
                           <img
-                            src={`${
-                              process.env.REACT_APP_API_URL ||
-                              "http://localhost:3001"
-                            }/uploads/vendor-documents/${
-                              vendor.profile_image_url
-                            }`}
+                            src={vendor.profile_image_url}
                             alt={vendor.store_name}
                             className="w-full h-full object-cover"
                           />

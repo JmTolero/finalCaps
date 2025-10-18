@@ -4,6 +4,8 @@
     import { CartProvider } from './contexts/CartContext';
     import { LandingPage } from './pages/shared/landingpage';
     import { Login } from "./pages/shared/login.jsx";
+    import { ForgotPassword } from "./pages/shared/forgotPassword.jsx";
+    import { ResetPassword } from "./pages/shared/resetPassword.jsx";
     import { UserRegister } from "./pages/shared/userRegister.jsx";
     import { VendorRegister } from "./pages/vendor/vendorRegister.jsx";
     import { BecomeVendor } from "./pages/vendor/BecomeVendor.jsx";
@@ -25,6 +27,7 @@ import { OrderConfirmation } from "./pages/customer/OrderConfirmation.jsx";
 import { MyFeedback } from "./pages/customer/MyFeedback.jsx";
 import PaymentPage from "./pages/customer/PaymentPage.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
+import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
     // import Nav from '../src/components/nav';
 
     function App() {
@@ -111,6 +114,9 @@ import LoginTest from "./pages/shared/LoginTest.jsx";
         <Routes>
           <Route path="/" element={<LandingPage />} />        
           <Route path="/login" element={<LoginRoute />} />
+          <Route path="/google-callback" element={<GoogleCallback />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/user-register" element={<UserRegister />} />
           <Route path="/vendor-register" element={<VendorRegister />} />
           <Route path="/become-vendor" element={requireRole('customer', <BecomeVendor />)} />

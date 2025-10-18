@@ -50,6 +50,12 @@ export const UserRegister = () => {
     handleValidatedChange(e, setForm, noSpaceFields);
   };
 
+  const handleGoogleSignUp = () => {
+    const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+    // Redirect to Google OAuth endpoint
+    window.location.href = `${apiBase}/api/auth/google`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ type: null, message: "" });
@@ -321,10 +327,11 @@ export const UserRegister = () => {
                     <span className="text-gray-600 text-xs sm:text-sm font-medium">or</span>
                   </div>
 
-                  {/* Google Sign In */}
+                  {/* Google Sign Up */}
                   <div className="flex justify-center">
                     <button
                       type="button"
+                      onClick={handleGoogleSignUp}
                       className="flex items-center justify-center border-2 border-gray-300 rounded-lg sm:rounded-xl px-4 sm:px-6 py-2 sm:py-3 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
                     >
                       <img
@@ -333,7 +340,7 @@ export const UserRegister = () => {
                         className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3"
                       />
                       <span className="text-gray-800 font-medium text-sm sm:text-base">
-                        Sign in with Google
+                        Sign up with Google
                       </span>
                     </button>
                   </div>

@@ -6,6 +6,7 @@ import StarRating from '../../components/shared/StarRating';
 import { useCart } from '../../contexts/CartContext';
 import { getImageUrl } from '../../utils/imageUtils';
 import FeedbackModal from '../../components/shared/FeedbackModal';
+import ContactNumberModal from '../../components/shared/ContactNumberModal';
 
 // Import customer icons
 import cartIcon from '../../assets/images/customerIcon/cart.png';
@@ -49,6 +50,9 @@ export const FlavorDetail = () => {
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
+  // Contact number modal state
+  const [showContactNumberModal, setShowContactNumberModal] = useState(false);
+  
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
 
@@ -60,6 +64,16 @@ export const FlavorDetail = () => {
     } else if (action === 'view') {
       navigate('/customer/my-feedback');
     }
+  };
+
+  // Handle contact number modal actions
+  const handleContactNumberModalClose = () => {
+    setShowContactNumberModal(false);
+  };
+
+  const handleGoToSettings = () => {
+    setShowContactNumberModal(false);
+    navigate('/customer?view=settings&tab=profile');
   };
   
   // Close dropdown when clicking outside
@@ -276,6 +290,16 @@ export const FlavorDetail = () => {
 
   const handleBookNow = () => {
     if (!flavor) return;
+    
+    // Check if user has contact number
+    const userRaw = sessionStorage.getItem('user');
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      if (!user.contact_no || user.contact_no.trim() === '') {
+        setShowContactNumberModal(true);
+        return;
+      }
+    }
     
     // Validate required fields
     if (!deliveryDate && !deliveryTime) {
@@ -1145,6 +1169,13 @@ export const FlavorDetail = () => {
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
         userRole="customer"
+      />
+
+      {/* Contact Number Modal */}
+      <ContactNumberModal 
+        isOpen={showContactNumberModal}
+        onClose={handleContactNumberModalClose}
+        onGoToSettings={handleGoToSettings}
       />
     </>
   );

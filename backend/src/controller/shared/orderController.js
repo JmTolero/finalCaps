@@ -45,6 +45,25 @@ const createOrder = async (req, res) => {
             });
         }
 
+        // Check if customer has a contact number
+        const [customerData] = await pool.query(`
+            SELECT contact_no FROM users WHERE user_id = ?
+        `, [customer_id]);
+
+        if (customerData.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Customer not found'
+            });
+        }
+
+        if (!customerData[0].contact_no || customerData[0].contact_no.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                error: 'Contact number is required to place an order. Please add your contact number in your profile settings.'
+            });
+        }
+
         // Insert order into database
         const [orderResult] = await pool.query(`
             INSERT INTO orders (

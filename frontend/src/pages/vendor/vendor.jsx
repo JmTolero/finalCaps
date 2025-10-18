@@ -2464,7 +2464,7 @@ export const Vendor = () => {
               />
               {/* Notification badge */}
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -3592,7 +3592,7 @@ export const Vendor = () => {
             />
             {/* Notification badge */}
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -6735,26 +6735,26 @@ export const Vendor = () => {
               <div className="min-h-screen">
                 <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
                   <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center space-x-4">
-                      <img 
-                        src={bellNotificationIcon} 
-                        alt="Notifications" 
-                        className="w-10 h-10"
-                      />
-                      <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
-                          Notifications
-                        </h1>
-                      </div>
-                    </div>
+                     <div className="flex items-center space-x-2">
+                       <img 
+                         src={bellNotificationIcon} 
+                         alt="Notifications" 
+                         className="w-5 h-5 sm:w-6 sm:h-6"
+                       />
+                       <div>
+                         <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                           Notifications
+                         </h1>
+                       </div>
+                     </div>
                     
                     {/* Mark All as Read Button */}
                     {notifications.length > 0 && notifications.some(n => !n.is_read) && (
                       <button
                         onClick={markAllNotificationsAsRead}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center space-x-2"
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors flex items-center justify-center space-x-1 w-full sm:w-auto"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span>Mark All as Read</span>
@@ -6762,19 +6762,19 @@ export const Vendor = () => {
                     )}
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-1.5">
                     {notificationsLoading ? (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <span className="ml-3 text-gray-600">Loading notifications...</span>
+                      <div className="flex flex-col sm:flex-row justify-center items-center py-4 space-y-2 sm:space-y-0">
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-blue-600"></div>
+                        <span className="ml-0 sm:ml-2 text-xs text-gray-600">Loading...</span>
                       </div>
                     ) : notifications.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <img src={bellNotificationIcon} alt="No notifications" className="w-8 h-8 opacity-50" />
+                      <div className="text-center py-4 px-2">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <img src={bellNotificationIcon} alt="No notifications" className="w-4 h-4 sm:w-5 sm:h-5 opacity-50" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications yet</h3>
-                        <p className="text-gray-600">You'll see order updates and customer interactions here</p>
+                        <h3 className="text-xs sm:text-sm font-medium text-gray-900 mb-1">No notifications yet</h3>
+                        <p className="text-xs text-gray-600">You'll see order updates here</p>
                       </div>
                     ) : (
                       notifications.map((notification) => {
@@ -6784,60 +6784,64 @@ export const Vendor = () => {
                         return (
                           <div 
                             key={notification.id} 
-                            className={`border-l-4 p-4 rounded-r-lg cursor-pointer transition-colors ${
+                            className={`border-l-2 p-2 rounded-r-sm cursor-pointer transition-colors touch-manipulation ${
                               notification.is_read 
                                 ? 'bg-gray-50 border-gray-300'
                                 : 'bg-blue-50 border-blue-400'
                             }`}
                             onClick={() => markNotificationAsRead(notification.id)}
                           >
-                            <div className="flex items-start space-x-3">
-                              <div className={`w-2 h-2 rounded-full mt-2 ${
+                            <div className="flex items-start space-x-1.5">
+                              <div className={`w-1 h-1 rounded-full mt-1.5 flex-shrink-0 ${
                                 notification.is_read 
                                   ? 'bg-gray-400'
                                   : 'bg-blue-500'
                               }`}></div>
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-xs text-gray-900 break-words leading-tight">
                                   {notification.title}
                                 </h3>
-                                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                                <p className="text-xs text-gray-500 mt-2">
-                                  {(() => {
-                                    try {
-                                      const date = new Date(notification.created_at);
-                                      // If the date is invalid, return a fallback
-                                      if (isNaN(date.getTime())) {
-                                        return 'Invalid date';
+                                <p className="text-xs text-gray-600 mt-0.5 break-words leading-tight">{notification.message}</p>
+                                <div className="flex items-center justify-between mt-1">
+                                  <p className="text-xs text-gray-500">
+                                    {(() => {
+                                      try {
+                                        const date = new Date(notification.created_at);
+                                        // If the date is invalid, return a fallback
+                                        if (isNaN(date.getTime())) {
+                                          return 'Invalid date';
+                                        }
+                                        return date.toLocaleString('en-PH', {
+                                          timeZone: 'Asia/Manila',
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        });
+                                      } catch (error) {
+                                        console.error('Date formatting error:', error);
+                                        return new Date(notification.created_at).toLocaleString();
                                       }
-                                      return date.toLocaleString('en-PH', {
-                                        timeZone: 'Asia/Manila',
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: true
-                                      });
-                                    } catch (error) {
-                                      console.error('Date formatting error:', error);
-                                      return new Date(notification.created_at).toLocaleString();
-                                    }
-                                  })()}
-                                </p>
-                                {notification.related_order_id && (
-                                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
-                                    Order #{notification.related_order_id}
-                                  </span>
-                                )}
-                                {isReviewNotification && (
-                                  <span className="inline-block mt-2 ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                    ⭐ Review
-                                  </span>
-                                )}
+                                    })()}
+                                  </p>
+                                  <div className="flex gap-1">
+                                    {notification.related_order_id && (
+                                      <span className="inline-block px-1 py-0.5 text-xs rounded bg-blue-100 text-blue-800">
+                                        #{notification.related_order_id}
+                                      </span>
+                                    )}
+                                    {isReviewNotification && (
+                                      <span className="inline-block px-1 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
+                                        ⭐
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                               {!notification.is_read && (
-                                <div className="w-3 h-3 rounded-full mt-2 bg-blue-500"></div>
+                                <div className="w-1 h-1 rounded-full mt-1.5 bg-blue-500 flex-shrink-0"></div>
                               )}
                             </div>
                           </div>
@@ -6851,106 +6855,89 @@ export const Vendor = () => {
 
             {activeView === "feedback" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
-                  <div className="flex items-center space-x-4 mb-8">
+                <div className="bg-white rounded-lg p-2 sm:p-3 mx-1 shadow-lg">
+                  <div className="flex items-center space-x-2 mb-3">
                     <img 
                       src={feedbackIcon} 
                       alt="Feedback" 
-                      className="w-10 h-10"
+                      className="w-4 h-4 sm:w-5 sm:h-5"
                     />
                     <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
+                      <h1 className="text-base sm:text-lg font-bold text-gray-900">
                         Customer Feedback
                       </h1>
-                      <p className="text-gray-600">
-                        View and manage customer reviews and feedback
+                      <p className="text-xs text-gray-600">
+                        Customer reviews
                       </p>
                     </div>
                   </div>
                   
                   {feedbackLoading ? (
-                    <div className="flex justify-center items-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      <span className="ml-3 text-gray-600">Loading customer feedback...</span>
+                    <div className="flex flex-col sm:flex-row justify-center items-center py-4 space-y-2 sm:space-y-0">
+                      <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-0 sm:ml-3 text-xs sm:text-sm text-gray-600">Loading feedback...</span>
                     </div>
                   ) : customerFeedback.reviews.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <img src={feedbackIcon} alt="No feedback" className="w-8 h-8 opacity-50" />
+                    <div className="text-center py-6 px-2">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <img src={feedbackIcon} alt="No feedback" className="w-5 h-5 sm:w-6 sm:h-6 opacity-50" />
                       </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No reviews yet</h3>
-                      <p className="text-gray-600">Customer reviews will appear here once customers start leaving feedback</p>
+                      <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1">No reviews yet</h3>
+                      <p className="text-xs sm:text-sm text-gray-600">Customer reviews will appear here</p>
                     </div>
                   ) : (
                     <>
                       {/* Summary Card */}
-                      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 mb-8 text-white">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <h2 className="text-2xl font-bold mb-2">
-                              {customerFeedback.summary.average_rating} ⭐
-                            </h2>
-                            <p className="text-blue-400">
-                              Based on {customerFeedback.summary.total_reviews} review{customerFeedback.summary.total_reviews !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <div className="space-y-1">
-                              {[5, 4, 3, 2, 1].map((star) => (
-                                <div key={star} className="flex items-center space-x-2">
-                                  <span className="text-sm">{star}★</span>
-                                  <div className="w-20 bg-blue-300 rounded-full h-2">
-                                    <div 
-                                      className="bg-white h-2 rounded-full" 
-                                      style={{ 
-                                        width: `${customerFeedback.summary.total_reviews > 0 
-                                          ? (customerFeedback.summary[`${star}_star`] / customerFeedback.summary.total_reviews) * 100 
-                                          : 0}%` 
-                                      }}
-                                    ></div>
-                                  </div>
-                                  <span className="text-xs text-blue-100">
-                                    {customerFeedback.summary[`${star}_star`] || 0}
-                                  </span>
-                                </div>
-                              ))}
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {customerFeedback.summary.average_rating}
+                            </div>
+                            <div>
+                              <div className="flex text-yellow-400 text-lg">
+                                {renderStars(customerFeedback.summary.average_rating)}
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {customerFeedback.summary.total_reviews} review{customerFeedback.summary.total_reviews !== 1 ? 's' : ''}
+                              </p>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Reviews Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
                         {customerFeedback.reviews.map((review) => {
                           const initials = getInitials(review.customer_fname, review.customer_lname);
                           const avatarColor = getAvatarColor(initials);
                           
                           return (
-                            <div key={review.review_id} className="bg-gray-50 rounded-lg p-6 hover:shadow-md transition-shadow">
-                              <div className="flex items-center space-x-3 mb-4">
-                                <div className={`w-10 h-10 ${avatarColor.bg} rounded-full flex items-center justify-center`}>
-                                  <span className={`${avatarColor.text} font-semibold`}>{initials}</span>
+                            <div key={review.review_id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                              <div className="flex items-start space-x-3">
+                                <div className={`w-8 h-8 ${avatarColor.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                                  <span className={`${avatarColor.text} font-semibold text-sm`}>{initials}</span>
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-gray-900">
-                                    {review.customer_fname} {review.customer_lname}
-                                  </h3>
-                                  <div className="flex items-center space-x-1">
-                                    <span className="text-yellow-400">{renderStars(review.rating)}</span>
-                                    <span className="text-sm text-gray-600">{review.rating}.0</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <h3 className="font-semibold text-sm text-gray-900">
+                                      {review.customer_fname} {review.customer_lname}
+                                    </h3>
+                                    <div className="flex items-center space-x-1">
+                                      <span className="text-yellow-400 text-sm">{renderStars(review.rating)}</span>
+                                      <span className="text-sm text-gray-600">{review.rating}.0</span>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                              {review.comment && (
-                                <div className="bg-white rounded-lg p-4 mb-3 border-l-4 border-blue-400">
-                                  <p className="text-gray-800 text-base leading-relaxed font-medium">
-                                    "{review.comment}"
+                                  {review.comment && (
+                                    <p className="text-gray-700 text-sm leading-relaxed mb-2">
+                                      "{review.comment}"
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-500">
+                                    {formatTimeAgo(review.created_at)}
                                   </p>
                                 </div>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                {formatTimeAgo(review.created_at)}
-                              </p>
+                              </div>
                             </div>
                           );
                         })}

@@ -32,6 +32,12 @@ export const Login = () => {
       handleValidatedChange(e, setForm, ['username', 'password']);
     };
 
+    const handleGoogleSignIn = () => {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      // Redirect to Google OAuth endpoint
+      window.location.href = `${apiBase}/api/auth/google`;
+    };
+
     const handleSubmit = async (e) => {
       e.preventDefault();
       setStatus({ type: null, message: "" });
@@ -247,7 +253,7 @@ export const Login = () => {
 
                   {/* Forgot Password Link */}
                   <div className="text-right">
-                    <Link to="#" className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 text-sm sm:text-base">
+                    <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 text-sm sm:text-base">
                       Forgot Password?
                     </Link>
                   </div>
@@ -285,6 +291,7 @@ export const Login = () => {
                     <div className="flex justify-center">
                       <button
                         type="button"
+                        onClick={handleGoogleSignIn}
                         className="flex items-center justify-center border-2 border-gray-300 rounded-lg sm:rounded-xl px-4 sm:px-6 py-2 sm:py-3 bg-white hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
                       >
                         <img

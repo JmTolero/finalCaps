@@ -926,6 +926,15 @@ export const Customer = () => {
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('userChanged'));
         
+        // Show success message
+        setStatus({ type: 'success', message: response.data.message || 'Profile updated successfully!' });
+        
+        // Auto-scroll to top and auto-dismiss after 3 seconds
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          setStatus({ type: null, message: '' });
+        }, 3000);
+        
         console.log('Profile updated successfully!');
       } else {
         showError('Failed to update profile. Please try again.');

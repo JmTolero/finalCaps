@@ -654,9 +654,6 @@ export const Notifications = () => {
                   >
                     Notifications
                   </button>
-                  <button className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base border-2 border-blue-200">
-                    Customer Support
-                  </button>
                 </div>
               </div>
             </div>

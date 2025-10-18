@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { getImageUrl } from '../../utils/imageUtils';
 import FeedbackModal from '../../components/shared/FeedbackModal';
+import ContactNumberModal from '../../components/shared/ContactNumberModal';
 import axios from 'axios';
 
 // Import customer icons
@@ -32,6 +33,9 @@ export const CartView = () => {
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
+  // Contact number modal state
+  const [showContactNumberModal, setShowContactNumberModal] = useState(false);
+  
   // Debug modal state
   useEffect(() => {
     console.log('🎯 CartView: showFeedbackModal state changed to:', showFeedbackModal);
@@ -50,6 +54,16 @@ export const CartView = () => {
       console.log('🎯 CartView: Navigating to my feedback page');
       navigate('/customer/my-feedback');
     }
+  };
+
+  // Handle contact number modal actions
+  const handleContactNumberModalClose = () => {
+    setShowContactNumberModal(false);
+  };
+
+  const handleGoToSettings = () => {
+    setShowContactNumberModal(false);
+    navigate('/customer?view=settings&tab=profile');
   };
   
   // Close dropdown when clicking outside
@@ -272,6 +286,16 @@ export const CartView = () => {
     if (items.length === 0) {
       alert('Your cart is empty!');
       return;
+    }
+    
+    // Check if user has contact number
+    const userRaw = sessionStorage.getItem('user');
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      if (!user.contact_no || user.contact_no.trim() === '') {
+        setShowContactNumberModal(true);
+        return;
+      }
     }
     
     console.log('🔍 CartView: handleProceedToCheckout - userAddress:', userAddress);
@@ -854,6 +878,13 @@ export const CartView = () => {
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
         userRole="customer"
+      />
+
+      {/* Contact Number Modal */}
+      <ContactNumberModal 
+        isOpen={showContactNumberModal}
+        onClose={handleContactNumberModalClose}
+        onGoToSettings={handleGoToSettings}
       />
     </>
   );
