@@ -294,7 +294,11 @@ export const VendorStore = () => {
                 </button>
 
                 {/* Shops Icon */}
-                <button className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
+                <button 
+                  onClick={() => navigate('/all-vendor-stores')}
+                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  title="All Vendor Stores"
+                >
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
                 </button>
 
@@ -359,27 +363,11 @@ export const VendorStore = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Bottom Row: Back to Stores */}
-            <div className="w-full">
-              <button
-                onClick={() => navigate('/all-vendor-stores')}
-                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
-              >
-                ← Back to Stores
-              </button>
-            </div>
           </div>
 
           {/* Desktop Layout - Side by Side */}
           <div className="hidden sm:flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/all-vendor-stores')}
-                className="text-blue-700 hover:text-blue-800 font-medium"
-              >
-                ← Back to Stores
-              </button>
             </div>
 
             <div className="flex items-center space-x-4 ml-6">
@@ -401,7 +389,11 @@ export const VendorStore = () => {
                 </button>
 
                 {/* Shops Icon */}
-                <button className="p-2 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
+                <button 
+                  onClick={() => navigate('/all-vendor-stores')}
+                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  title="All Vendor Stores"
+                >
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
                 </button>
 
