@@ -55,8 +55,9 @@ export const Customer = () => {
   // Orders data
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [drumReturnLoading, setDrumReturnLoading] = useState(null);
   const [showDrumReturnModal, setShowDrumReturnModal] = useState(false);
   const [showDrumReturnSuccessModal, setShowDrumReturnSuccessModal] = useState(false);
@@ -956,49 +957,68 @@ export const Customer = () => {
         <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
           <div className="max-w-6xl mx-auto px-4">
             {/* Header */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-                  <p className="text-gray-600 mt-2">Track your order status and history</p>
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Orders</h1>
+                    {/* Mobile back button - only visible on mobile */}
+                    <button
+                      onClick={() => {
+                        setActiveView('dashboard');
+                        navigate('/customer');
+                      }}
+                      className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200 transition-colors flex items-center sm:hidden"
+                      title="Back to Home"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Track your order status and history</p>
                 </div>
+                {/* Desktop back button - only visible on desktop */}
                 <button
                   onClick={() => {
                     setActiveView('dashboard');
                     navigate('/customer');
                   }}
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm hidden sm:flex items-center"
+                  title="Back to Home"
                 >
                   ← Back to Home
                 </button>
               </div>
               
               {/* Order Filters */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: 'all', label: 'All Orders', count: orders.length },
-                  { value: 'pending', label: 'Pending', count: orders.filter(o => o.status === 'pending').length },
-                  { value: 'confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'confirmed').length },
-                  { value: 'preparing', label: 'Preparing', count: orders.filter(o => o.status === 'preparing').length },
-                  { value: 'out_for_delivery', label: 'Out for Delivery', count: orders.filter(o => o.status === 'out_for_delivery').length },
-                  { value: 'delivered', label: 'Delivered', count: orders.filter(o => o.status === 'delivered').length },
-                  { value: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'cancelled').length }
-                ].map((filter) => (
-                  <button
-                    key={filter.value}
-                    onClick={() => {
-                      console.log('🔍 Filter button clicked:', filter.value);
-                      setOrderFilter(filter.value);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      orderFilter === filter.value
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {filter.label} {filter.count > 0 && `(${filter.count})`}
-                  </button>
-                ))}
+              <div className="overflow-x-auto">
+                <div className="flex gap-2 pb-2 min-w-max">
+                  {[
+                    { value: 'all', label: 'All Orders', count: orders.length },
+                    { value: 'pending', label: 'Pending', count: orders.filter(o => o.status === 'pending').length },
+                    { value: 'confirmed', label: 'Confirmed', count: orders.filter(o => o.status === 'confirmed').length },
+                    { value: 'preparing', label: 'Preparing', count: orders.filter(o => o.status === 'preparing').length },
+                    { value: 'out_for_delivery', label: 'Out for Delivery', count: orders.filter(o => o.status === 'out_for_delivery').length },
+                    { value: 'delivered', label: 'Delivered', count: orders.filter(o => o.status === 'delivered').length },
+                    { value: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'cancelled').length }
+                  ].map((filter) => (
+                    <button
+                      key={filter.value}
+                      onClick={() => {
+                        console.log('🔍 Filter button clicked:', filter.value);
+                        setOrderFilter(filter.value);
+                      }}
+                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                        orderFilter === filter.value
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {filter.label} {filter.count > 0 && `(${filter.count})`}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1053,50 +1073,50 @@ export const Customer = () => {
                 ) : (
                 <div className="divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
-                    <div key={order.order_id} className="p-6">
+                    <div key={order.order_id} className="p-3 sm:p-6">
                       {/* Condensed Order Summary */}
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-3 sm:space-y-0">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-4">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                            <div className="flex-1">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                                 Order #{order.order_id}
                               </h3>
-                                    <p className="text-sm text-gray-600">
-                                      {order.vendor_name} • {new Date(order.created_at).toLocaleDateString()}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      🕒 Delivery: {order.delivery_datetime ? (() => {
-                                        const deliveryDate = new Date(order.delivery_datetime);
-                                        console.log('🕒 Customer order display:', {
-                                          orderId: order.order_id,
-                                          rawDatetime: order.delivery_datetime,
-                                          parsedDate: deliveryDate,
-                                          formatted: deliveryDate.toLocaleString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true
-                                          })
-                                        });
-                                        return deliveryDate.toLocaleString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                          hour12: true
-                                        });
-                                      })() : 'Not scheduled'}
-                                    </p>
+                              <p className="text-xs sm:text-sm text-gray-600">
+                                {order.vendor_name} • {new Date(order.created_at).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                🕒 Delivery: {order.delivery_datetime ? (() => {
+                                  const deliveryDate = new Date(order.delivery_datetime);
+                                  console.log('🕒 Customer order display:', {
+                                    orderId: order.order_id,
+                                    rawDatetime: order.delivery_datetime,
+                                    parsedDate: deliveryDate,
+                                    formatted: deliveryDate.toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })
+                                  });
+                                  return deliveryDate.toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  });
+                                })() : 'Not scheduled'}
+                              </p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
+                            <div className="text-left sm:text-right">
+                              <p className="text-base sm:text-lg font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                          <span className={`inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full w-fit ${
                             order.status === 'pending' 
                               ? 'bg-yellow-100 text-yellow-800' 
                               : order.status === 'confirmed'
@@ -1114,334 +1134,17 @@ export const Customer = () => {
                             {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
                           </span>
                           <button
-                            onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowOrderModal(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors w-full sm:w-auto"
                           >
-                            {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
+                            View Details
                           </button>
                         </div>
                       </div>
 
-                      {/* Expanded Order Details */}
-                      {expandedOrderId === order.order_id && (
-                        <div className="border-t pt-4 space-y-6">
-                          {/* Order Status Progression */}
-                          {(order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered') && (
-                        <div className="mb-6">
-                          <h4 className="font-medium text-gray-900 mb-3">Order Progress</h4>
-                          <div className="flex items-center justify-between">
-                            {/* Step 1: Confirmed */}
-                            <div className="flex flex-col items-center">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
-                                  ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
-                              }`}>
-                                ✓
-                              </div>
-                              <span className="text-xs mt-1 text-center">Confirmed</span>
-                            </div>
-                            
-                            {/* Progress Line 1 */}
-                            <div className={`flex-1 h-1 mx-2 ${
-                              order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
-                                ? 'bg-green-500' : 'bg-gray-300'
-                            }`}></div>
-                            
-                            {/* Step 2: Preparing */}
-                            <div className="flex flex-col items-center">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered'
-                                  ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                              }`}>
-                                {order.status === 'preparing' ? '🍦' : '✓'}
-                              </div>
-                              <span className="text-xs mt-1 text-center">Preparing</span>
-                            </div>
-                            
-                            {/* Progress Line 2 */}
-                            <div className={`flex-1 h-1 mx-2 ${
-                              order.status === 'out_for_delivery' || order.status === 'delivered'
-                                ? 'bg-purple-500' : 'bg-gray-300'
-                            }`}></div>
-                            
-                            {/* Step 3: Out for Delivery */}
-                            <div className="flex flex-col items-center">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                order.status === 'out_for_delivery' || order.status === 'delivered'
-                                  ? 'bg-purple-500 text-white' : 'bg-gray-300 text-gray-600'
-                              }`}>
-                                {order.status === 'out_for_delivery' ? '🚚' : '✓'}
-                              </div>
-                              <span className="text-xs mt-1 text-center">Out for Delivery</span>
-                            </div>
-                            
-                            {/* Progress Line 3 */}
-                            <div className={`flex-1 h-1 mx-2 ${
-                              order.status === 'delivered' ? 'bg-green-500' : 'bg-gray-300'
-                            }`}></div>
-                            
-                            {/* Step 4: Delivered */}
-                            <div className="flex flex-col items-center">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                order.status === 'delivered'
-                                  ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
-                              }`}>
-                                {order.status === 'delivered' ? '🎉' : '✓'}
-                              </div>
-                              <span className="text-xs mt-1 text-center">Delivered</span>
-                            </div>
-                          </div>
-                          
-                          {/* Current Status Message */}
-                          <div className="mt-4 text-center">
-                            <p className="text-sm text-gray-600">
-                              {order.status === 'confirmed' && 'Order confirmed! Waiting for payment to start preparation.'}
-                              {order.status === 'preparing' && '🍦 Your ice cream is being prepared!'}
-                              {order.status === 'out_for_delivery' && '🚚 Your order is on the way!'}
-                              {order.status === 'delivered' && '🎉 Order delivered successfully!'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Vendor</h4>
-                          <p className="text-gray-600">{order.vendor_name || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Total Amount</h4>
-                          <p className="text-lg font-semibold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Order Items Details */}
-                      {order.order_items_details && (
-                        <div className="mb-4">
-                          <h4 className="font-medium text-gray-900 mb-2">Order Items</h4>
-                          <div className="bg-pink-50 rounded-lg p-4">
-                            <p className="text-gray-800 font-medium">{order.order_items_details}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="mb-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Delivery Details</h4>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Address:</span>
-                            <p className="text-gray-900">{order.delivery_address || 'No address specified'}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Scheduled Date & Time:</span>
-                            <p className="text-gray-900">
-                              {order.delivery_datetime ? 
-                                new Date(order.delivery_datetime).toLocaleString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                                }) : 'No delivery time specified'
-                              }
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Payment</h4>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-gray-600">Method:</span>
-                          <span className="font-medium">{order.payment_method?.toLowerCase() === 'gcash' || order.payment_method?.toLowerCase() === 'gcaash' ? 'GCash' : order.payment_method?.toUpperCase() || 'N/A'}</span>
-                          {order.payment_type && (
-                            <>
-                              <span className="text-gray-400">•</span>
-                              <span className="text-sm text-gray-600">
-                                {order.payment_type === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-gray-600">Status:</span>
-                          <span className={`font-medium ${
-                            order.payment_status === 'unpaid' ? 'text-yellow-600' : 
-                            order.payment_status === 'paid' ? 'text-green-600' : 
-                            order.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
-                          }`}>
-                            {order.payment_status?.charAt(0).toUpperCase() + order.payment_status?.slice(1) || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                          <p className="text-green-800 font-medium mb-2">Order Approved! Payment Required</p>
-                          <p className="text-green-700 text-sm mb-3">
-                            Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
-                          </p>
-                          <button 
-                            onClick={() => handlePayment(order)}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            💳 Pay Now via GCash
-                          </button>
-                        </div>
-                      )}
-
-                      {order.status === 'pending' && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <p className="text-yellow-800 font-medium mb-1">⏳ Order Pending Approval</p>
-                              <p className="text-yellow-700 text-sm">
-                                Your order is waiting for vendor approval. You can cancel it if needed.
-                              </p>
-                            </div>
-                            <button 
-                              onClick={() => {
-                                console.log('🚫 Cancel button clicked for order:', order.order_id);
-                                handleCancelOrder(order.order_id);
-                              }}
-                              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-                            >
-                              <span>❌</span>
-                              <span>Cancel Order</span>
-                            </button>
-                          </div>
-                          <p className="text-yellow-600 text-sm">
-                            The vendor will review your order and notify you once it's approved or if any changes are needed.
-                          </p>
-                        </div>
-                      )}
-
-                      {order.status === 'delivered' && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <p className="text-blue-800 font-medium mb-1">🎉 Order Delivered Successfully!</p>
-                              <p className="text-blue-700 text-sm">Your ice cream order has been delivered. Enjoy!</p>
-                            </div>
-                            {order.drum_status === 'return_requested' ? (
-                              <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                📦 Return Requested
-                              </span>
-                            ) : order.drum_status === 'returned' ? (
-                              <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
-                                ✅ Container Returned
-                              </span>
-                            ) : (
-                              <button 
-                                onClick={() => handleDrumReturn(order)}
-                                disabled={drumReturnLoading === order.order_id}
-                                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                              >
-                                {drumReturnLoading === order.order_id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                    <span>Requesting...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span>📦</span>
-                                    <span>Return Container</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                          {order.drum_status === 'return_requested' && (
-                            <p className="text-blue-600 text-sm">
-                              The vendor has been notified to pick up the container. They will contact you to schedule the pickup.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Review Section - Only for delivered orders */}
-                      {order.status === 'delivered' && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                          {orderReviews[order.order_id] ? (
-                            <div>
-                              <p className="text-blue-800 font-medium mb-2">⭐ Your Review</p>
-                              <div className="flex items-center space-x-1 mb-2">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <span
-                                    key={star}
-                                    className={`text-xl ${
-                                      star <= orderReviews[order.order_id].rating
-                                        ? 'text-yellow-400'
-                                        : 'text-gray-300'
-                                    }`}
-                                  >
-                                    ★
-                                  </span>
-                                ))}
-                                <span className="text-sm text-gray-600 ml-2">
-                                  {orderReviews[order.order_id].rating}.0 / 5.0
-                                </span>
-                              </div>
-                              {orderReviews[order.order_id].comment && (
-                                <p className="text-gray-700 text-sm italic">
-                                  "{orderReviews[order.order_id].comment}"
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-blue-800 font-medium mb-1">
-                                  ⭐ How was your experience?
-                                </p>
-                                <p className="text-blue-700 text-sm">
-                                  Share your feedback about this shop
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setSelectedOrderForReview(order);
-                                  setReviewRating(0);
-                                  setReviewComment('');
-                                  setShowReviewModal(true);
-                                }}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                              >
-                                <span>⭐</span>
-                                <span>Leave Review</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {order.status === 'cancelled' && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              {order.decline_reason ? (
-                                <>
-                                  <p className="text-red-800 font-medium mb-1">❌ Order Declined by Vendor</p>
-                                  <p className="text-red-700 text-sm">This order has been declined by the vendor.</p>
-                                  <div className="mt-2 p-3 bg-red-100 rounded-lg">
-                                    <p className="text-red-800 text-sm font-medium mb-1">Reason for decline:</p>
-                                    <p className="text-red-700 text-sm">{order.decline_reason}</p>
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <p className="text-red-800 font-medium mb-1">❌ Order Cancelled</p>
-                                  <p className="text-red-700 text-sm">This order has been cancelled.</p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1689,6 +1392,372 @@ export const Customer = () => {
                 >
                   OK
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Details Modal */}
+        {showOrderModal && selectedOrder && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowOrderModal(false);
+                setSelectedOrder(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-4">
+              <div className="p-3 sm:p-6">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 pr-2">
+                    Order #{selectedOrder.order_id} Details
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowOrderModal(false);
+                      setSelectedOrder(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Order Status Progression */}
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered') && (
+                  <div className="mb-4 sm:mb-6">
+                    <h4 className="font-medium text-gray-900 mb-3 text-sm sm:text-base">Order Progress</h4>
+                    <div className="flex items-center justify-between">
+                      {/* Step 1: Confirmed */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                          selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
+                            ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          <span className="text-xs sm:text-sm">✓</span>
+                        </div>
+                        <span className="text-xs mt-1 text-center">Confirmed</span>
+                      </div>
+                      
+                      {/* Progress Line 1 */}
+                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                        selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
+                          ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      
+                      {/* Step 2: Preparing */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                          selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
+                            ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'preparing' ? '🍦' : '✓'}</span>
+                        </div>
+                        <span className="text-xs mt-1 text-center">Preparing</span>
+                      </div>
+                      
+                      {/* Progress Line 2 */}
+                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                        selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
+                          ? 'bg-purple-500' : 'bg-gray-300'
+                      }`}></div>
+                      
+                      {/* Step 3: Out for Delivery */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                          selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
+                            ? 'bg-purple-500 text-white' : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'out_for_delivery' ? '🚚' : '✓'}</span>
+                        </div>
+                        <span className="text-xs mt-1 text-center">Out for Delivery</span>
+                      </div>
+                      
+                      {/* Progress Line 3 */}
+                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                        selectedOrder.status === 'delivered' ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      
+                      {/* Step 4: Delivered */}
+                      <div className="flex flex-col items-center">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                          selectedOrder.status === 'delivered'
+                            ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'delivered' ? '🎉' : '✓'}</span>
+                        </div>
+                        <span className="text-xs mt-1 text-center">Delivered</span>
+                      </div>
+                    </div>
+                    
+                    {/* Current Status Message */}
+                    <div className="mt-3 sm:mt-4 text-center">
+                      <p className="text-xs sm:text-sm text-gray-600 px-2">
+                        {selectedOrder.status === 'confirmed' && 'Order confirmed! Waiting for payment to start preparation.'}
+                        {selectedOrder.status === 'preparing' && '🍦 Your ice cream is being prepared!'}
+                        {selectedOrder.status === 'out_for_delivery' && '🚚 Your order is on the way!'}
+                        {selectedOrder.status === 'delivered' && '🎉 Order delivered successfully!'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                      
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Vendor</h4>
+                    <p className="text-gray-600 text-sm sm:text-base">{selectedOrder.vendor_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Total Amount</h4>
+                    <p className="text-base sm:text-lg font-semibold text-green-600">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                  </div>
+                </div>
+                      
+                {/* Order Items Details */}
+                {selectedOrder.order_items_details && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Order Items</h4>
+                    <div className="bg-pink-50 rounded-lg p-3 sm:p-4">
+                      <p className="text-gray-800 font-medium text-sm sm:text-base break-words">{selectedOrder.order_items_details}</p>
+                    </div>
+                  </div>
+                )}
+                      
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Delivery Details</h4>
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
+                    <div>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">Address:</span>
+                      <p className="text-gray-900 text-sm sm:text-base break-words">{selectedOrder.delivery_address || 'No address specified'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">Scheduled Date & Time:</span>
+                      <p className="text-gray-900 text-sm sm:text-base">
+                        {selectedOrder.delivery_datetime ? 
+                          new Date(selectedOrder.delivery_datetime).toLocaleString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          }) : 'No delivery time specified'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                      
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Payment</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 text-sm sm:text-base">Method:</span>
+                      <span className="font-medium text-sm sm:text-base">{selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' ? 'GCash' : selectedOrder.payment_method?.toUpperCase() || 'N/A'}</span>
+                    </div>
+                    {selectedOrder.payment_type && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-400 hidden sm:inline">•</span>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {selectedOrder.payment_type === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-gray-600 text-sm sm:text-base">Status:</span>
+                    <span className={`font-medium text-sm sm:text-base ${
+                      selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
+                      selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
+                      selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
+                    }`}>
+                      {selectedOrder.payment_status?.charAt(0).toUpperCase() + selectedOrder.payment_status?.slice(1) || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                      
+                {selectedOrder.status === 'confirmed' && selectedOrder.payment_status === 'unpaid' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Order Approved! Payment Required</p>
+                    <p className="text-green-700 text-xs sm:text-sm mb-3">
+                      Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
+                    </p>
+                    <button 
+                      onClick={() => handlePayment(selectedOrder)}
+                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      💳 Pay Now via GCash
+                    </button>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'pending' && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-3 sm:space-y-0">
+                      <div className="flex-1">
+                        <p className="text-yellow-800 font-medium mb-1 text-sm sm:text-base">⏳ Order Pending Approval</p>
+                        <p className="text-yellow-700 text-xs sm:text-sm">
+                          Your order is waiting for vendor approval. You can cancel it if needed.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
+                          handleCancelOrder(selectedOrder.order_id);
+                        }}
+                        className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                      >
+                        <span>❌</span>
+                        <span>Cancel Order</span>
+                      </button>
+                    </div>
+                    <p className="text-yellow-600 text-xs sm:text-sm">
+                      The vendor will review your order and notify you once it's approved or if any changes are needed.
+                    </p>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'delivered' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-3 sm:space-y-0">
+                      <div className="flex-1">
+                        <p className="text-blue-800 font-medium mb-1 text-sm sm:text-base">🎉 Order Delivered Successfully!</p>
+                        <p className="text-blue-700 text-xs sm:text-sm">Your ice cream order has been delivered. Enjoy!</p>
+                      </div>
+                      {selectedOrder.drum_status === 'return_requested' ? (
+                        <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto justify-center">
+                          📦 Return Requested
+                        </span>
+                      ) : selectedOrder.drum_status === 'returned' ? (
+                        <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-green-100 text-green-800 w-full sm:w-auto justify-center">
+                          ✅ Container Returned
+                        </span>
+                      ) : (
+                        <button 
+                          onClick={() => handleDrumReturn(selectedOrder)}
+                          disabled={drumReturnLoading === selectedOrder.order_id}
+                          className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                        >
+                          {drumReturnLoading === selectedOrder.order_id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <span>Requesting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>📦</span>
+                              <span>Return Container</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    {selectedOrder.drum_status === 'return_requested' && (
+                      <p className="text-blue-600 text-xs sm:text-sm">
+                        The vendor has been notified to pick up the container. They will contact you to schedule the pickup.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Review Section - Only for delivered orders */}
+                {selectedOrder.status === 'delivered' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mt-4">
+                    {orderReviews[selectedOrder.order_id] ? (
+                      <div>
+                        <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">⭐ Your Review</p>
+                        <div className="flex items-center space-x-1 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={`text-lg sm:text-xl ${
+                                star <= orderReviews[selectedOrder.order_id].rating
+                                  ? 'text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            >
+                              ★
+                            </span>
+                          ))}
+                          <span className="text-xs sm:text-sm text-gray-600 ml-2">
+                            {orderReviews[selectedOrder.order_id].rating}.0 / 5.0
+                          </span>
+                        </div>
+                        {orderReviews[selectedOrder.order_id].comment && (
+                          <p className="text-gray-700 text-xs sm:text-sm italic break-words">
+                            "{orderReviews[selectedOrder.order_id].comment}"
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                        <div className="flex-1">
+                          <p className="text-blue-800 font-medium mb-1 text-sm sm:text-base">
+                            ⭐ How was your experience?
+                          </p>
+                          <p className="text-blue-700 text-xs sm:text-sm">
+                            Share your feedback about this shop
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedOrderForReview(selectedOrder);
+                            setReviewRating(0);
+                            setReviewComment('');
+                            setShowReviewModal(true);
+                          }}
+                          className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                        >
+                          <span>⭐</span>
+                          <span>Leave Review</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {selectedOrder.status === 'cancelled' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        {selectedOrder.decline_reason ? (
+                          <>
+                            <p className="text-red-800 font-medium mb-1 text-sm sm:text-base">❌ Order Declined by Vendor</p>
+                            <p className="text-red-700 text-xs sm:text-sm">This order has been declined by the vendor.</p>
+                            <div className="mt-2 p-2 sm:p-3 bg-red-100 rounded-lg">
+                              <p className="text-red-800 text-xs sm:text-sm font-medium mb-1">Reason for decline:</p>
+                              <p className="text-red-700 text-xs sm:text-sm break-words">{selectedOrder.decline_reason}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-red-800 font-medium mb-1 text-sm sm:text-base">❌ Order Cancelled</p>
+                            <p className="text-red-700 text-xs sm:text-sm">This order has been cancelled.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal Footer */}
+                <div className="flex justify-end mt-4 sm:mt-6 pt-3 sm:pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      setShowOrderModal(false);
+                      setSelectedOrder(null);
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2569,6 +2638,7 @@ export const Customer = () => {
           </div>
         </div>
       )}
+
 
       {/* Feedback Modal */}
       <FeedbackModal 

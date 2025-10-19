@@ -33,10 +33,10 @@ const googleAuthSuccess = async (req, res) => {
 
 // Google OAuth failure handler
 const googleAuthFailure = (req, res) => {
-    res.status(401).json({ 
-        error: 'Google authentication failed',
-        message: 'Unable to authenticate with Google. Please try again.'
-    });
+    // Redirect to frontend with error parameter instead of returning JSON
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const redirectUrl = `${frontendUrl}/google-callback?error=cancelled`;
+    res.redirect(redirectUrl);
 };
 
 // Google OAuth logout handler

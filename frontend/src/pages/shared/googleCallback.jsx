@@ -16,10 +16,18 @@ export const GoogleCallback = () => {
         const userParam = urlParams.get('user');
         
         if (error) {
-          setStatus({ 
-            type: 'error', 
-            message: 'Google authentication failed. Please try again.' 
-          });
+          // Check if user cancelled the authentication
+          if (error === 'cancelled') {
+            setStatus({ 
+              type: 'error', 
+              message: 'Google sign-in was cancelled. You can try again or use regular login.' 
+            });
+          } else {
+            setStatus({ 
+              type: 'error', 
+              message: 'Google authentication failed. Please try again.' 
+            });
+          }
           setTimeout(() => navigate('/login'), 3000);
           return;
         }

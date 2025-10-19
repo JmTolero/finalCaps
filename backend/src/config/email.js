@@ -2,8 +2,8 @@ const nodemailer = require('nodemailer');
 
 // Create email transporter
 const createTransporter = () => {
-    // For development, you can use Gmail or other SMTP services
-    // For production, consider using services like SendGrid, AWS SES, etc.
+  
+
     
     const transporter = nodemailer.createTransport({
         service: 'gmail', // You can change this to other services
@@ -31,7 +31,7 @@ const emailTemplates = {
                     <h2 style="color: #333; margin-top: 0;">Hello ${userName}!</h2>
                     
                     <p style="color: #666; line-height: 1.6; font-size: 16px;">
-                        We received a request to reset your password for your ChillNet Ice Cream account. 
+                        We received a request to reset your password for your ChillNet Ice Cream account.           
                         If you made this request, click the button below to reset your password:
                     </p>
                     
