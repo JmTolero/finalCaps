@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const flavorController = require('../../controller/vendor/flavorController');
+const { checkFlavorLimit } = require('../../middleware/subscriptionMiddleware');
 
 // Get all flavors for a vendor
 router.get('/:vendor_id', flavorController.getVendorFlavors);
 
 // Create a new flavor
 router.post('/:vendor_id', 
+  checkFlavorLimit, // Check subscription limit before allowing flavor creation
   (req, res, next) => {
     console.log('🔍 Multer middleware debug:');
     console.log('  - Content-Type:', req.headers['content-type']);

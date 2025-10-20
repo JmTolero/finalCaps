@@ -153,6 +153,27 @@ export const Sidebar = () => {
           </li>
         </Link>
 
+        <Link to="/admin/subscriptions" onClick={handleLinkClick}>
+          <li className={`w-full flex ${
+            isOpen
+              ? "items-center gap-3 px-4 py-3"
+              : "items-center justify-center p-3"
+          } rounded-lg transition-all duration-200 ${
+            isActiveLink('/admin/subscriptions')
+              ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
+              : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
+          }`}>
+            <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center ${
+              isActiveLink('/admin/subscriptions') ? 'text-white' : 'text-gray-700'
+            }`}>
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"/>
+              </svg>
+            </div>
+            {isOpen && <span className="font-medium text-sm">Subscriptions</span>}
+          </li>
+        </Link>
+
       </ul>
       </div>
     </div>

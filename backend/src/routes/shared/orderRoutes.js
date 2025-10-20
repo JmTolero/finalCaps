@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../../controller/shared/orderController');
+const { checkOrderLimit } = require('../../middleware/subscriptionMiddleware');
 
 // Create a new order
-router.post('/', orderController.createOrder);
+router.post('/', checkOrderLimit, orderController.createOrder);
 
 // Get all orders for admin dashboard
 router.get('/admin/all', orderController.getAllOrdersAdmin);

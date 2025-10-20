@@ -104,6 +104,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminLocationRoutes);
+app.use('/api/admin/subscription', require('./routes/admin/subscriptionRoutes'));
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/vendor/flavors', flavorRoutes);
 app.use('/api/vendor/drums', drumRoutes);

@@ -13,10 +13,12 @@ import inventoryIcon from "../../assets/images/vendordashboardicon/inventoryProd
 import ordersIcon from "../../assets/images/vendordashboardicon/vendorOrderIcon.png";
 import addCustomerIcon from "../../assets/images/vendordashboardicon/addcustomericon.png";
 import paymentsIcon from "../../assets/images/vendordashboardicon/paymentsvendoricon.png";
-import profileIcon from "../../assets/images/vendordashboardicon/profileVendorIcon.png";
+import subscriptionIcon from "../../assets/images/vendordashboardicon/subscription.png";
+  import profileIcon from "../../assets/images/vendordashboardicon/profileVendorIcon.png";
 import storeIcon from "../../assets/images/vendordashboardicon/shop.png";
 import bellNotificationIcon from "../../assets/images/bellNotification.png";
 import feedbackIcon from "../../assets/images/feedback.png";
+import VendorSubscription from "./VendorSubscription";
 
 export const Vendor = () => {
   const navigate = useNavigate();
@@ -156,6 +158,14 @@ export const Vendor = () => {
     small: 0,
     medium: 0,
     large: 0,
+  });
+  
+  // Subscription limits state
+  const [subscriptionLimits, setSubscriptionLimits] = useState({
+    drum_limit: 5,
+    flavor_limit: 5,
+    order_limit: 50,
+    subscription_plan: 'free'
   });
   const [isEditingDrums, setIsEditingDrums] = useState(false);
   const [tempDrums, setTempDrums] = useState({
@@ -318,6 +328,35 @@ export const Vendor = () => {
     [currentVendor?.user_id, setAddresses]
   );
 
+  // Fetch subscription limits
+  const fetchSubscriptionLimits = useCallback(async (vendorId = null) => {
+    try {
+      const targetVendorId = vendorId || currentVendor?.vendor_id;
+      if (!targetVendorId) return;
+      
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      console.log('Fetching subscription limits for vendor:', targetVendorId);
+      const response = await fetch(`${apiBase}/api/admin/subscription/vendor/${targetVendorId}`);
+      const data = await response.json();
+      
+      console.log('Subscription limits response:', data);
+      
+      if (data.success && data.subscription) {
+        setSubscriptionLimits({
+          drum_limit: data.subscription.drum_limit,
+          flavor_limit: data.subscription.flavor_limit,
+          order_limit: data.subscription.order_limit,
+          subscription_plan: data.subscription.subscription_plan
+        });
+        console.log('Subscription limits set:', data.subscription);
+      } else {
+        console.error('Failed to fetch subscription limits:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription limits:', error);
+    }
+  }, [currentVendor?.vendor_id]);
+
   const fetchCurrentVendor = useCallback(async () => {
     try {
       // Only set loading if we don't have vendor data yet
@@ -369,6 +408,14 @@ export const Vendor = () => {
         
         // Fetch addresses for this vendor user
         fetchAddresses(response.data.vendor.user_id);
+        
+        // Fetch subscription limits after vendor data is loaded
+        // Use a small delay to ensure currentVendor state is updated
+        setTimeout(() => {
+          if (response.data.vendor.vendor_id) {
+            fetchSubscriptionLimits(response.data.vendor.vendor_id);
+          }
+        }, 200);
       } else {
         console.error('API returned unsuccessful response:', response.data);
         updateStatus(
@@ -466,6 +513,58 @@ export const Vendor = () => {
   const handleDrumsSave = async () => {
     if (!currentVendor?.vendor_id) return;
     
+    const newTotal = tempDrums.small + tempDrums.medium + tempDrums.large;
+    const currentTotal = availableDrums.small + availableDrums.medium + availableDrums.large;
+    
+    // Check if the new total exceeds the subscription limit
+    if (subscriptionLimits.drum_limit !== -1 && newTotal > subscriptionLimits.drum_limit) {
+      setConfirmModalData({
+        title: 'Drum Limit Exceeded',
+        message: `You are trying to set ${newTotal} drums, but your ${subscriptionLimits.subscription_plan} plan only allows ${subscriptionLimits.drum_limit} drums. This action will be blocked by the system.`,
+        confirmText: 'Continue Anyway',
+        cancelText: 'Cancel',
+        type: 'warning',
+        onConfirm: () => {
+          // Show another modal with upgrade suggestion
+          setConfirmModalData({
+            title: 'Upgrade Required',
+            message: `To add more drums, you need to upgrade your subscription plan. Would you like to go to the subscription page to upgrade?`,
+            confirmText: 'Go to Subscription',
+            cancelText: 'Cancel',
+            type: 'info',
+            onConfirm: () => {
+              setActiveView('subscription');
+              setShowConfirmModal(false);
+            }
+          });
+        }
+      });
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // Check if the new total is at the limit (show warning but allow)
+    if (subscriptionLimits.drum_limit !== -1 && newTotal === subscriptionLimits.drum_limit && newTotal > currentTotal) {
+      setConfirmModalData({
+        title: 'Drum Limit Reached',
+        message: `You are setting your drum count to ${newTotal}, which is the maximum allowed for your ${subscriptionLimits.subscription_plan} plan. You won't be able to add more drums without upgrading.`,
+        confirmText: 'Save Changes',
+        cancelText: 'Cancel',
+        type: 'warning',
+        onConfirm: () => {
+          setShowConfirmModal(false);
+          performDrumsSave();
+        }
+      });
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // If within limits, proceed with save
+    performDrumsSave();
+  };
+
+  const performDrumsSave = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const response = await axios.put(`${apiBase}/api/vendor/drums/${currentVendor.vendor_id}/stock`, {
@@ -493,7 +592,11 @@ export const Vendor = () => {
       }
     } catch (error) {
       console.error("Error updating drum stock:", error);
-      updateStatus("error", "Failed to update drum inventory. Please try again.");
+      if (error.response?.status === 403) {
+        updateStatus("error", "Drum limit exceeded. Please upgrade your subscription to add more drums.");
+      } else {
+        updateStatus("error", "Failed to update drum inventory. Please try again.");
+      }
     }
   };
 
@@ -1562,6 +1665,33 @@ export const Vendor = () => {
       return;
     }
 
+    // Check subscription limits for orders (monthly limit)
+    if (subscriptionLimits.order_limit !== -1) {
+      // Get current month's order count
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const currentMonthOrders = vendorOrders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+      });
+      
+      if (currentMonthOrders.length >= subscriptionLimits.order_limit) {
+        setConfirmModalData({
+          title: 'Monthly Order Limit Reached',
+          message: `You have reached your monthly order limit of ${subscriptionLimits.order_limit} for your ${subscriptionLimits.subscription_plan} plan. To process more orders, you need to upgrade your subscription.`,
+          confirmText: 'Go to Subscription',
+          cancelText: 'Cancel',
+          type: 'warning',
+          onConfirm: () => {
+            setActiveView('subscription');
+            setShowConfirmModal(false);
+          }
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
     // Validate customer name
     if (!customerName.trim()) {
       updateStatus("error", "Please enter customer's name");
@@ -1689,6 +1819,25 @@ export const Vendor = () => {
     if (!currentVendor?.vendor_id) {
       updateStatus("error", "Vendor information not available");
       return;
+    }
+
+    // Check subscription limits for flavors (only for new flavors, not editing)
+    if (!isEditingFlavor && subscriptionLimits.flavor_limit !== -1) {
+      if (savedFlavors.length >= subscriptionLimits.flavor_limit) {
+        setConfirmModalData({
+          title: 'Flavor Limit Reached',
+          message: `You have reached your flavor limit of ${subscriptionLimits.flavor_limit} for your ${subscriptionLimits.subscription_plan} plan. To add more flavors, you need to upgrade your subscription.`,
+          confirmText: 'Go to Subscription',
+          cancelText: 'Cancel',
+          type: 'warning',
+          onConfirm: () => {
+            setActiveView('subscription');
+            setShowConfirmModal(false);
+          }
+        });
+        setShowConfirmModal(true);
+        return;
+      }
     }
 
     // Check if drum inventory and prices are set before allowing flavor save
@@ -2408,7 +2557,8 @@ export const Vendor = () => {
       label: "Add Customer Orders",
       icon: addCustomerIcon,
     },
-    { id: "payments", label: "Payments", icon: paymentsIcon },
+    { id: "payments", label: "Pricing", icon: paymentsIcon },
+    { id: "subscription", label: "Subscription", icon: subscriptionIcon },
   ];
 
   // Settings View with Sidebar Layout
@@ -4421,9 +4571,16 @@ export const Vendor = () => {
                       {!isEditingDrums && currentVendor?.status !== 'suspended' && (
                         <button
                           onClick={handleDrumsEdit}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                            subscriptionLimits.drum_limit !== -1 && getTotalDrums() >= subscriptionLimits.drum_limit
+                              ? 'bg-red-600 hover:bg-red-700 text-white'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
                         >
-                          Edit Inventory
+                          {subscriptionLimits.drum_limit !== -1 && getTotalDrums() >= subscriptionLimits.drum_limit
+                            ? '⚠️ Limit Reached'
+                            : 'Edit Inventory'
+                          }
                         </button>
                       )}
                     </div>
@@ -4474,12 +4631,55 @@ export const Vendor = () => {
                             />
                           </div>
                         </div>
-                        <div className="flex space-x-2">
+                        {/* Current Total Display */}
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600 mb-1">Current Total</div>
+                            <div className={`text-2xl font-bold ${
+                              (tempDrums.small + tempDrums.medium + tempDrums.large) > subscriptionLimits.drum_limit && subscriptionLimits.drum_limit !== -1
+                                ? 'text-red-600'
+                                : (tempDrums.small + tempDrums.medium + tempDrums.large) === subscriptionLimits.drum_limit && subscriptionLimits.drum_limit !== -1
+                                ? 'text-yellow-600'
+                                : 'text-blue-600'
+                            }`}>
+                              {tempDrums.small + tempDrums.medium + tempDrums.large}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {subscriptionLimits.drum_limit === -1 ? (
+                                <span className="text-green-600">Unlimited (Premium Plan)</span>
+                              ) : (
+                                <span className={`font-medium ${
+                                  (tempDrums.small + tempDrums.medium + tempDrums.large) > subscriptionLimits.drum_limit
+                                    ? 'text-red-600'
+                                    : (tempDrums.small + tempDrums.medium + tempDrums.large) === subscriptionLimits.drum_limit
+                                    ? 'text-yellow-600'
+                                    : 'text-green-600'
+                                }`}>
+                                  /{subscriptionLimits.drum_limit} ({subscriptionLimits.subscription_plan} plan)
+                                </span>
+                              )}
+                            </div>
+                            {(tempDrums.small + tempDrums.medium + tempDrums.large) > subscriptionLimits.drum_limit && subscriptionLimits.drum_limit !== -1 && (
+                              <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                ⚠️ Exceeds limit! This will be blocked.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex space-x-2 mt-4">
                           <button
                             onClick={handleDrumsSave}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className={`px-4 py-2 rounded text-sm font-medium ${
+                              (tempDrums.small + tempDrums.medium + tempDrums.large) > subscriptionLimits.drum_limit && subscriptionLimits.drum_limit !== -1
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-green-500 hover:bg-green-600 text-white'
+                            }`}
                           >
-                            Save Changes
+                            {(tempDrums.small + tempDrums.medium + tempDrums.large) > subscriptionLimits.drum_limit && subscriptionLimits.drum_limit !== -1
+                              ? '⚠️ Save (Will be Blocked)'
+                              : 'Save Changes'
+                            }
                           </button>
                           <button
                             onClick={handleDrumsCancel}
@@ -4527,6 +4727,25 @@ export const Vendor = () => {
                         <div className="text-2xl font-bold text-blue-600">
                           {getTotalDrums()}
                         </div>
+                        {/* Subscription Limit Display */}
+                        <div className="mt-2 text-xs text-gray-600">
+                          {subscriptionLimits.drum_limit === -1 ? (
+                            <span className="text-green-600 font-medium">Unlimited (Premium Plan)</span>
+                          ) : (
+                            <span className={`font-medium ${
+                              getTotalDrums() >= subscriptionLimits.drum_limit ? 'text-red-600' : 
+                              getTotalDrums() >= subscriptionLimits.drum_limit * 0.8 ? 'text-yellow-600' : 'text-green-600'
+                            }`}>
+                              {getTotalDrums()}/{subscriptionLimits.drum_limit} ({subscriptionLimits.subscription_plan} plan)
+                            </span>
+                          )}
+                        </div>
+                        {/* Limit Warning */}
+                        {subscriptionLimits.drum_limit !== -1 && getTotalDrums() >= subscriptionLimits.drum_limit && (
+                          <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ Drum limit reached! Upgrade your plan to add more drums.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -4875,13 +5094,58 @@ export const Vendor = () => {
                           onChange={handleImageUpload}
                           className="hidden"
                         />
-                        <div className="flex space-x-3">
+                        <div className="flex items-center space-x-4">
                           <button
                             onClick={handleSaveFlavor}
-                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg"
+                            className={`font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg ${
+                              !isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit
+                                ? 'bg-red-500 hover:bg-red-600 text-white'
+                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            }`}
                           >
-                            {isEditingFlavor ? "Update Flavor" : "Save Flavor"}
+                            {!isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit
+                              ? '⚠️ Limit Reached'
+                              : isEditingFlavor ? "Update Flavor" : "Save Flavor"
+                            }
                           </button>
+                          
+                          {/* Flavor Limit Display - Positioned to the right of Save Flavor button */}
+                          {!isEditingFlavor && (
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="text-center">
+                                <div className="text-sm text-gray-600 mb-1">Current Flavors</div>
+                                <div className={`text-2xl font-bold ${
+                                  savedFlavors.length >= subscriptionLimits.flavor_limit && subscriptionLimits.flavor_limit !== -1
+                                    ? 'text-red-600'
+                                    : savedFlavors.length >= subscriptionLimits.flavor_limit * 0.8 && subscriptionLimits.flavor_limit !== -1
+                                    ? 'text-yellow-600'
+                                    : 'text-blue-600'
+                                }`}>
+                                  {savedFlavors.length}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {subscriptionLimits.flavor_limit === -1 ? (
+                                    <span className="text-green-600">Unlimited (Premium Plan)</span>
+                                  ) : (
+                                    <span className={`font-medium ${
+                                      savedFlavors.length >= subscriptionLimits.flavor_limit
+                                        ? 'text-red-600'
+                                        : savedFlavors.length >= subscriptionLimits.flavor_limit * 0.8
+                                        ? 'text-yellow-600'
+                                        : 'text-green-600'
+                                    }`}>
+                                      /{subscriptionLimits.flavor_limit} ({subscriptionLimits.subscription_plan} plan)
+                                    </span>
+                                  )}
+                                </div>
+                                {savedFlavors.length >= subscriptionLimits.flavor_limit && subscriptionLimits.flavor_limit !== -1 && (
+                                  <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                    ⚠️ Limit reached!
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           {isEditingFlavor && (
                             <button
                               onClick={cancelEditFlavor}
@@ -4899,9 +5163,31 @@ export const Vendor = () => {
 
                 {/* Saved Flavors Section */}
                 <div className="bg-[#D4F6FF] border border-blue-300 rounded-lg p-6 mt-4">
-                  <div className="text-blue-800 font-medium text-xl mb-4">
-                    My Flavors
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-blue-800 font-medium text-xl">
+                      My Flavors
+                    </div>
+                    {/* Flavor Limit Display */}
+                    <div className="text-sm text-gray-600">
+                      {subscriptionLimits.flavor_limit === -1 ? (
+                        <span className="text-green-600 font-medium">Unlimited (Premium Plan)</span>
+                      ) : (
+                        <span className={`font-medium ${
+                          savedFlavors.length >= subscriptionLimits.flavor_limit ? 'text-red-600' : 
+                          savedFlavors.length >= subscriptionLimits.flavor_limit * 0.8 ? 'text-yellow-600' : 'text-green-600'
+                        }`}>
+                          {savedFlavors.length}/{subscriptionLimits.flavor_limit} ({subscriptionLimits.subscription_plan} plan)
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  
+                  {/* Flavor Limit Warning */}
+                  {subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit && (
+                    <div className="mb-4 text-xs text-red-600 bg-red-50 px-3 py-2 rounded border border-red-200">
+                      ⚠️ Flavor limit reached! Upgrade your plan to add more flavors.
+                    </div>
+                  )}
                   
                   {flavorsLoading ? (
                     <div className="text-center py-8">
@@ -5245,6 +5531,89 @@ export const Vendor = () => {
                         <h1 className="text-3xl font-bold text-gray-900">
                           Walk-in Customer Orders
                         </h1>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Monthly Order Limit Display */}
+                  <div className="bg-white rounded-2xl p-4 mb-6 shadow-lg border-l-4 border-blue-400">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Monthly Orders</h3>
+                          <p className="text-sm text-gray-600">Current month's order count</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-2xl font-bold ${
+                          (() => {
+                            const currentMonth = new Date().getMonth();
+                            const currentYear = new Date().getFullYear();
+                            const currentMonthOrders = vendorOrders.filter(order => {
+                              const orderDate = new Date(order.created_at);
+                              return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+                            });
+                            const currentCount = currentMonthOrders.length;
+                            
+                            if (subscriptionLimits.order_limit === -1) return 'text-green-600';
+                            if (currentCount >= subscriptionLimits.order_limit) return 'text-red-600';
+                            if (currentCount >= subscriptionLimits.order_limit * 0.8) return 'text-yellow-600';
+                            return 'text-blue-600';
+                          })()
+                        }`}>
+                          {(() => {
+                            const currentMonth = new Date().getMonth();
+                            const currentYear = new Date().getFullYear();
+                            const currentMonthOrders = vendorOrders.filter(order => {
+                              const orderDate = new Date(order.created_at);
+                              return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+                            });
+                            return currentMonthOrders.length;
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {subscriptionLimits.order_limit === -1 ? (
+                            <span className="text-green-600">Unlimited (Premium Plan)</span>
+                          ) : (
+                            <span className={`font-medium ${
+                              (() => {
+                                const currentMonth = new Date().getMonth();
+                                const currentYear = new Date().getFullYear();
+                                const currentMonthOrders = vendorOrders.filter(order => {
+                                  const orderDate = new Date(order.created_at);
+                                  return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+                                });
+                                const currentCount = currentMonthOrders.length;
+                                
+                                if (currentCount >= subscriptionLimits.order_limit) return 'text-red-600';
+                                if (currentCount >= subscriptionLimits.order_limit * 0.8) return 'text-yellow-600';
+                                return 'text-green-600';
+                              })()
+                            }`}>
+                              /{subscriptionLimits.order_limit} ({subscriptionLimits.subscription_plan} plan)
+                            </span>
+                          )}
+                        </div>
+                        {(() => {
+                          const currentMonth = new Date().getMonth();
+                          const currentYear = new Date().getFullYear();
+                          const currentMonthOrders = vendorOrders.filter(order => {
+                            const orderDate = new Date(order.created_at);
+                            return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+                          });
+                          const currentCount = currentMonthOrders.length;
+                          
+                          return subscriptionLimits.order_limit !== -1 && currentCount >= subscriptionLimits.order_limit;
+                        })() && (
+                          <div className="mt-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                            ⚠️ Monthly limit reached!
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -6410,7 +6779,7 @@ export const Vendor = () => {
                     />
                     <div>
                       <h1 className="text-3xl font-bold text-gray-900">
-                        Payments & Pricing
+                        Delivery & Drum Pricing
                       </h1>
                       <p className="text-gray-600">
                         Manage your drum prices and delivery zones
@@ -6849,6 +7218,14 @@ export const Vendor = () => {
                       })
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeView === "subscription" && (
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
+                <div className="bg-white rounded-lg p-2 sm:p-3 mx-1 shadow-lg">
+                  <VendorSubscription />
                 </div>
               </div>
             )}

@@ -7,6 +7,7 @@ import AdminUserManagement from './usermanagement';
 import AdminVendorApproval from './vendorApproval';
 import AdminVendorLocations from './vendorLocations';
 import AdminFeedback from './feedback';
+import SubscriptionManagement from './SubscriptionManagement';
 
 
 export const Admin = () => {
@@ -67,6 +68,7 @@ export const Admin = () => {
               <Route path="vendor-approval" element={<AdminVendorApproval />} />
               <Route path="vendor-locations" element={<AdminVendorLocations />} />
               <Route path="feedback" element={<AdminFeedback />} />
+              <Route path="subscriptions" element={<SubscriptionManagement />} />
             </Routes>
           </div>
         </main>
