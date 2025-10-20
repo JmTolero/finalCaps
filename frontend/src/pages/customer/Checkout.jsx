@@ -26,6 +26,8 @@ export const Checkout = () => {
   const [paymentType, setPaymentType] = useState('full'); // 'full' or 'downpayment'
   const [savedOrderId, setSavedOrderId] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isConfirmingOrder, setIsConfirmingOrder] = useState(false);
   const receiptRef = useRef(null);
 
   // Debug receipt state changes
@@ -329,7 +331,15 @@ export const Checkout = () => {
   };
 
   const handleNext = async () => {
+    // Prevent double-clicking
+    if (isPlacingOrder) {
+      console.log('⚠️ Order placement already in progress, ignoring click');
+      return;
+    }
+
     try {
+      setIsPlacingOrder(true);
+      
       // Validate required fields before proceeding
       const finalDeliveryAddress = deliveryAddress || userAddress;
       if (!finalDeliveryAddress || finalDeliveryAddress.trim() === '') {
@@ -354,11 +364,21 @@ export const Checkout = () => {
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order. Please try again.');
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
   const handleReceiptClose = async () => {
+    // Prevent double-clicking
+    if (isConfirmingOrder) {
+      console.log('⚠️ Order confirmation already in progress, ignoring click');
+      return;
+    }
+
     try {
+      setIsConfirmingOrder(true);
+      
       // Only save order to database if not already saved
       if (!savedOrderId) {
         console.log('💾 Saving order to database...');
@@ -396,6 +416,8 @@ export const Checkout = () => {
       console.error('Error saving order:', error);
       setShowReceipt(false);
       alert('Failed to save order. Please try again.');
+    } finally {
+      setIsConfirmingOrder(false);
     }
   };
 
@@ -1014,9 +1036,14 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               </div>
               <button
                 onClick={handleNext}
-                className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                disabled={isPlacingOrder}
+                className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                  isPlacingOrder 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                Place Order
+                {isPlacingOrder ? 'Placing Order...' : 'Place Order'}
               </button>
             </div>
           </div>
@@ -1176,9 +1203,14 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               <div className="flex space-x-3">
                 <button
                   onClick={handleReceiptClose}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                  disabled={isConfirmingOrder}
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                    isConfirmingOrder 
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
-                  Confirm Order
+                  {isConfirmingOrder ? 'Confirming...' : 'Confirm Order'}
                 </button>
                 <button
                   onClick={() => setShowReceipt(false)}
