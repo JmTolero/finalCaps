@@ -752,36 +752,36 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
   return (
     <>
       <NavWithLogo />
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-        <div className="max-w-4xl mx-auto px-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-8 mt-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Checkout</h1>
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Checkout</h1>
           </div>
 
           {/* Main Checkout Card */}
-          <div className="bg-sky-100 rounded-2xl shadow-xl p-8">
+          <div className="bg-sky-100 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
             {/* Back Button */}
             <button 
               onClick={handleBack}
-              className="mb-6 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+              className="mb-4 sm:mb-6 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
             >
-              <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back
             </button>
             {/* Item Details */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Item Details</h2>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Item Details</h2>
               
               {orderData?.fromCart && orderData?.items ? (
                 // Cart checkout - show items grouped by vendor
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {groupedVendors.map((vendorGroup, vendorIndex) => (
-                    <div key={vendorIndex} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-blue-600">{vendorGroup.vendor_name}</h3>
+                    <div key={vendorIndex} className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 pb-2 border-b border-gray-200 space-y-2 sm:space-y-0">
+                        <h3 className="text-base sm:text-lg font-semibold text-blue-600">{vendorGroup.vendor_name}</h3>
                         <div className="text-sm text-gray-600">
                           Delivery: {!deliveryCalculationComplete ? (
                             <div className="inline-flex items-center space-x-1">
@@ -798,7 +798,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                       
                       <div className="space-y-2">
                         {vendorGroup.items.map((item, itemIndex) => (
-                          <div key={itemIndex} className="grid grid-cols-3 gap-4 text-sm bg-white rounded-lg p-3">
+                          <div key={itemIndex} className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm bg-white rounded-lg p-3">
                             <div>
                               <div className="font-medium text-gray-600 mb-1">Flavor</div>
                               <div className="text-gray-800 font-medium">{item.name}</div>
@@ -827,8 +827,8 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                 </div>
               ) : (
                 // Single item checkout
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                   <div>
                     <div className="font-medium text-gray-600 mb-1">Item name</div>
                     <div className="text-gray-800">
@@ -849,34 +849,34 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
             </div>
 
             {/* Order Information */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Order Information</h2>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Order Information</h2>
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">Delivery Date & Time:</label>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-blue-600">🕒</span>
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 text-sm sm:text-base">
                         {deliveryDateTime || 'No delivery time set'}
                       </span>
                     </div>
                     {!deliveryDateTime && (
-                      <p className="text-sm text-red-600 mt-2">
+                      <p className="text-xs sm:text-sm text-red-600 mt-2">
                         ⚠️ No delivery time specified. Please go back and set a delivery schedule.
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <label className="text-sm font-medium text-gray-600 w-32">Location :</label>
+                <div className="flex flex-col sm:flex-row sm:items-center">
+                  <label className="text-sm font-medium text-gray-600 w-full sm:w-32 mb-2 sm:mb-0">Location :</label>
                   <div className="flex-1">
                     <input
                       type="text"
                       value={deliveryAddress}
                       readOnly
                       placeholder={userAddress ? "Your saved address" : "No saved address - Please add an address in your profile"}
-                      className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed shadow-sm"
+                      className="w-full px-3 sm:px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed shadow-sm text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       {userAddress 
@@ -886,8 +886,8 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <label className="text-sm font-medium text-gray-600 w-32">Delivery :</label>
+                <div className="flex flex-col sm:flex-row sm:items-center">
+                  <label className="text-sm font-medium text-gray-600 w-full sm:w-32 mb-2 sm:mb-0">Delivery :</label>
                   <div className="flex-1">
                     {orderData?.fromCart && orderData?.items ? (
                       // Cart checkout - show delivery fees by vendor
@@ -959,18 +959,18 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
             </div>
 
             {/* Payment Method */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Payment Method</h2>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Payment Method</h2>
               <div className="space-y-4">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white font-bold text-sm">G</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white font-bold text-xs sm:text-sm">G</span>
                   </div>
-                  <span className="text-gray-700 font-medium">GCash Payment</span>
+                  <span className="text-gray-700 font-medium text-sm sm:text-base">GCash Payment</span>
                 </div>
                 
                 {/* Payment Type Options */}
-                <div className="ml-11 space-y-3">
+                <div className="ml-8 sm:ml-11 space-y-3">
                   <h3 className="text-sm font-medium text-gray-700">Payment Option:</h3>
                   <div className="space-y-2">
                     <label className="flex items-center">
@@ -1001,34 +1001,34 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
             </div>
 
             {/* Total and Action Button */}
-            <div className="flex justify-end items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
+              <div className="flex items-center justify-center sm:justify-end">
+                <div className="text-center sm:text-right">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-600">
                     <span>Subtotal:</span>
                     <span>₱{orderData.totalPrice}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-600">
                     <span>Delivery:</span>
                     <span>₱{orderData?.fromCart ? getTotalDeliveryFee().toFixed(2) : (deliveryPrice || 0).toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600 border-t border-gray-300 pt-1 mt-1">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-600 border-t border-gray-300 pt-1 mt-1">
                     <span>Grand Total:</span>
                     <span>₱{getTotalAmount().toFixed(2)}</span>
                   </div>
                   {paymentType === 'downpayment' && (
                     <>
-                      <div className="flex items-center space-x-2 text-sm text-orange-600">
+                      <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-orange-600">
                         <span>50% Down Payment:</span>
                         <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
                       </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-500">
                         <span>Remaining Balance:</span>
                         <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
                       </div>
                     </>
                   )}
-                  <div className="flex items-center space-x-2 text-lg font-bold text-blue-600 border-t border-gray-300 pt-1 mt-1">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-base sm:text-lg font-bold text-blue-600 border-t border-gray-300 pt-1 mt-1">
                     <span>Estimated {paymentType === 'downpayment' ? 'Down Payment' : 'Total'}:</span>
                     <span>₱{(paymentType === 'downpayment' ? getTotalAmount() * 0.5 : getTotalAmount()).toFixed(2)}</span>
                   </div>
@@ -1037,7 +1037,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               <button
                 onClick={handleNext}
                 disabled={isPlacingOrder}
-                className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                   isPlacingOrder 
                     ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -1052,19 +1052,19 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
 
       {/* Receipt Modal for GCash Payment */}
       {showReceipt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6" ref={receiptRef}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6" ref={receiptRef}>
               {/* Header */}
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Confirmation</h2>
+              <div className="text-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Order Confirmation</h2>
               </div>
 
               {/* Receipt Content */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 {/* Order Details */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Order Details</h3>
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Order Details</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Date:</span>
@@ -1200,11 +1200,11 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               </div>
 
               {/* Action Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   onClick={handleReceiptClose}
                   disabled={isConfirmingOrder}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
+                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     isConfirmingOrder 
                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
                       : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -1214,7 +1214,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                 </button>
                 <button
                   onClick={() => setShowReceipt(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
                   Edit Order
                 </button>

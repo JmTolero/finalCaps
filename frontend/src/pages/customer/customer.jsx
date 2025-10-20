@@ -2251,7 +2251,7 @@ export const Customer = () => {
                     }`} 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -2379,12 +2379,10 @@ export const Customer = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
-                      totalItems > 0 ? 'scale-110' : ''
-                    }`} 
+                    className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 `} 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
