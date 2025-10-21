@@ -22,7 +22,7 @@ router.post('/test-email', async (req, res) => {
     // Test sending a vendor approval email
     const testVendorData = {
       fname: 'Test',
-      email: 'test@example.com', // Change this to your email for testing
+      email: 'joemartolero987@gmail.com', // Change this to your email for testing
       store_name: 'Test Store'
     };
     

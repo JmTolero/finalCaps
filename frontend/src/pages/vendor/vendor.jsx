@@ -23,6 +23,18 @@ import VendorSubscription from "./VendorSubscription";
 export const Vendor = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Add CSS for hiding scrollbar
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
   const [activeView, setActiveView] = useState("dashboard");
   const [activeTab, setActiveTab] = useState("profile");
   const [vendorData, setVendorData] = useState({
@@ -5387,9 +5399,80 @@ export const Vendor = () => {
 
             {activeView === "my-store" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                {/* Store Header */}
-                <div className="bg-sky-100 rounded-2xl p-8 mb-8 mx-4">
-                  <div className="flex items-center justify-between">
+                {/* Store Header - Mobile Responsive */}
+                <div className="bg-sky-100 rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 mx-2 sm:mx-4">
+                  {/* Mobile Layout - Stacked */}
+                  <div className="flex flex-col sm:hidden space-y-4">
+                    {/* Top Section: Logo + Store Info */}
+                    <div className="flex items-center space-x-4">
+                      {/* Store Logo */}
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0">
+                        {profileImage ? (
+                          <img 
+                            src={profileImage} 
+                            alt="Store Logo" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <div className="w-10 h-10 mx-auto mb-1">
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                className="w-full h-full"
+                              >
+                                <path
+                                  d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"
+                                  fill="#FF6B9D"
+                                />
+                                <path
+                                  d="M12 6L13.5 10.5L18 12L13.5 13.5L12 18L10.5 13.5L6 12L10.5 10.5L12 6Z"
+                                  fill="#9B59B6"
+                                />
+                                <path
+                                  d="M8 4L9 7L12 8L9 9L8 12L7 9L4 8L7 7L8 4Z"
+                                  fill="#8B4513"
+                                />
+                              </svg>
+                            </div>
+                            <div className="text-xs font-bold text-gray-800">
+                              ICE CREAM
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              WRITE YOUR
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Store Info */}
+                      <div className="flex-1 min-w-0">
+                        <h1
+                          className="text-xl font-bold text-gray-900 mb-1 truncate"
+                          style={{ fontFamily: "cursive" }}
+                        >
+                          {currentVendor?.store_name ||
+                            "Frosty Bites Ice Cream"}
+                        </h1>
+                        <p className="text-sm text-gray-700">
+                          ID: {currentVendor?.vendor_id || "123456"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom Section: Publish Button */}
+                    <div className="w-full">
+                      <button
+                        onClick={() => setActiveView("inventory")}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl"
+                      >
+                        Publish Flavor
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout - Side by Side */}
+                  <div className="hidden sm:flex items-center justify-between">
                     <div className="flex items-center space-x-6">
                       {/* Store Logo */}
                       <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
@@ -5456,34 +5539,34 @@ export const Vendor = () => {
                   </div>
                 </div>
 
-                {/* Published Flavors Section */}
+                {/* Published Flavors Section - Mobile Responsive */}
                 {publishedFlavorsLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <div className="flex justify-center items-center py-8 sm:py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
                   </div>
                 ) : (
-                  <div className="px-4">
+                  <div className="px-2 sm:px-4">
                     {publishedFlavors.length === 0 ? (
-                      <div className="text-center py-16">
-                        <div className="bg-blue-200 rounded-2xl p-12 max-w-md mx-auto">
-                          <div className="text-6xl mb-4">🍦</div>
-                          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                      <div className="text-center py-12 sm:py-16">
+                        <div className="bg-blue-200 rounded-2xl p-6 sm:p-12 max-w-md mx-auto">
+                          <div className="text-4xl sm:text-6xl mb-4">🍦</div>
+                          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
                             No Flavors Published Yet
                           </h3>
-                          <p className="text-gray-700 mb-6">
+                          <p className="text-sm sm:text-base text-gray-700 mb-6">
                             Start by publishing your first ice cream flavor to
                             showcase to customers!
                           </p>
                           <button
                             onClick={() => setActiveView("inventory")}
-                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-8 py-3 rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl"
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 sm:px-8 py-3 rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base"
                           >
                             Publish Your First Flavor
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6 max-w-7xl mx-auto">
                         {publishedFlavors.map((flavor) => {
                           // Parse image URLs (stored as JSON array)
                           let imageUrls = [];
@@ -5498,31 +5581,31 @@ export const Vendor = () => {
                           return (
                             <div
                               key={flavor.flavor_id}
-                              className="bg-sky-100 rounded-2xl p-6 hover:shadow-xl transition-shadow duration-300"
+                              className="bg-sky-100 rounded-lg sm:rounded-xl lg:rounded-2xl p-2 sm:p-4 lg:p-6 hover:shadow-xl transition-shadow duration-300"
                             >
                               {/* Flavor Image */}
-                              <div className="mb-4">
+                              <div className="mb-2 sm:mb-4">
                                 {imageUrls.length > 0 ? (
                                   <div className="relative">
                                     <img
                                       src={getImageUrl(imageUrls[0], process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrls[0]}`}
                                       alt={flavor.flavor_name}
-                                      className="w-full h-48 object-cover rounded-xl"
+                                      className="w-full h-24 sm:h-40 lg:h-48 object-cover rounded-md sm:rounded-lg lg:rounded-xl"
                                       onError={(e) => {
                                         e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
                                       }}
                                     />
                                     {imageUrls.length > 1 && (
-                                      <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
+                                      <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 sm:px-2 sm:py-1 rounded-full">
                                         +{imageUrls.length - 1} more
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="w-full h-48 bg-white rounded-xl flex items-center justify-center">
+                                  <div className="w-full h-24 sm:h-40 lg:h-48 bg-white rounded-md sm:rounded-lg lg:rounded-xl flex items-center justify-center">
                                     <div className="text-center">
-                                      <div className="text-4xl mb-2">🍦</div>
-                                      <div className="text-sm text-gray-600">
+                                      <div className="text-2xl sm:text-4xl mb-1 sm:mb-2">🍦</div>
+                                      <div className="text-xs sm:text-sm text-gray-600">
                                         No Image
                                       </div>
                                     </div>
@@ -5531,36 +5614,45 @@ export const Vendor = () => {
                               </div>
 
                               {/* Flavor Info */}
-                              <div className="space-y-3">
-                                <h3 className="text-lg font-semibold text-gray-900 text-center">
+                              <div className="space-y-1 sm:space-y-3">
+                                <h3 className="text-sm sm:text-lg font-semibold text-gray-900 text-center line-clamp-1">
                                   {flavor.flavor_name}
                                 </h3>
 
-                                <p className="text-gray-700 text-center text-sm line-clamp-2">
+                                <p className="text-gray-700 text-center text-xs sm:text-sm line-clamp-2">
                                   {flavor.flavor_description}
                                 </p>
 
                                 {/* Available Drum Sizes and Pricing */}
-                                <div className="space-y-2">
+                                <div className="space-y-1 sm:space-y-2">
                                   <div className="text-center">
-                                    <span className="text-sm font-semibold text-gray-700">
+                                    <span className="text-xs sm:text-sm font-semibold text-gray-700">
                                       Available in all sizes
                                     </span>
                                   </div>
                                   
-                                  {/* All Available Drum Sizes */}
-                                  <div className="text-xs text-gray-600 space-y-1">
-                                    <div>Small ({drumCapacity.small} gal): ₱{drumPrices.small}</div>
-                                    <div>Medium ({drumCapacity.medium} gal): ₱{drumPrices.medium}</div>
-                                    <div>Large ({drumCapacity.large} gal): ₱{drumPrices.large}</div>
+                                  {/* All Available Drum Sizes - Mobile Optimized */}
+                                  <div className="text-xs text-gray-600 space-y-0.5 sm:space-y-1">
+                                    <div className="flex justify-between">
+                                      <span>Small ({drumCapacity.small} gal):</span>
+                                      <span className="font-medium">₱{drumPrices.small}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Medium ({drumCapacity.medium} gal):</span>
+                                      <span className="font-medium">₱{drumPrices.medium}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Large ({drumCapacity.large} gal):</span>
+                                      <span className="font-medium">₱{drumPrices.large}</span>
+                                    </div>
                                   </div>
                                 </div>
 
-                                <div className="flex justify-between items-center">
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <div className="flex justify-between items-center pt-1 sm:pt-2">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     📦 Published
                                   </span>
-                                  <span className="text-sm text-gray-600 font-medium">
+                                  <span className="text-xs sm:text-sm text-gray-600 font-medium">
                                     {flavor.sold_count || 0} sold
                                   </span>
                                 </div>
@@ -6098,10 +6190,10 @@ export const Vendor = () => {
                       <img 
                         src={ordersIcon} 
                         alt="Orders" 
-                        className="w-10 h-10"
+                        className="w-8 h-8"
                       />
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
+                        <h1 className="text-xl font-bold text-gray-900">
                           Order Management
                         </h1>
                         <p className="text-gray-600">
@@ -6155,9 +6247,58 @@ export const Vendor = () => {
                     </div>
                   )}
 
-                  {/* Order Filters */}
+                     {/* Order Filters - Mobile Responsive */}
                   <div className="mb-8">
-                    <div className="flex flex-wrap gap-1 mb-4">
+                     {/* Filter Buttons - Horizontal Scroll on Mobile, Wrap on Desktop */}
+                     <div className="mb-4">
+                       {/* Mobile Layout - Horizontal Scroll */}
+                       <div 
+                         className="flex overflow-x-auto gap-1.5 pb-2 sm:hidden hide-scrollbar" 
+                         style={{ 
+                           scrollbarWidth: 'none', 
+                           msOverflowStyle: 'none'
+                         }}
+                       >
+                         {[
+                           { value: 'all', label: 'All Orders', count: vendorOrders.length },
+                           { value: 'pending', label: 'Pending', count: vendorOrders.filter(o => o.status === 'pending').length },
+                           { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
+                           { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'paid').length },
+                           { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
+                           { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
+                           { value: 'delivered', label: 'Delivered', count: vendorOrders.filter(o => o.status === 'delivered').length },
+                           { value: 'drum_return', label: 'Container Returns', count: vendorOrders.filter(o => o.drum_status === 'not returned' || o.drum_status === 'return_requested').length },
+                           { value: 'cancelled', label: 'Cancelled', count: vendorOrders.filter(o => o.status === 'cancelled').length }
+                         ].map((filter) => (
+                           <button
+                             key={filter.value}
+                             onClick={() => {
+                               setOrderFilter(filter.value);
+                               handleRefreshOrders(); // Auto-refresh when filter changes
+                             }}
+                             className={`flex-shrink-0 px-2 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                               orderFilter === filter.value
+                                 ? 'bg-blue-600 text-white shadow-sm'
+                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                             }`}
+                           >
+                             <span className="hidden xs:inline">{filter.label}</span>
+                             <span className="xs:hidden">{filter.label.split(' ')[0]}</span>
+                             {filter.count > 0 && (
+                               <span className={`ml-1 px-1 py-0.5 rounded-full text-xs ${
+                                 orderFilter === filter.value
+                                   ? 'bg-blue-500 text-white'
+                                   : 'bg-gray-200 text-gray-600'
+                               }`}>
+                                 {filter.count}
+                               </span>
+                             )}
+                           </button>
+                         ))}
+                       </div>
+                       
+                       {/* Desktop Layout - Wrap */}
+                       <div className="hidden sm:flex flex-wrap gap-1">
                       {[
                         { value: 'all', label: 'All Orders', count: vendorOrders.length },
                         { value: 'pending', label: 'Pending Approval', count: vendorOrders.filter(o => o.status === 'pending').length },
@@ -6184,11 +6325,12 @@ export const Vendor = () => {
                           {filter.label} {filter.count > 0 && `(${filter.count})`}
                         </button>
                       ))}
+                       </div>
                     </div>
 
-                    {/* Date Filter */}
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-center justify-between mb-3">
+                    {/* Date Filter - Mobile Responsive */}
+                    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-2 sm:space-y-0">
                         <h4 className="text-sm font-medium text-gray-700">Filter by Delivery Date</h4>
                         <label className="flex items-center space-x-2">
                           <input
@@ -6202,7 +6344,8 @@ export const Vendor = () => {
                       </div>
                       
                       {dateFilter.enabled && (
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
                           <div className="flex-1">
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Select Delivery Date
@@ -6217,69 +6360,75 @@ export const Vendor = () => {
                           <div className="flex items-end">
                             <button
                               onClick={() => setDateFilter({ selectedDate: '', enabled: false })}
-                              className="px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full sm:w-auto px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               Clear
                             </button>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Container Returns Bulk Action */}
+                    {/* Container Returns Bulk Action - Mobile Responsive */}
                     {orderFilter === 'drum_return' && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-3 space-y-3 lg:space-y-0">
                           <div>
                             <h4 className="text-orange-800 font-medium mb-1">📦 Container Returns Management</h4>
                             <p className="text-orange-700 text-sm">
                               Select specific containers or mark all as returned
                             </p>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
                             {selectedReturnOrders.length > 0 && (
-                              <span className="text-sm font-medium text-orange-700 bg-orange-100 px-3 py-1 rounded-full">
+                              <span className="text-sm font-medium text-orange-700 bg-orange-100 px-3 py-2 rounded-full text-center">
                                 {selectedReturnOrders.length} selected
                               </span>
                             )}
                             <button 
                               onClick={() => handleSelectAllReturns()}
-                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2 text-sm"
+                              className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2 text-sm"
                             >
                               <span>{selectedReturnOrders.length === vendorOrders.filter(o => o.drum_status === 'not returned' || o.drum_status === 'return_requested').length ? '☑️' : '☐'}</span>
-                              <span>Select All</span>
+                              <span className="hidden sm:inline">Select All</span>
+                              <span className="sm:hidden">All</span>
                             </button>
                             <button 
                               onClick={() => handleMarkSelectedReturned()}
                               disabled={drumReturnLoading === 'selected' || selectedReturnOrders.length === 0}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm"
                             >
                               {drumReturnLoading === 'selected' ? (
                                 <>
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  <span>Processing...</span>
+                                  <span className="hidden sm:inline">Processing...</span>
+                                  <span className="sm:hidden">...</span>
                                 </>
                               ) : (
                                 <>
                                   <span>✅</span>
-                                  <span>Mark Selected</span>
+                                  <span className="hidden sm:inline">Mark Selected</span>
+                                  <span className="sm:hidden">Selected</span>
                                 </>
                               )}
                             </button>
                             <button 
                               onClick={() => handleBulkMarkReturned()}
                               disabled={drumReturnLoading === 'bulk'}
-                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm"
                             >
                               {drumReturnLoading === 'bulk' ? (
                                 <>
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  <span>Processing...</span>
+                                  <span className="hidden sm:inline">Processing...</span>
+                                  <span className="sm:hidden">...</span>
                                 </>
                               ) : (
                                 <>
                                   <span>✅</span>
-                                  <span>Mark All</span>
+                                  <span className="hidden sm:inline">Mark All</span>
+                                  <span className="sm:hidden">All</span>
                                 </>
                               )}
                             </button>
@@ -6361,9 +6510,109 @@ export const Vendor = () => {
                       ) : (
                         filteredOrders.map((order) => (
                         <div key={order.order_id} className="bg-gray-50 rounded-lg border border-gray-200">
-                          {/* Condensed Order Summary */}
-                          <div className="p-4">
-                            <div className="flex justify-between items-center">
+                          {/* Condensed Order Summary - Mobile Responsive */}
+                          <div className="p-3 sm:p-4">
+                            {/* Mobile Layout - Stacked */}
+                            <div className="flex flex-col sm:hidden space-y-3">
+                              {/* Top Row: Order Info */}
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-base font-semibold text-gray-900 truncate">
+                                    Order #{order.order_id}
+                                  </h3>
+                                  <p className="text-xs text-gray-600 truncate">
+                                    {order.customer_fname} {order.customer_lname}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                                  </p>
+                                </div>
+                                <div className="text-right ml-2">
+                                  <p className="text-sm font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                    order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                    order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                                    order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800' :
+                                    order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ') : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Delivery Date */}
+                              <div>
+                                {order.delivery_datetime ? (() => {
+                                  const deliveryDate = new Date(order.delivery_datetime);
+                                  const now = new Date();
+                                  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                                  const deliveryDay = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
+                                  const diffTime = deliveryDay.getTime() - today.getTime();
+                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                  
+                                  let urgencyClass = 'text-gray-600 bg-gray-100';
+                                  let urgencyText = '';
+                                  
+                                  if (diffDays < 0) {
+                                    urgencyClass = 'text-red-700 bg-red-100 border border-red-200';
+                                    urgencyText = 'OVERDUE';
+                                  } else if (diffDays === 0) {
+                                    urgencyClass = 'text-orange-700 bg-orange-100 border border-orange-200';
+                                    urgencyText = 'TODAY';
+                                  } else if (diffDays === 1) {
+                                    urgencyClass = 'text-yellow-700 bg-yellow-100 border border-yellow-200';
+                                    urgencyText = 'TOMORROW';
+                                  } else if (diffDays <= 3) {
+                                    urgencyClass = 'text-blue-700 bg-blue-100 border border-blue-200';
+                                    urgencyText = 'UPCOMING';
+                                  }
+                                  
+                                  return (
+                                    <div className="flex items-center space-x-2">
+                                      <div className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${urgencyClass}`}>
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {urgencyText}
+                                      </div>
+                                      <p className="text-xs font-medium text-gray-900">
+                                        {deliveryDate.toLocaleString('en-US', {
+                                          weekday: 'short',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </p>
+                                    </div>
+                                  );
+                                })() : (
+                                  <div className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    NOT SCHEDULED
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Action Button */}
+                              <div className="w-full">
+                                <button
+                                  onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
+                                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                                >
+                                  {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Desktop Layout - Side by Side */}
+                            <div className="hidden sm:flex justify-between items-center">
                               <div className="flex-1">
                                 <div className="flex items-center space-x-4">
                                   <div>

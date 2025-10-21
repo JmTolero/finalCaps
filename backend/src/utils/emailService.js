@@ -25,27 +25,22 @@ const createTransporter = () => {
       }
     });
   } else {
-    // Default to Gmail with optimized settings for cloud platforms
+    // Try Gmail with port 465 (SSL) - often works better on cloud platforms
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465,
+      secure: true, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
       },
       tls: {
-        rejectUnauthorized: false,
-        ciphers: 'SSLv3'
+        rejectUnauthorized: false
       },
-      connectionTimeout: 30000, // 30 seconds
-      greetingTimeout: 15000,    // 15 seconds
-      socketTimeout: 30000,      // 30 seconds
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 3,
-      rateDelta: 20000,
-      rateLimit: 5
+      connectionTimeout: 15000, // 15 seconds
+      greetingTimeout: 10000,    // 10 seconds
+      socketTimeout: 15000,      // 15 seconds
+      pool: false // Disable pooling for cloud platforms
     });
   }
 };
