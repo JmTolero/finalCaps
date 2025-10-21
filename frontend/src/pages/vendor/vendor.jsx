@@ -2779,12 +2779,12 @@ export const Vendor = () => {
            {/* Sidebar */}
           <div
             className={`${
-              isSidebarOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
+              isSidebarOpen ? "w-56 sm:w-64 left-0" : "w-56 sm:w-64 -left-56 sm:-left-64 lg:w-20 lg:left-0"
             } bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl`}
           >
-            <div className="p-4 pt-8">
+            <div className="p-3 sm:p-4 pt-6 sm:pt-8">
                {/* Menu items */}
-               <ul className="flex flex-col space-y-3">
+               <ul className="flex flex-col space-y-2 sm:space-y-3">
                  {sidebarItems.map((item) => (
                    <li key={item.id}>
                      <button
@@ -2797,8 +2797,8 @@ export const Vendor = () => {
                        }}
                       className={`w-full flex ${
                         isSidebarOpen
-                          ? "items-center gap-3 px-4 py-3"
-                          : "items-center justify-center p-3"
+                          ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3"
+                          : "items-center justify-center p-2.5 sm:p-3"
                       } rounded-lg transition-all duration-200 ${
                          activeView === item.id
                           ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
@@ -2808,12 +2808,12 @@ export const Vendor = () => {
                        <img 
                          src={item.icon} 
                          alt={item.label} 
-                         className={`w-8 h-8 flex-shrink-0 object-contain ${
+                         className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
                            activeView === item.id ? 'brightness-0 invert' : ''
                          }`}
                        />
                        {isSidebarOpen && (
-                         <span className="font-medium text-sm">{item.label}</span>
+                         <span className="font-medium text-xs sm:text-sm">{item.label}</span>
                        )}
                      </button>
                    </li>
@@ -2821,7 +2821,7 @@ export const Vendor = () => {
                </ul>
                
                {/* Separate Profile Button */}
-               <div className="mt-4">
+               <div className="mt-3 sm:mt-4">
                  <button
                    onClick={() => {
                     console.log(
@@ -2836,25 +2836,25 @@ export const Vendor = () => {
                   }}
                   className={`w-full flex ${
                     isSidebarOpen
-                      ? "items-center gap-3"
+                      ? "items-center gap-2 sm:gap-3"
                       : "items-center justify-center"
-                  } p-3 ${
+                  } p-2.5 sm:p-3 ${
                     isSidebarOpen ? "text-left" : "text-center"
                   } rounded-lg transition-all duration-200 ${
                     activeView === "settings"
                       ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
                       : "text-gray-700 hover:bg-blue-200 hover:text-gray-900"
-                   }`}
-                 >
-                   <img 
-                     src={profileIcon} 
-                     alt="Profile" 
-                     className={`w-8 h-8 flex-shrink-0 object-contain ${
-                       activeView === "settings" ? 'brightness-0 invert' : ''
-                     }`}
-                   />
+                  }`}
+                >
+                  <img 
+                    src={profileIcon} 
+                    alt="Profile" 
+                    className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
+                      activeView === "settings" ? 'brightness-0 invert' : ''
+                    }`}
+                  />
                   {isSidebarOpen && (
-                    <span className="font-medium">Profile</span>
+                    <span className="font-medium text-xs sm:text-sm">Profile</span>
                   )}
                  </button>
                </div>
@@ -3907,12 +3907,12 @@ export const Vendor = () => {
          {/* Sidebar */}
         <div
           className={`${
-            isSidebarOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
+            isSidebarOpen ? "w-56 sm:w-64 left-0" : "w-56 sm:w-64 -left-56 sm:-left-64 lg:w-20 lg:left-0"
           } bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl`}
         >
-          <div className="p-4 pt-8">
+          <div className="p-3 sm:p-4 pt-6 sm:pt-8">
              {/* Menu items */}
-             <ul className="flex flex-col space-y-3">
+             <ul className="flex flex-col space-y-2 sm:space-y-3">
                {sidebarItems.map((item) => (
                  <li key={item.id}>
                    <button
@@ -3931,8 +3931,8 @@ export const Vendor = () => {
                      }}
                     className={`w-full flex ${
                       isSidebarOpen
-                        ? "items-center gap-3 px-4 py-3"
-                        : "items-center justify-center p-3"
+                        ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3"
+                        : "items-center justify-center p-2.5 sm:p-3"
                     } rounded-lg transition-all duration-200 ${
                        activeView === item.id
                         ? "bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700"
@@ -3942,12 +3942,12 @@ export const Vendor = () => {
                      <img 
                        src={item.icon} 
                        alt={item.label} 
-                       className={`w-8 h-8 flex-shrink-0 object-contain ${
+                       className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
                          activeView === item.id ? 'brightness-0 invert' : ''
                        }`}
                      />
                     {isSidebarOpen && (
-                      <span className="font-medium text-sm">{item.label}</span>
+                      <span className="font-medium text-xs sm:text-sm">{item.label}</span>
                     )}
                    </button>
                  </li>
@@ -3955,7 +3955,7 @@ export const Vendor = () => {
              </ul>
              
              {/* Separate Profile Button */}
-             <div className="mt-4">
+             <div className="mt-3 sm:mt-4">
                  <button
                    onClick={() => {
                   console.log(
@@ -3970,9 +3970,9 @@ export const Vendor = () => {
                 }}
                 className={`w-full flex ${
                   isSidebarOpen
-                    ? "items-center gap-3"
+                    ? "items-center gap-2 sm:gap-3"
                     : "items-center justify-center"
-                } p-3 ${
+                } p-2.5 sm:p-3 ${
                   isSidebarOpen ? "text-left" : "text-center"
                 } rounded-lg transition-all duration-200 ${
                   activeView === "settings"
@@ -3983,11 +3983,11 @@ export const Vendor = () => {
                  <img 
                    src={profileIcon} 
                    alt="Profile" 
-                   className={`w-8 h-8 flex-shrink-0 object-contain ${
+                   className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
                      activeView === "settings" ? 'brightness-0 invert' : ''
                    }`}
                  />
-                 {isSidebarOpen && <span className="font-medium">Profile</span>}
+                 {isSidebarOpen && <span className="font-medium text-xs sm:text-sm">Profile</span>}
                </button>
              </div>
            </div>
@@ -4537,21 +4537,21 @@ export const Vendor = () => {
             )}
 
             {activeView === "inventory" && (
-              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50 p-6">
+              <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50 p-3 sm:p-6">
                 {/* Suspended Warning Banner */}
                 {currentVendor?.status === 'suspended' && (
-                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-lg max-w-7xl">
+                  <div className="bg-red-50 border-l-4 border-red-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg max-w-7xl">
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800">
+                      <div className="ml-2 sm:ml-3">
+                        <h3 className="text-xs sm:text-sm font-medium text-red-800">
                           Product Management Disabled
                         </h3>
-                        <div className="mt-2 text-sm text-red-700">
+                        <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-700">
                           <p>
                             Your account is suspended. You cannot add or edit products while suspended.
                           </p>
@@ -4561,17 +4561,18 @@ export const Vendor = () => {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl">
-                  {/* Available Drums with Gallon Capacity Section */}
-                  <div className="bg-sky-100 border border-blue-300 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-blue-800 font-bold text-lg">
+                {/* Drum Sections - Desktop Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-7xl mb-4 sm:mb-6">
+                  {/* Available Drums Section */}
+                  <div className="bg-sky-100 border border-blue-300 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+                      <div className="text-blue-800 font-bold text-base sm:text-lg">
                         Available Drums
                       </div>
                       {!isEditingDrums && currentVendor?.status !== 'suspended' && (
                         <button
                           onClick={handleDrumsEdit}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                          className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 ${
                             subscriptionLimits.drum_limit !== -1 && getTotalDrums() >= subscriptionLimits.drum_limit
                               ? 'bg-red-600 hover:bg-red-700 text-white'
                               : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -4586,10 +4587,10 @@ export const Vendor = () => {
                     </div>
 
                     {isEditingDrums ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Small Drums
                             </label>
                             <input
@@ -4598,12 +4599,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleDrumSizeChange("small", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="0"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Medium Drums
                             </label>
                             <input
@@ -4612,12 +4613,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleDrumSizeChange("medium", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="0"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Large Drums
                             </label>
                             <input
@@ -4626,7 +4627,7 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleDrumSizeChange("large", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="0"
                             />
                           </div>
@@ -4690,28 +4691,28 @@ export const Vendor = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-orange-600 mb-1">
+                      <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mb-1">
                             {availableDrums.small}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800">
                             Small Drums
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-orange-600 mb-1">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mb-1">
                             {availableDrums.medium}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800">
                             Medium Drums
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-orange-600 mb-1">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 mb-1">
                             {availableDrums.large}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800">
                             Large Drums
                           </div>
                         </div>
@@ -4750,16 +4751,17 @@ export const Vendor = () => {
                     </div>
                   </div>
 
-                  {/* Drum Capacity Settings Section */}
-                  <div className="bg-sky-100 border border-blue-300 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-blue-800 font-bold text-lg">
-                        Drum Capacity Settings (Gallons per Drum)
+                  {/* Right Column - Capacity and Prices */}
+                  <div className="space-y-4 sm:space-y-6">
+                  <div className="bg-sky-100 border border-blue-300 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+                      <div className="text-blue-800 font-bold text-base sm:text-lg">
+                        Drum Capacity Settings
                       </div>
                       {!isEditingCapacity && (
                         <button
                           onClick={handleCapacityEdit}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200"
                         >
                           Edit Capacity
                         </button>
@@ -4767,10 +4769,10 @@ export const Vendor = () => {
                     </div>
 
                     {isEditingCapacity ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Small Drum Capacity (gallons)
                             </label>
                             <input
@@ -4779,12 +4781,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleCapacityChange("small", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="1"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Medium Drum Capacity (gallons)
                             </label>
                             <input
@@ -4793,12 +4795,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleCapacityChange("medium", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="1"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Large Drum Capacity (gallons)
                             </label>
                             <input
@@ -4807,200 +4809,201 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handleCapacityChange("large", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
                               min="1"
                             />
                           </div>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2">
                           <button
                             onClick={handleCapacitySave}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium"
                           >
                             Save Capacity
                           </button>
                           <button
                             onClick={handleCapacityCancel}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium"
                           >
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                      <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-1">
                             {drumCapacity.small}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Small Drum
                           </div>
                           <div className="text-xs text-blue-600 font-medium">
                             gallons per drum
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-1">
                             {drumCapacity.medium}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Medium Drum
                           </div>
                           <div className="text-xs text-blue-600 font-medium">
                             gallons per drum
                           </div>
                         </div>
-                        <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-1">
                             {drumCapacity.large}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Large Drum
                           </div>
                           <div className="text-xs text-blue-600 font-medium">
                             gallons per drum
                           </div>
                         </div>
-              </div>
-            )}
-
-                    {/* Drum Prices Section */}
-                    <div className="mt-6 pt-6 border-t-2 border-blue-300">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="text-blue-800 font-bold text-lg">
-                          Drum Prices (₱ per Drum)
-                        </div>
-                        {!isEditingPrices && (
-                          <button
-                            onClick={handlePricesEdit}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                          >
-                            Edit Prices
-                          </button>
-                        )}
                       </div>
+                    )}
+                  </div>
 
-                      {isEditingPrices ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Small Drum Price (₱)
-                              </label>
-                              <input
-                                type="number"
-                                value={tempPrices.small}
-                                onChange={(e) =>
-                                  handlePriceChange("small", e.target.value)
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
-                                min="0"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Medium Drum Price (₱)
-                              </label>
-                              <input
-                                type="number"
-                                value={tempPrices.medium}
-                                onChange={(e) =>
-                                  handlePriceChange("medium", e.target.value)
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
-                                min="0"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Large Drum Price (₱)
-                              </label>
-                              <input
-                                type="number"
-                                value={tempPrices.large}
-                                onChange={(e) =>
-                                  handlePriceChange("large", e.target.value)
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-bold"
-                                min="0"
-                              />
-                            </div>
+                  {/* Drum Prices Section */}
+                  <div className="bg-sky-100 border border-blue-300 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+                      <div className="text-blue-800 font-bold text-base sm:text-lg">
+                        Drum Prices (₱ per Drum)
+                      </div>
+                      {!isEditingPrices && (
+                        <button
+                          onClick={handlePricesEdit}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200"
+                        >
+                          Edit Prices
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditingPrices ? (
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                              Small Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.small}
+                              onChange={(e) =>
+                                handlePriceChange("small", e.target.value)
+                              }
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
+                              min="0"
+                            />
                           </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={handlePricesSave}
-                              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium"
-                            >
-                              Save Prices
-                            </button>
-                            <button
-                              onClick={handlePricesCancel}
-                              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
-                            >
-                              Cancel
-                            </button>
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                              Medium Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.medium}
+                              onChange={(e) =>
+                                handlePriceChange("medium", e.target.value)
+                              }
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
+                              min="0"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                              Large Drum Price (₱)
+                            </label>
+                            <input
+                              type="number"
+                              value={tempPrices.large}
+                              onChange={(e) =>
+                                handlePriceChange("large", e.target.value)
+                              }
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base sm:text-lg font-bold"
+                              min="0"
+                            />
                           </div>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                            <div className="text-2xl font-bold text-green-600 mb-1">
-                              ₱{drumPrices.small}
-                            </div>
-                            <div className="text-sm font-semibold text-gray-800 mb-1">
-                              Small Drum
-                            </div>
-                            <div className="text-xs text-green-600 font-medium">
-                              per drum
-                            </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2">
+                          <button
+                            onClick={handlePricesSave}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium"
+                          >
+                            Save Prices
+                          </button>
+                          <button
+                            onClick={handlePricesCancel}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-row gap-2 sm:gap-3 md:gap-4">
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.small}
                           </div>
-                          <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                            <div className="text-2xl font-bold text-green-600 mb-1">
-                              ₱{drumPrices.medium}
-                            </div>
-                            <div className="text-sm font-semibold text-gray-800 mb-1">
-                              Medium Drum
-                            </div>
-                            <div className="text-xs text-green-600 font-medium">
-                              per drum
-                            </div>
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
+                            Small Drum
                           </div>
-                          <div className="text-center bg-white rounded-lg p-4 shadow-md border border-blue-300">
-                            <div className="text-2xl font-bold text-green-600 mb-1">
-                              ₱{drumPrices.large}
-                            </div>
-                            <div className="text-sm font-semibold text-gray-800 mb-1">
-                              Large Drum
-                            </div>
-                            <div className="text-xs text-green-600 font-medium">
-                              per drum
-                            </div>
+                          <div className="text-xs text-green-600 font-medium">
+                            per drum
                           </div>
-              </div>
-            )}
-                    </div>
+                        </div>
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.medium}
+                          </div>
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
+                            Medium Drum
+                          </div>
+                          <div className="text-xs text-green-600 font-medium">
+                            per drum
+                          </div>
+                        </div>
+                        <div className="flex-1 text-center bg-white rounded-lg p-2 sm:p-3 md:p-4 shadow-md border border-blue-300">
+                          <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 mb-1">
+                            ₱{drumPrices.large}
+                          </div>
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
+                            Large Drum
+                          </div>
+                          <div className="text-xs text-green-600 font-medium">
+                            per drum
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   </div>
                 </div>
 
                 {/* Add/Edit Flavor Section */}
                 {currentVendor?.status !== 'suspended' && (
-                  <div id="flavor-form" className="bg-sky-100 border border-blue-300 rounded-lg p-6 mt-4">
-                    <div className="text-blue-800 font-medium text-xl mb-4">
+                  <div id="flavor-form" className="bg-sky-100 border border-blue-300 rounded-lg p-3 sm:p-6 mt-3 sm:mt-4">
+                    <div className="text-blue-800 font-medium text-lg sm:text-xl mb-3 sm:mb-4">
                       {isEditingFlavor ? `Edit Flavor: ${editingFlavor?.flavor_name}` : "Add Flavor:"}
                     </div>
 
-                  <div className="flex items-start space-x-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
                     {/* Flavor Images */}
                     <div className="flex-shrink-0">
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         {/* Image Upload Area */}
-                        <div className="w-32 h-32 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
+                        <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-lg flex items-center justify-center shadow-lg border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
                           <label
                             htmlFor="flavor-images"
                             className="cursor-pointer text-center"
                           >
-                            <div className="text-4xl mb-2">📷</div>
+                            <div className="text-2xl sm:text-4xl mb-1 sm:mb-2">📷</div>
                             <div className="text-xs text-gray-600">
                               Upload Images
                             </div>
@@ -5018,7 +5021,7 @@ export const Vendor = () => {
                         {/* Image Previews */}
                         {imagePreviews.length > 0 && (
                           <div className="space-y-2">
-                            <div className="text-sm text-gray-600">
+                            <div className="text-xs sm:text-sm text-gray-600">
                               Uploaded Images ({imagePreviews.length}):
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -5027,11 +5030,11 @@ export const Vendor = () => {
                                   <img
                                     src={preview}
                                     alt={`Flavor ${index + 1}`}
-                                    className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+                                    className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-300"
                                   />
                                   <button
                                     onClick={() => removeImage(index)}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                    className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs hover:bg-red-600"
                                   >
                                     ×
                                   </button>
@@ -5044,9 +5047,9 @@ export const Vendor = () => {
                     </div>
 
                     {/* Flavor Details */}
-                    <div className="flex-1 space-y-4">
-              <div>
-                        <label className="block text-sm font-semibold text-blue-800 mb-2">
+                    <div className="flex-1 space-y-3 sm:space-y-4">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-semibold text-blue-800 mb-1 sm:mb-2">
                           Flavor Name
                         </label>
                         <input
@@ -5056,12 +5059,12 @@ export const Vendor = () => {
                             handleFlavorFormChange("name", e.target.value)
                           }
                           placeholder="Enter flavor name (e.g., Vanilla)"
-                          className="w-full px-4 py-3 bg-white border-2 border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-sm text-gray-900 font-medium"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border-2 border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-sm text-sm sm:text-base text-gray-900 font-medium"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-blue-800 mb-2">
+                        <label className="block text-xs sm:text-sm font-semibold text-blue-800 mb-1 sm:mb-2">
                           Description
                         </label>
                         <textarea
@@ -5074,15 +5077,14 @@ export const Vendor = () => {
                           }
                           placeholder="Describe your ice cream flavor..."
                           rows={3}
-                          className="w-full px-4 py-3 bg-white border-2 border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-sm text-gray-900 font-medium resize-vertical"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border-2 border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-sm text-sm sm:text-base text-gray-900 font-medium resize-vertical"
                         />
                       </div>
 
-
-                      <div className="flex items-center space-x-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                         <label
                           htmlFor="flavor-images"
-                          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 cursor-pointer hover:shadow-lg"
+                          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-md transition-colors duration-200 cursor-pointer hover:shadow-lg text-xs sm:text-sm text-center"
                         >
                           Upload Images
                         </label>
@@ -5094,10 +5096,10 @@ export const Vendor = () => {
                           onChange={handleImageUpload}
                           className="hidden"
                         />
-                        <div className="flex items-center space-x-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
                           <button
                             onClick={handleSaveFlavor}
-                            className={`font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg ${
+                            className={`font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg text-xs sm:text-sm ${
                               !isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit
                                 ? 'bg-red-500 hover:bg-red-600 text-white'
                                 : 'bg-blue-500 hover:bg-blue-600 text-white'
@@ -5109,12 +5111,12 @@ export const Vendor = () => {
                             }
                           </button>
                           
-                          {/* Flavor Limit Display - Positioned to the right of Save Flavor button */}
+                          {/* Flavor Limit Display */}
                           {!isEditingFlavor && (
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="p-2 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
                               <div className="text-center">
-                                <div className="text-sm text-gray-600 mb-1">Current Flavors</div>
-                                <div className={`text-2xl font-bold ${
+                                <div className="text-xs sm:text-sm text-gray-600 mb-1">Current Flavors</div>
+                                <div className={`text-lg sm:text-2xl font-bold ${
                                   savedFlavors.length >= subscriptionLimits.flavor_limit && subscriptionLimits.flavor_limit !== -1
                                     ? 'text-red-600'
                                     : savedFlavors.length >= subscriptionLimits.flavor_limit * 0.8 && subscriptionLimits.flavor_limit !== -1
@@ -5139,7 +5141,7 @@ export const Vendor = () => {
                                   )}
                                 </div>
                                 {savedFlavors.length >= subscriptionLimits.flavor_limit && subscriptionLimits.flavor_limit !== -1 && (
-                                  <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                  <div className="mt-1 sm:mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
                                     ⚠️ Limit reached!
                                   </div>
                                 )}
@@ -5149,7 +5151,7 @@ export const Vendor = () => {
                           {isEditingFlavor && (
                             <button
                               onClick={cancelEditFlavor}
-                              className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold px-6 py-3 rounded-lg shadow-md transition-colors duration-200"
+                              className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-md transition-colors duration-200 text-xs sm:text-sm"
                             >
                               Cancel
                             </button>
@@ -5162,13 +5164,13 @@ export const Vendor = () => {
                 )}
 
                 {/* Saved Flavors Section */}
-                <div className="bg-[#D4F6FF] border border-blue-300 rounded-lg p-6 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-blue-800 font-medium text-xl">
+                <div className="bg-[#D4F6FF] border border-blue-300 rounded-lg p-3 sm:p-6 mt-3 sm:mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4 gap-2 sm:gap-0">
+                    <div className="text-blue-800 font-medium text-lg sm:text-xl">
                       My Flavors
                     </div>
                     {/* Flavor Limit Display */}
-                    <div className="text-sm text-gray-600">
+                    <div className="text-xs sm:text-sm text-gray-600">
                       {subscriptionLimits.flavor_limit === -1 ? (
                         <span className="text-green-600 font-medium">Unlimited (Premium Plan)</span>
                       ) : (
@@ -5201,7 +5203,7 @@ export const Vendor = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                       {savedFlavors.map((flavor) => {
                         // Parse image URLs (stored as JSON array)
                         let imageUrls = [];
@@ -5215,7 +5217,7 @@ export const Vendor = () => {
                         }
                         
                         return (
-                          <div key={flavor.flavor_id} className="bg-white rounded-lg p-4 shadow-sm border border-blue-300">
+                          <div key={flavor.flavor_id} className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-blue-300">
                             <div className="aspect-square mb-3 rounded-lg overflow-hidden bg-gray-100">
                               {imageUrls.length > 0 ? (
                                 <div className="relative w-full h-full">
@@ -5230,7 +5232,7 @@ export const Vendor = () => {
                                   {imageUrls.length > 1 && (
                                     <button
                                       onClick={() => openImageModal(imageUrls, flavor.flavor_name)}
-                                      className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white text-xs px-2 py-1 rounded-full transition-all duration-200 cursor-pointer"
+                                      className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full transition-all duration-200 cursor-pointer"
                                     >
                                       +{imageUrls.length - 1} more
                                     </button>
@@ -5244,21 +5246,21 @@ export const Vendor = () => {
                                 </div>
                               )}
                             </div>
-                          <h3 className="font-semibold text-gray-900 mb-1">
+                          <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-1">
                             {flavor.flavor_name}
                           </h3>
                           {flavor.flavor_description && (
-                            <p className="text-sm text-gray-600 line-clamp-2">
+                            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
                               {flavor.flavor_description}
                             </p>
                           )}
-                          <div className="text-xs text-gray-500 mt-2">
+                          <div className="text-xs text-gray-500 mt-1 sm:mt-2">
                             Added {new Date(flavor.created_at).toLocaleDateString()}
                           </div>
                           
                           {/* Store Status Badge */}
-                          <div className="mt-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          <div className="mt-1 sm:mt-2">
+                            <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${
                               flavor.store_status === 'published' 
                                 ? 'bg-green-100 text-green-800' 
                                 : flavor.store_status === 'ready'
@@ -5271,17 +5273,17 @@ export const Vendor = () => {
                           </div>
                           
                           {/* Action Buttons */}
-                          <div className="flex flex-col space-y-2 mt-3">
-                            <div className="flex space-x-2">
+                          <div className="flex flex-col space-y-1.5 sm:space-y-2 mt-2 sm:mt-3">
+                            <div className="flex space-x-1.5 sm:space-x-2">
                               <button
                                 onClick={() => startEditFlavor(flavor)}
-                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors duration-200 font-medium"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => confirmDeleteFlavor(flavor)}
-                                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors duration-200 font-medium"
                               >
                                 Delete
                               </button>
@@ -5291,7 +5293,7 @@ export const Vendor = () => {
                             {flavor.store_status === 'draft' && (
                               <button
                                 onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'ready')}
-                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors duration-200 font-medium"
                               >
                                 Mark as Ready
                               </button>
@@ -5300,7 +5302,7 @@ export const Vendor = () => {
                             {flavor.store_status === 'ready' && (
                               <button
                                 onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'published')}
-                                className="w-full bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                                className="w-full bg-green-500 hover:bg-green-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors duration-200 font-medium"
                               >
                                 📦 Upload to Store
                               </button>
@@ -5309,7 +5311,7 @@ export const Vendor = () => {
                             {flavor.store_status === 'published' && (
                               <button
                                 onClick={() => updateFlavorStoreStatus(flavor.flavor_id, 'ready')}
-                                className="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-2 rounded transition-colors duration-200"
+                                className="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 rounded transition-colors duration-200 font-medium"
                               >
                                 Remove from Store
                               </button>
@@ -7103,14 +7105,14 @@ export const Vendor = () => {
             {activeView === "notifications" && (
               <div className="min-h-screen">
                 <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
-                  <div className="flex items-center justify-between mb-8">
-                     <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between mb-8 gap-4">
+                     <div className="flex items-center space-x-2 flex-1 min-w-0">
                        <img 
                          src={bellNotificationIcon} 
                          alt="Notifications" 
-                         className="w-5 h-5 sm:w-6 sm:h-6"
+                         className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0"
                        />
-                       <div>
+                       <div className="min-w-0 hidden sm:block">
                          <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                            Notifications
                          </h1>
@@ -7121,12 +7123,12 @@ export const Vendor = () => {
                     {notifications.length > 0 && notifications.some(n => !n.is_read) && (
                       <button
                         onClick={markAllNotificationsAsRead}
-                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors flex items-center justify-center space-x-1 w-full sm:w-auto"
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded transition-colors flex items-center justify-center space-x-1.5 whitespace-nowrap flex-shrink-0"
                       >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Mark All as Read</span>
+                        <span className="text-xs sm:text-sm">Mark All as Read</span>
                       </button>
                     )}
                   </div>

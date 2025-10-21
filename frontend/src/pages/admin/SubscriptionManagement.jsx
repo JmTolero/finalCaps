@@ -118,7 +118,7 @@ const SubscriptionManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Subscription Management</h1>
+        <h1 className="text-3xl font-bold mt-12">Subscription Management</h1>
       </div>
 
       {/* Revenue Overview */}

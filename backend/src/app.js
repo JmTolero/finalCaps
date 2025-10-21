@@ -2,10 +2,12 @@ const express = require("express");
 const cors = require("cors");
 const session = require('express-session');
 const passport = require('./config/passport');
+const vendorPassport = require('./config/vendorPassport');
 const pool = require('./db/config');
 // Import new organized routes
 const authRoutes = require('./routes/shared/authRoutes');
 const googleAuthRoutes = require('./routes/shared/googleAuthRoutes');
+const vendorGoogleAuthRoutes = require('./routes/vendor/vendorGoogleAuthRoutes');
 const orderRoutes = require('./routes/shared/orderRoutes');
 const addressRoutes = require('./routes/shared/addressRoutes');
 const adminRoutes = require('./routes/admin/adminRoutes');
@@ -78,6 +80,8 @@ app.use(session({
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(vendorPassport.initialize());
+app.use(vendorPassport.session());
 
 app.use(express.json());
 app.use(express.urlencoded({extended:true}))
@@ -100,6 +104,7 @@ app.get("/", (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', googleAuthRoutes);
+app.use('/api/vendor/auth', vendorGoogleAuthRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/admin', adminRoutes);

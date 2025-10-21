@@ -20,7 +20,9 @@ This guide explains how to set up Google OAuth authentication for the ChillNet a
    - Choose "Web application"
    - Add authorized redirect URIs:
      - For development: `http://localhost:3001/api/auth/google/callback`
+     - For development (vendor): `http://localhost:3001/api/vendor/auth/google/callback`
      - For production: `https://your-backend-domain.com/api/auth/google/callback`
+     - For production (vendor): `https://your-backend-domain.com/api/vendor/auth/google/callback`
 
 ## Step 2: Environment Variables
 
@@ -31,6 +33,7 @@ Add the following environment variables to your `.env` file:
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
+GOOGLE_VENDOR_CALLBACK_URL=http://localhost:3001/api/vendor/auth/google/callback
 
 # Session Configuration (for Passport)
 SESSION_SECRET=your_very_secure_session_secret_here
@@ -57,18 +60,49 @@ The frontend components have been updated to include Google sign-in buttons. The
 
 ## API Endpoints
 
+### Regular User OAuth
 - `GET /api/auth/google` - Initiates Google OAuth flow
 - `GET /api/auth/google/callback` - Google OAuth callback
 - `GET /api/auth/google/failure` - OAuth failure handler
 - `POST /api/auth/google/logout` - Logout endpoint
 
+### Vendor OAuth
+- `GET /api/vendor/auth/google` - Initiates vendor Google OAuth flow
+- `GET /api/vendor/auth/google/callback` - Vendor Google OAuth callback
+- `GET /api/vendor/auth/google/failure` - Vendor OAuth failure handler
+- `POST /api/vendor/auth/complete-registration` - Complete vendor registration with documents
+
+## Vendor Google OAuth Flow
+
+The vendor Google OAuth flow is specifically designed for vendor registration:
+
+1. User clicks "Sign up with Google" on the vendor registration page
+2. Frontend redirects to `/api/vendor/auth/google`
+3. User authenticates with Google
+4. Google redirects back to `/api/vendor/auth/google/callback`
+5. Backend processes the authentication:
+   - If user exists: Updates their role to vendor and creates vendor record
+   - If new user: Creates user with vendor role and vendor record
+6. User is redirected to document completion page
+7. User uploads required documents (valid ID, business permit, proof image)
+8. Registration is completed and user is redirected to pending approval page
+
 ## Testing
 
+### Regular User OAuth
 1. Start the backend server
 2. Navigate to the login page
 3. Click "Sign in with Google"
 4. Complete the Google authentication flow
 5. Verify that the user is logged in and redirected appropriately
+
+### Vendor OAuth
+1. Start the backend server
+2. Navigate to the vendor registration page
+3. Click "Sign up with Google"
+4. Complete the Google authentication flow
+5. Complete the document upload form
+6. Verify that the vendor registration is completed and user is redirected to pending page
 
 ## Production Deployment
 

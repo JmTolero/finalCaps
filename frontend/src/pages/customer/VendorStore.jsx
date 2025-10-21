@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { getImageUrl } from "../../utils/imageUtils";
 import FeedbackModal from '../../components/shared/FeedbackModal';
+import { useCart } from '../../contexts/CartContext';
 import axios from "axios";
 
 // Import customer icons
@@ -15,6 +16,7 @@ import shopsIcon from "../../assets/images/customerIcon/shops.png";
 export const VendorStore = () => {
   const { vendorId } = useParams();
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   const [vendor, setVendor] = useState(null);
   const [flavors, setFlavors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -322,9 +324,15 @@ export const VendorStore = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate("/cart")}
-                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors relative"
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
                   <img src={cartIcon} alt="Cart" className="w-4 h-4" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
                 </button>
 
                 {/* Feedback Icon with Dropdown */}
@@ -417,9 +425,15 @@ export const VendorStore = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate("/cart")}
-                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors relative"
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
                   <img src={cartIcon} alt="Cart" className="w-5 h-5" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
                 </button>
 
                 {/* Feedback Icon with Dropdown */}

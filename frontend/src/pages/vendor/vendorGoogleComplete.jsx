@@ -1,27 +1,79 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav.jsx';
 import axios from 'axios';
 import { handleValidatedChange, validateFormData, trimFormData } from '../../utils/inputValidation';
 
-export const VendorRegister = () => {
+export const VendorGoogleComplete = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [user, setUser] = useState(null);
+  const [vendorId, setVendorId] = useState(null);
+  const [isExistingUser, setIsExistingUser] = useState(false);
   const [form, setForm] = useState({
-    fname: '',
-    lname: '',
     username: '',
-    password: '',
-    confirmPassword: '',
-    contact_no: '',
-    email: '',
     birth_date: '',
     gender: '',
+    contact_no: '',
     valid_id: null,
     business_permit: null,
     proof_image: null
   });
   const [status, setStatus] = useState({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
+  const [showExistingUserMessage, setShowExistingUserMessage] = useState(true);
+
+  useEffect(() => {
+    // Get user data from URL parameters
+    const token = searchParams.get('token');
+    const userParam = searchParams.get('user');
+    const vendorIdParam = searchParams.get('vendor_id');
+    const existingParam = searchParams.get('existing');
+    const errorParam = searchParams.get('error');
+
+    if (errorParam) {
+      setStatus({
+        type: 'error',
+        message: 'Google authentication failed. Please try again.'
+      });
+      return;
+    }
+
+    if (token && userParam) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(userParam));
+        setUser(userData);
+        setIsExistingUser(existingParam === 'true');
+        if (vendorIdParam) {
+          setVendorId(vendorIdParam);
+        }
+        
+        // Set username from user data
+        setForm(prev => ({
+          ...prev,
+          username: userData.username || ''
+        }));
+        
+        // Store token and user data
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        
+        // Dispatch user change event to update navbar
+        window.dispatchEvent(new Event('userChanged'));
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        setStatus({
+          type: 'error',
+          message: 'Invalid user data. Please try again.'
+        });
+      }
+    } else {
+      setStatus({
+        type: 'error',
+        message: 'Missing authentication data. Please try again.'
+      });
+    }
+  }, [searchParams]);
 
   // Auto-hide error messages after 3 seconds and scroll to top when error/success occurs
   useEffect(() => {
@@ -41,9 +93,20 @@ export const VendorRegister = () => {
     }
   }, [status.type]);
 
+  // Auto-hide existing user message after 10 seconds
+  useEffect(() => {
+    if (isExistingUser && showExistingUserMessage) {
+      const timer = setTimeout(() => {
+        setShowExistingUserMessage(false);
+      }, 10000); // 10 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isExistingUser, showExistingUserMessage]);
+
   const handleChange = (e) => {
-    // Prevent spaces in username, password, and contact fields
-    const noSpaceFields = ['username', 'password', 'confirmPassword', 'contact_no'];
+    // Prevent spaces in contact and username fields
+    const noSpaceFields = ['contact_no', 'username'];
     handleValidatedChange(e, setForm, noSpaceFields);
   };
 
@@ -52,27 +115,14 @@ export const VendorRegister = () => {
     setForm(prev => ({ ...prev, [id]: files[0] }));
   };
 
-
   const validateForm = () => {
     console.log('Form data:', form); // Debug log
     
     // Validate required text fields for empty/whitespace values
-    const requiredTextFields = ['fname', 'lname', 'username', 'password', 'contact_no', 'email', 'birth_date', 'gender'];
+    const requiredTextFields = ['birth_date', 'gender'];
     const validation = validateFormData(form, requiredTextFields);
     if (!validation.isValid) {
       setStatus({ type: 'error', message: validation.message });
-      return false;
-    }
-
-    // Address is optional during registration - will be added later in settings
-
-    if (form.password !== form.confirmPassword) {
-      setStatus({ type: 'error', message: 'Passwords do not match' });
-      return false;
-    }
-
-    if (form.password.length < 6) {
-      setStatus({ type: 'error', message: 'Password must be at least 6 characters long' });
       return false;
     }
 
@@ -96,7 +146,7 @@ export const VendorRegister = () => {
 
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      console.log('Attempting vendor registration with API base:', apiBase);
+      console.log('Attempting to complete vendor registration with API base:', apiBase);
       
       // Trim form data before sending
       const trimmedForm = trimFormData(form);
@@ -104,15 +154,16 @@ export const VendorRegister = () => {
       
       // Create FormData for file uploads
       const formData = new FormData();
-      formData.append('fname', trimmedForm.fname);
-      formData.append('lname', trimmedForm.lname);
-      formData.append('username', trimmedForm.username);
-      formData.append('password', trimmedForm.password);
-      formData.append('contact_no', trimmedForm.contact_no);
-      formData.append('email', trimmedForm.email);
+      formData.append('user_id', user.id);
+      if (vendorId) {
+        formData.append('vendor_id', vendorId);
+      }
+      if (trimmedForm.username) {
+        formData.append('username', trimmedForm.username);
+      }
       formData.append('birth_date', trimmedForm.birth_date);
       formData.append('gender', trimmedForm.gender);
-      formData.append('role', 'vendor');
+      formData.append('contact_no', trimmedForm.contact_no);
       
       // Only append files if they exist
       if (form.valid_id) {
@@ -131,22 +182,22 @@ export const VendorRegister = () => {
         console.log(`${key}:`, value);
       }
       
-      console.log('Sending registration request to:', `${apiBase}/api/vendor/register`);
-      const res = await axios.post(`${apiBase}/api/vendor/register`, formData, {
+      console.log('Sending completion request to:', `${apiBase}/api/vendor/auth/complete-registration`);
+      const res = await axios.post(`${apiBase}/api/vendor/auth/complete-registration`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         timeout: 30000, // 30 second timeout
       });
-      console.log('Registration response:', res.data);
+      console.log('Completion response:', res.data);
 
       if (res.data.success) {
         setStatus({
           type: 'success',
-          message: 'Registration successful! Your application is now pending approval...'
+          message: 'Registration completed successfully! Your application is now pending approval...'
         });
         
-        // Store user data in sessionStorage to keep them logged in
+        // Update user data in sessionStorage
         sessionStorage.setItem('user', JSON.stringify({
           id: res.data.user.user_id,
           fname: res.data.user.fname,
@@ -166,19 +217,19 @@ export const VendorRegister = () => {
         // Dispatch user change event to update navbar
         window.dispatchEvent(new Event('userChanged'));
         
-        // Redirect to vendor pending page after successful registration
+        // Redirect to vendor pending page after successful completion
         setTimeout(() => {
           navigate('/vendor-pending');
         }, 2000);
       } else {
-        throw new Error(res.data.message || 'Registration failed');
+        throw new Error(res.data.message || 'Registration completion failed');
       }
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error('Registration completion error:', err);
       console.error('Error response:', err.response?.data);
       console.error('Error status:', err.response?.status);
       
-      let errorMessage = 'Registration failed. Please try again.';
+      let errorMessage = 'Registration completion failed. Please try again.';
       
       if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
         errorMessage = 'Cannot connect to server. Please make sure the backend server is running on port 3001.';
@@ -199,6 +250,20 @@ export const VendorRegister = () => {
     }
   };
 
+  if (!user) {
+    return (
+      <>
+        <NavWithLogo />
+        <main className="flex items-center justify-center min-h-[90vh] px-4 py-4 pt-20 sm:pt-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <NavWithLogo />
@@ -210,11 +275,18 @@ export const VendorRegister = () => {
           {/* Header Section */}
           <div className="text-center py-6 sm:py-8 px-4 sm:px-8 border-b border-sky-200">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-2">
-            🍦 Vendor Registration   
+               Complete Vendor Registration
             </h1>
             <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-2">
-              Join our ice cream vendor community and start sharing your delicious creations with customers
+              Welcome {user.firstName}! Please complete your vendor registration by providing additional information and required documents.
             </p>
+            {isExistingUser && showExistingUserMessage && (
+              <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg transition-opacity duration-500">
+                <p className="text-blue-800 text-sm">
+                  <strong>Existing User:</strong> You already have an account. We're upgrading you to vendor status.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Status Message - Moved to top */}
@@ -232,129 +304,49 @@ export const VendorRegister = () => {
             {/* Two Column Layout for Desktop */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12">
               
-              {/* Left Column - Personal Information */}
+              {/* Left Column - Additional Information */}
               <div className="space-y-4 sm:space-y-6">
                 <div className="mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 flex items-center">
-                    👤 Personal Information
+                    📝 Additional Information
                   </h2>
                   <div className="h-1 w-12 sm:w-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"></div>
                 </div>
 
-                {/* Name Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* User Info Display */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-green-200 shadow-sm">
+                  <h3 className="text-base sm:text-lg font-semibold text-green-800 mb-2 flex items-center">
+                    ✅ Google Account Information
+                  </h3>
+                  <div className="text-sm text-green-700 space-y-1">
+                    <p><strong>Name:</strong> {user.firstName} {user.lastName}</p>
+                    <p><strong>Email:</strong> {user.email}</p>
+                    <p><strong>Username:</strong> {user.username}</p>
+                  </div>
+                </div>
+
+                {/* Username Field - Only show for existing users */}
+                {isExistingUser && (
                   <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="fname">
-                      First Name *
+                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="username">
+                      Username
+                      <span className="text-xs sm:text-sm font-normal text-gray-500 block">
+                        You can change your username if you want
+                      </span>
                     </label>
                     <input
-                      id="fname"
+                      id="username"
                       type="text"
-                      placeholder="Enter your first name"
+                      placeholder="Enter your preferred username"
                       className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.fname}
+                      value={form.username}
                       onChange={handleChange}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      3-20 characters, letters, numbers, and underscores only
+                    </p>
                   </div>
-
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="lname">
-                      Last Name *
-                    </label>
-                    <input
-                      id="lname"
-                      type="text"
-                      placeholder="Enter your last name"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.lname}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                {/* Username */}
-                <div className="form-group">
-                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="username">
-                    Username *
-                  </label>
-                  <input
-                    id="username"
-                    type="text"
-                    placeholder="Choose a unique username"
-                    className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                    required
-                    value={form.username}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                {/* Password Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="password">
-                      Password *
-                    </label>
-                    <input
-                      id="password"
-                      type="password"
-                      placeholder="Enter password"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.password}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="confirmPassword">
-                      Confirm Password *
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm password"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.confirmPassword}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="contact_no">
-                      Contact Number *
-                    </label>
-                    <input
-                      id="contact_no"
-                      type="tel"
-                      placeholder="09XX-XXX-XXXX"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.contact_no}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="email">
-                      Email Address *
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                      required
-                      value={form.email}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Birth Date and Gender */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -392,6 +384,20 @@ export const VendorRegister = () => {
                   </div>
                 </div>
 
+                {/* Contact Number */}
+                <div className="form-group">
+                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="contact_no">
+                    Contact Number
+                  </label>
+                  <input
+                    id="contact_no"
+                    type="tel"
+                    placeholder="09XX-XXX-XXXX"
+                    className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                    value={form.contact_no}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
 
               {/* Right Column - Documents & Requirements */}
@@ -472,7 +478,6 @@ export const VendorRegister = () => {
                   </div>
                 </div>
 
-
                 {/* Registration Process Info */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-green-200 shadow-sm">
                   <h3 className="text-base sm:text-lg font-semibold text-green-800 mb-2 flex items-center">
@@ -500,7 +505,7 @@ export const VendorRegister = () => {
               </div>
             </div>
 
-            {/* Register Button */}
+            {/* Complete Registration Button */}
             <div className="mt-6 sm:mt-8 flex flex-col items-center space-y-3 sm:space-y-4">
               <button 
                 type="submit"
@@ -513,44 +518,12 @@ export const VendorRegister = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Processing Registration...
+                    Completing Registration...
                   </span>
                 ) : (
-                  '🚀 Submit Registration'
+                  '🚀 Complete Registration'
                 )}
               </button>
-
-              {/* Divider */}
-              <div className="flex items-center w-full max-w-md">
-                <div className="flex-1 border-t border-gray-300"></div>
-                <span className="px-4 text-gray-500 text-sm font-medium">OR</span>
-                <div className="flex-1 border-t border-gray-300"></div>
-              </div>
-
-              {/* Google Sign Up Button */}
-              <button 
-                type="button"
-                onClick={() => {
-                  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-                  window.location.href = `${apiBase}/api/vendor/auth/google`;
-                }}
-                className="w-full max-w-md bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl shadow-lg text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl border-2 border-gray-300 flex items-center justify-center space-x-3"
-              >
-                <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                <span>Sign up with Google</span>
-              </button>
-
-              {/* Login Link */}
-              <div className="text-center">
-                <Link to="/login" className="text-indigo-700 font-semibold hover:text-indigo-900 hover:underline transition-all duration-200 text-base sm:text-lg">
-                  Already have an account? Login here →
-                </Link>
-              </div>
             </div>
           </form>
         </div>
@@ -559,5 +532,4 @@ export const VendorRegister = () => {
   );
 };
 
-export default VendorRegister;
-  
+export default VendorGoogleComplete;

@@ -187,7 +187,7 @@ export const Login = () => {
             {/* Header Section */}
             <div className="text-center py-8 sm:py-8 px-4 sm:px-8 border-b border-sky-200">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-2">
-                🔐 Welcome Back
+                 Welcome Back
               </h1>
               <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-2">
                 Sign in to your account and continue your ice cream journey

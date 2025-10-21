@@ -958,37 +958,25 @@ export const Customer = () => {
           <div className="max-w-6xl mx-auto px-4">
             {/* Header */}
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Orders</h1>
-                    {/* Mobile back button - only visible on mobile */}
-                    <button
-                      onClick={() => {
-                        setActiveView('dashboard');
-                        navigate('/customer');
-                      }}
-                      className="bg-gray-100 text-gray-700 p-1.5 rounded-lg hover:bg-gray-200 transition-colors flex items-center sm:hidden"
-                      title="Back to Home"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                      </svg>
-                    </button>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Track your order status and history</p>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Orders</h1>
+                  {/* Back Button - Right corner */}
+                  <button
+                    onClick={() => {
+                      setActiveView('dashboard');
+                      navigate('/customer');
+                    }}
+                    className="bg-gray-100 text-gray-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                    title="Back to Home"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span className="hidden sm:inline">Back to Home</span>
+                  </button>
                 </div>
-                {/* Desktop back button - only visible on desktop */}
-                <button
-                  onClick={() => {
-                    setActiveView('dashboard');
-                    navigate('/customer');
-                  }}
-                  className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm hidden sm:flex items-center"
-                  title="Back to Home"
-                >
-                  ← Back to Home
-                </button>
+                <p className="text-sm sm:text-base text-gray-600">Track your order status and history</p>
               </div>
               
               {/* Order Filters */}
@@ -1816,22 +1804,16 @@ export const Customer = () => {
                   {/* Cart Icon */}
                   <button 
                     onClick={() => navigate('/cart')}
-                    className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
-                      totalItems > 0 
-                        ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
-                        : 'hover:bg-gray-100'
-                    }`}
+                    className="p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 hover:bg-gray-100"
                     title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                   >
                     <img 
                       src={cartIcon} 
                       alt="Cart" 
-                      className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 ${
-                        totalItems > 0 ? 'scale-110' : ''
-                      }`} 
+                      className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5`} 
                     />
                     {totalItems > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse sm:w-5 sm:h-5">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">
                         {totalItems > 9 ? '9+' : totalItems}
                       </span>
                     )}
@@ -2236,22 +2218,16 @@ export const Customer = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate('/cart')}
-                  className={`p-1.5 rounded-lg transition-all duration-200 relative ${
-                    totalItems > 0 
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
-                      : 'hover:bg-gray-100'
-                  }`}
+                  className="p-1.5 rounded-lg transition-all duration-200 relative hover:bg-gray-100"
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className={`w-4 h-4 transition-transform duration-200 ${
-                      totalItems > 0 ? 'scale-110' : ''
-                    }`} 
+                    className={`w-4 h-4 transition-transform duration-200`} 
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold ">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -2369,11 +2345,7 @@ export const Customer = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate('/cart')}
-                  className={`p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 ${
-                    totalItems > 0 
-                      ? 'bg-orange-100 hover:bg-orange-200 shadow-sm' 
-                      : 'hover:bg-gray-100'
-                  }`}
+                  className="p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 hover:bg-gray-100"
                   title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                 >
                   <img 

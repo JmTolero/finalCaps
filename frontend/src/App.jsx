@@ -7,10 +7,11 @@
     import { ForgotPassword } from "./pages/shared/forgotPassword.jsx";
     import { ResetPassword } from "./pages/shared/resetPassword.jsx";
     import { UserRegister } from "./pages/shared/userRegister.jsx";
-    import { VendorRegister } from "./pages/vendor/vendorRegister.jsx";
-    import { BecomeVendor } from "./pages/vendor/BecomeVendor.jsx";
-    import { VendorSetup } from "./pages/vendor/VendorSetup.jsx";
-    import { VendorPending } from "./pages/vendor/VendorPending.jsx";
+import { VendorRegister } from "./pages/vendor/vendorRegister.jsx";
+import { VendorGoogleComplete } from "./pages/vendor/vendorGoogleComplete.jsx";
+import { BecomeVendor } from "./pages/vendor/BecomeVendor.jsx";
+import { VendorSetup } from "./pages/vendor/VendorSetup.jsx";
+import { VendorPending } from "./pages/vendor/VendorPending.jsx";
     import { VendorRedirect } from "./components/shared/VendorRedirect.jsx";
     import { Home } from "./pages/shared/home.jsx";
     import { Admin } from "./pages/admin/admin.jsx";
@@ -119,6 +120,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/user-register" element={<UserRegister />} />
           <Route path="/vendor-register" element={<VendorRegister />} />
+          <Route path="/vendor-google-complete" element={<VendorGoogleComplete />} />
           <Route path="/become-vendor" element={requireRole('customer', <BecomeVendor />)} />
           <Route path="/vendor-setup" element={<VendorSetup />} />
           <Route path="/vendor-pending" element={<VendorPending />} />
