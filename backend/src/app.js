@@ -32,7 +32,8 @@ const app = express();
 // CORS Configuration for production (Railway + Vercel)
 const allowedOrigins = [
   'http://localhost:3000', // Local development
-  'http://127.0.0.1:3000', // Local development alternative
+  'http://127.0.0.1:3000', 
+  'https://chillneticecream.vercel.app', // Production Vercel URL
   process.env.FRONTEND_URL, // Vercel production URL (set in Railway env vars)
   /\.vercel\.app$/, // All Vercel preview deployments
   /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:3000$/, // Local network testing
@@ -41,8 +42,13 @@ const allowedOrigins = [
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
+    console.log(`[CORS] Request from origin: ${origin}`);
+    
     // Allow requests with no origin (like mobile apps, Postman, curl)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('[CORS] No origin provided, allowing request');
+      return callback(null, true);
+    }
     
     // Check if origin is in allowed list
     const isAllowed = allowedOrigins.some(allowedOrigin => {
@@ -56,9 +62,11 @@ app.use(cors({
     });
     
     if (isAllowed || process.env.NODE_ENV === 'development') {
+      console.log(`[CORS] Origin ${origin} is allowed`);
       callback(null, true);
     } else {
-      console.warn(`CORS blocked origin: ${origin}`);
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      console.warn(`[CORS] Allowed origins:`, allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
