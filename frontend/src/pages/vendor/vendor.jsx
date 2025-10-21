@@ -241,6 +241,7 @@ export const Vendor = () => {
   
   // Saved flavors state
   const [savedFlavors, setSavedFlavors] = useState([]);
+  const [flavorSearchTerm, setFlavorSearchTerm] = useState("");
   const [flavorsLoading, setFlavorsLoading] = useState(false);
   
   // Image modal state
@@ -5184,6 +5185,34 @@ export const Vendor = () => {
                     </div>
                   </div>
                   
+                  {/* Search Bar */}
+                  <div className="mb-4">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search flavors by name or description..."
+                        value={flavorSearchTerm}
+                        onChange={(e) => setFlavorSearchTerm(e.target.value)}
+                        className="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      {flavorSearchTerm && (
+                        <button
+                          onClick={() => setFlavorSearchTerm("")}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        >
+                          <svg className="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
                   {/* Flavor Limit Warning */}
                   {subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit && (
                     <div className="mb-4 text-xs text-red-600 bg-red-50 px-3 py-2 rounded border border-red-200">
@@ -5203,8 +5232,36 @@ export const Vendor = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                      {savedFlavors.map((flavor) => {
+                    (() => {
+                      const filteredFlavors = savedFlavors.filter((flavor) => {
+                        if (!flavorSearchTerm) return true;
+                        const searchLower = flavorSearchTerm.toLowerCase();
+                        return (
+                          flavor.flavor_name.toLowerCase().includes(searchLower) ||
+                          (flavor.flavor_description && flavor.flavor_description.toLowerCase().includes(searchLower))
+                        );
+                      });
+
+                      if (filteredFlavors.length === 0 && flavorSearchTerm) {
+                        return (
+                          <div className="text-center py-8">
+                            <div className="text-gray-600 mb-2">No flavors found</div>
+                            <div className="text-sm text-gray-500">
+                              No flavors match "{flavorSearchTerm}"
+                            </div>
+                            <button
+                              onClick={() => setFlavorSearchTerm("")}
+                              className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Clear search
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                          {filteredFlavors.map((flavor) => {
                         // Parse image URLs (stored as JSON array)
                         let imageUrls = [];
                         try {
@@ -5320,7 +5377,9 @@ export const Vendor = () => {
                         </div>
                         );
                       })}
-                    </div>
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
               </div>

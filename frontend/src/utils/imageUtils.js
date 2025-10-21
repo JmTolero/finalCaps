@@ -14,7 +14,12 @@ export const getImageUrl = (imageUrl, apiBase, folder = 'vendor-documents') => {
     return imageUrl;
   }
   
-  // Legacy local file - prepend API base URL
+  // Handle legacy local files - check if it already has uploads/ prefix
+  if (imageUrl.startsWith('uploads/')) {
+    return `${apiBase}/${imageUrl}`;
+  }
+  
+  // Legacy local file - prepend API base URL and uploads folder
   return `${apiBase}/uploads/${folder}/${imageUrl}`;
 };
 

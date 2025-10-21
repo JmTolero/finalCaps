@@ -20,6 +20,11 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
       const response = await axios.get(`${apiBase}/api/admin/vendors/${vendorId}`);
       if (response.data.success) {
         console.log('Vendor data received:', response.data.vendor);
+        console.log('Document URLs:', {
+          valid_id_url: response.data.vendor.valid_id_url,
+          business_permit_url: response.data.vendor.business_permit_url,
+          proof_image_url: response.data.vendor.proof_image_url
+        });
         setVendor(response.data.vendor);
         
         // Fetch vendor's addresses if we have user_id
@@ -138,13 +143,18 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
       // Get the correct URL (handles both Cloudinary and legacy local files)
       const fileUrl = getImageUrl(documentUrl, apiBase);
       
+      console.log('Original document URL:', documentUrl);
+      console.log('API Base:', apiBase);
+      console.log('Generated file URL:', fileUrl);
+      console.log('Is PDF:', isPdf);
+      
       if (isPdf) {
         // For PDFs, open in a new tab/window instead of modal
         console.log('Opening PDF:', fileUrl);
         window.open(fileUrl, '_blank');
       } else {
         // For images, use the modal as before
-        console.log('Setting image URL:', fileUrl);
+        console.log('Setting image URL for modal:', fileUrl);
         setSelectedImage(fileUrl);
         setSelectedImageTitle(title);
         setShowImageModal(true);
@@ -452,7 +462,12 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                   src={selectedImage}
                   alt={selectedImageTitle}
                   className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  onLoad={() => {
+                    console.log('Image loaded successfully:', selectedImage);
+                  }}
                   onError={(e) => {
+                    console.error('Image failed to load:', selectedImage);
+                    console.error('Error details:', e);
                     e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD4KICA8L3N2Zz4K';
                     e.target.alt = 'Image not found';
                   }}
