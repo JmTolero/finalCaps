@@ -2,7 +2,10 @@ const nodemailer = require('nodemailer');
 
 // Email configuration
 const createTransporter = () => {
-  const service = process.env.EMAIL_SERVICE || 'gmail';
+  // Auto-detect environment: Gmail for localhost, Resend for production
+  const service = process.env.NODE_ENV === 'production' 
+    ? (process.env.EMAIL_SERVICE || 'resend')
+    : (process.env.EMAIL_SERVICE || 'gmail');
   
   if (service === 'sendgrid') {
     return nodemailer.createTransport({
@@ -14,16 +17,22 @@ const createTransporter = () => {
         pass: process.env.EMAIL_PASSWORD
       }
     });
-  } else if (service === 'mailgun') {
-    return nodemailer.createTransport({
-      host: 'smtp.mailgun.org',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+  } else if (service === 'resend') {
+    // Use Resend API - much more reliable and developer-friendly
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    return {
+      sendMail: async (mailOptions) => {
+        const data = {
+          from: mailOptions.from,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+          text: mailOptions.text,
+          html: mailOptions.html
+        };
+        return await resend.emails.send(data);
       }
-    });
+    };
   } else {
     // Try Gmail with port 465 (SSL) - often works better on cloud platforms
     return nodemailer.createTransport({
@@ -250,10 +259,28 @@ const sendEmail = async (to, templateName, data) => {
       return { success: true, message: 'Email notifications disabled' };
     }
 
-    // Validate required environment variables
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      console.error('❌ Email configuration missing. Please set EMAIL_USER and EMAIL_PASSWORD');
-      return { success: false, error: 'Email configuration missing' };
+    // Auto-detect environment: Gmail for localhost, Resend for production
+    const service = process.env.NODE_ENV === 'production' 
+      ? (process.env.EMAIL_SERVICE || 'resend')
+      : (process.env.EMAIL_SERVICE || 'gmail');
+    
+    console.log(`📧 Using email service: ${service} (NODE_ENV: ${process.env.NODE_ENV})`);
+    
+    if (service === 'resend') {
+      if (!process.env.RESEND_API_KEY) {
+        console.error('❌ Resend configuration missing. Please set RESEND_API_KEY');
+        return { success: false, error: 'Resend configuration missing' };
+      }
+    } else if (service === 'mailgun') {
+      if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+        console.error('❌ Mailgun configuration missing. Please set MAILGUN_API_KEY and MAILGUN_DOMAIN');
+        return { success: false, error: 'Mailgun configuration missing' };
+      }
+    } else {
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+        console.error('❌ Gmail configuration missing. Please set EMAIL_USER and EMAIL_PASSWORD');
+        return { success: false, error: 'Gmail configuration missing' };
+      }
     }
 
     console.log(`📧 Sending ${templateName} email to: ${to}`);
@@ -275,13 +302,20 @@ const sendEmail = async (to, templateName, data) => {
       html: emailContent.html
     };
 
+    console.log('📧 Sending email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
     const result = await transporter.sendMail(mailOptions);
     
-    console.log(`✅ Email sent successfully to ${to}:`, result.messageId);
+    console.log(`✅ Email sent successfully to ${to}:`, result);
     return { 
       success: true, 
-      messageId: result.messageId,
-      message: 'Email sent successfully' 
+      messageId: result.id || result.messageId,
+      message: 'Email sent successfully',
+      details: result
     };
 
   } catch (error) {
