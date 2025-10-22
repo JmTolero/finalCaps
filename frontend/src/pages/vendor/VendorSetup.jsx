@@ -349,12 +349,12 @@ export const VendorSetup = () => {
 
           {/* Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-44 sm:w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-72 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
               <div className="py-1">
                 {/* User Info */}
-                <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 border-b">
-                  <div className="font-medium truncate">{vendorData?.fname || 'Vendor'}</div>
-                  <div className="text-gray-500 truncate">{shopForm.email}</div>
+                <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 border-b min-w-0 max-w-full">
+                  <div className="font-medium truncate max-w-full">{vendorData?.fname || 'Vendor'}</div>
+                  <div className="text-gray-500 truncate overflow-hidden break-all max-w-full" title={shopForm.email}>{shopForm.email}</div>
                 </div>
                 
                 {/* Setup Info */}

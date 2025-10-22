@@ -873,14 +873,14 @@ export const Vendor = () => {
 
             {/* Dropdown Menu */}
             {isProfileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+              <div className="absolute right-0 mt-2 w-80 sm:w-72 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
                 <div className="py-1">
                   {/* User Info */}
-                  <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                    <div className="font-medium">
+                  <div className="px-4 py-2 text-sm text-gray-700 border-b min-w-0 max-w-full">
+                    <div className="font-medium truncate max-w-full">
                       {currentVendor?.fname || "Vendor"}
                     </div>
-                    <div className="text-gray-500">{currentVendor?.email}</div>
+                    <div className="text-gray-500 truncate overflow-hidden break-all max-w-full" title={currentVendor?.email}>{currentVendor?.email}</div>
                   </div>
 
                   {/* Settings */}
@@ -1489,14 +1489,14 @@ export const Vendor = () => {
 
           {/* Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-72 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
               <div className="py-1">
                 {/* User Info */}
-                <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                  <div className="font-medium">
+                <div className="px-4 py-2 text-sm text-gray-700 border-b min-w-0 max-w-full">
+                  <div className="font-medium truncate max-w-full">
                     {currentVendor?.fname || "Vendor"}
                   </div>
-                  <div className="text-gray-500">{currentVendor?.email}</div>
+                  <div className="text-gray-500 truncate overflow-hidden break-all max-w-full" title={currentVendor?.email}>{currentVendor?.email}</div>
                 </div>
 
                 {/* Settings */}
