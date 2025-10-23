@@ -12,6 +12,78 @@ const getOrderRecord = async (req, res) => {
     }
 }
 
+// Get a single order by ID
+const getOrderById = async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        
+        if (!order_id) {
+            return res.status(400).json({
+                success: false,
+                error: 'Order ID is required'
+            });
+        }
+
+        const [rows] = await pool.query(`
+            SELECT 
+                o.*,
+                u.fname as customer_fname,
+                u.lname as customer_lname,
+                u.contact_no as customer_contact,
+                v.store_name as business_name,
+                vu.contact_no as vendor_contact
+            FROM orders o
+            LEFT JOIN users u ON o.customer_id = u.user_id
+            LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+            LEFT JOIN users vu ON v.user_id = vu.user_id
+            WHERE o.order_id = ?
+        `, [order_id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        // Get order items
+        const [items] = await pool.query(`
+            SELECT 
+                oi.*,
+                p.name as flavor_name,
+                oi.price,
+                p.product_url_image as image_url,
+                f.flavor_name as flavor_description
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.product_id
+            LEFT JOIN flavors f ON p.flavor_id = f.flavor_id
+            WHERE oi.order_id = ?
+        `, [order_id]);
+
+        const order = rows[0];
+        order.items = items;
+
+        res.json({
+            success: true,
+            order: order
+        });
+
+    } catch (error) {
+        console.error('Error fetching order by ID:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            sqlState: error.sqlState,
+            sqlMessage: error.sqlMessage
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch order details',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 // Create a new order
 const createOrder = async (req, res) => {
     try {
@@ -843,6 +915,7 @@ const updateDrumReturnStatus = async (req, res) => {
 
 module.exports = {
     getOrderRecord,
+    getOrderById,
     createOrder,
     getCustomerOrders,
     getVendorOrders,

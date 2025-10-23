@@ -26,7 +26,7 @@ import { Checkout } from "./pages/customer/Checkout.jsx";
 import { OrderConfirmation } from "./pages/customer/OrderConfirmation.jsx";
     import { Notifications } from "./pages/customer/Notifications.jsx";
 import { MyFeedback } from "./pages/customer/MyFeedback.jsx";
-import PaymentPage from "./pages/customer/PaymentPage.jsx";
+import CustomerPayment from "./pages/customer/CustomerPayment.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
 import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
     // import Nav from '../src/components/nav';
@@ -132,7 +132,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/cart" element={requireRole('customer', <Cart />)} />
           <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
           <Route path="/customer/my-feedback" element={<MyFeedback />} />
-          <Route path="/customer/payment/:orderId" element={requireRole('customer', <PaymentPage />)} />
+          <Route path="/customer/payment/:orderId" element={requireRole('customer', <CustomerPayment />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
           <Route path="/all-vendor-stores" element={requireRole('customer', <AllVendorStores />)} />
           <Route path="/vendor/:vendorId/store" element={requireRole('customer', <VendorStore />)} />

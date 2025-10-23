@@ -1,4 +1,5 @@
 const pool = require('../../db/config');
+const addressMatcher = require('../../utils/addressMatcher');
 
 // Get delivery pricing for a specific vendor
 const getDeliveryPricing = async (req, res) => {
@@ -242,40 +243,30 @@ const getDeliveryPriceForLocation = async (req, res) => {
       });
     }
 
-    // Find delivery price for the specified location
-    const [deliveryPricing] = await pool.query(`
-      SELECT 
-        delivery_price,
-        city,
-        province
-      FROM vendor_delivery_pricing
-      WHERE vendor_id = ? 
-        AND city = ? 
-        AND province = ? 
-        AND is_active = 1
-    `, [vendor_id, city, province]);
+    // Use fuzzy matching to find delivery price
+    const result = await addressMatcher.getDeliveryPriceWithFuzzyMatching(vendor_id, city, province);
 
-    if (deliveryPricing.length === 0) {
-      return res.json({
+    if (result.success) {
+      res.json({
         success: true,
         delivery_available: true,
+        delivery_price: result.delivery_price,
+        match_type: result.match_type,
+        location: result.matched_location,
+        original_input: result.original_input,
+        suggestions: result.suggestions || null
+      });
+    } else {
+      res.json({
+        success: false,
+        delivery_available: false,
         delivery_price: 0,
-        location: {
-          city: city,
-          province: province
-        }
+        match_type: result.match_type,
+        original_input: result.original_input,
+        suggestions: result.suggestions,
+        message: result.message || 'Delivery not available to this location'
       });
     }
-
-    res.json({
-      success: true,
-      delivery_available: true,
-      delivery_price: parseFloat(deliveryPricing[0].delivery_price),
-      location: {
-        city: deliveryPricing[0].city,
-        province: deliveryPricing[0].province
-      }
-    });
 
   } catch (error) {
     console.error('Error fetching delivery price for location:', error);
@@ -286,10 +277,39 @@ const getDeliveryPriceForLocation = async (req, res) => {
   }
 };
 
+// Validate and suggest corrections for address
+const validateAddress = async (req, res) => {
+  try {
+    const { city, province } = req.query;
+
+    if (!city || !province) {
+      return res.status(400).json({
+        success: false,
+        error: 'City and province are required'
+      });
+    }
+
+    const validation = addressMatcher.validateAndSuggestAddress(city, province);
+
+    res.json({
+      success: true,
+      validation: validation
+    });
+
+  } catch (error) {
+    console.error('Error validating address:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to validate address'
+    });
+  }
+};
+
 module.exports = {
   getDeliveryPricing,
   updateDeliveryPricing,
   addDeliveryZone,
   removeDeliveryZone,
-  getDeliveryPriceForLocation
+  getDeliveryPriceForLocation,
+  validateAddress
 };

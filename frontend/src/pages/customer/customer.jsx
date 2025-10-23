@@ -1570,7 +1570,7 @@ export const Customer = () => {
                   </div>
                 </div>
                       
-                {selectedOrder.status === 'confirmed' && selectedOrder.payment_status === 'unpaid' && (
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'awaiting_payment') && selectedOrder.payment_status === 'unpaid' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
                     <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Order Approved! Payment Required</p>
                     <p className="text-green-700 text-xs sm:text-sm mb-3">

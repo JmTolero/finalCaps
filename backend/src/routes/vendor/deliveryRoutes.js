@@ -5,7 +5,8 @@ const {
   updateDeliveryPricing, 
   addDeliveryZone, 
   removeDeliveryZone, 
-  getDeliveryPriceForLocation 
+  getDeliveryPriceForLocation,
+  validateAddress
 } = require('../../controller/vendor/deliveryController');
 
 // Get delivery pricing zones for a vendor
@@ -22,6 +23,9 @@ router.delete('/:vendor_id/zones/:delivery_pricing_id', removeDeliveryZone);
 
 // Get delivery price for a specific location (used by checkout)
 router.get('/:vendor_id/price', getDeliveryPriceForLocation);
+
+// Validate address and get suggestions
+router.get('/validate', validateAddress);
 
 module.exports = router;
 

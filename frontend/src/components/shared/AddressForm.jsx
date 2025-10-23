@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ProvinceDropdown, CityDropdown, RegionDropdown } from './DropdownSelect';
 
 const AddressForm = ({ 
   addressData = {}, 
@@ -32,26 +33,35 @@ const AddressForm = ({
     }
   };
 
-  // Philippine regions for dropdown
-  const philippineRegions = [
-    'National Capital Region (NCR)',
-    'Cordillera Administrative Region (CAR)',
-    'Ilocos Region (Region I)',
-    'Cagayan Valley (Region II)',
-    'Central Luzon (Region III)',
-    'Calabarzon (Region IV-A)',
-    'Mimaropa (Region IV-B)',
-    'Bicol Region (Region V)',
-    'Western Visayas (Region VI)',
-    'Central Visayas (Region VII)',
-    'Eastern Visayas (Region VIII)',
-    'Zamboanga Peninsula (Region IX)',
-    'Northern Mindanao (Region X)',
-    'Davao Region (Region XI)',
-    'Soccsksargen (Region XII)',
-    'Caraga (Region XIII)',
-    'Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)'
-  ];
+  const handleDropdownChange = (field, selectedOption) => {
+    let updatedAddress = { ...address };
+    
+    if (field === 'region') {
+      // For region, use the region code, not the display name
+      updatedAddress[field] = selectedOption.region;
+    } else {
+      updatedAddress[field] = selectedOption.name;
+    }
+    
+    // If province changes, clear city to force re-selection
+    if (field === 'province') {
+      updatedAddress.cityVillage = '';
+    }
+    
+    // If region changes, clear province and city
+    if (field === 'region') {
+      updatedAddress.province = '';
+      updatedAddress.cityVillage = '';
+    }
+    
+    setAddress(updatedAddress);
+    
+    // Pass the updated address back to parent component
+    if (onAddressChange) {
+      onAddressChange(updatedAddress);
+    }
+  };
+
 
   const addressTypes = [
     { value: 'residential', label: 'Residential' },
@@ -103,8 +113,63 @@ const AddressForm = ({
         </div>
       </div>
 
-      {/* Barangay and City */}
+      {/* Region and Province */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="region">
+            Region {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.region && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
+          </label>
+          <RegionDropdown
+            value={address.region}
+            onChange={(selectedOption) => handleDropdownChange('region', selectedOption)}
+            placeholder="Select Region"
+            className={`w-full ${required && !address.region ? 'border-red-400' : ''}`}
+            error={required && !address.region}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="province">
+            Province {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.province && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
+          </label>
+          <ProvinceDropdown
+            value={address.province}
+            onChange={(selectedOption) => handleDropdownChange('province', selectedOption)}
+            placeholder="Select Province"
+            className={`w-full ${required && !address.province ? 'border-red-400' : ''}`}
+            disabled={!address.region}
+            error={required && !address.province}
+            region={address.region}
+          />
+          {!address.region && (
+            <p className="text-sm text-gray-500 mt-1">Please select a region first</p>
+          )}
+        </div>
+      </div>
+
+      {/* City and Barangay */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="cityVillage">
+            City/Municipality {required && <span className="text-red-600 text-lg">*</span>}
+            {required && !address.cityVillage && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
+          </label>
+          <CityDropdown
+            value={address.cityVillage}
+            onChange={(selectedOption) => handleDropdownChange('cityVillage', selectedOption)}
+            placeholder="Select City/Municipality"
+            className={`w-full ${required && !address.cityVillage ? 'border-red-400' : ''}`}
+            disabled={!address.province}
+            error={required && !address.cityVillage}
+            province={address.province}
+          />
+          {!address.province && (
+            <p className="text-sm text-gray-500 mt-1">Please select a province first</p>
+          )}
+        </div>
+        
         <div>
           <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="barangay">
             Barangay {required && <span className="text-red-600 text-lg">*</span>}
@@ -122,71 +187,6 @@ const AddressForm = ({
             onChange={handleChange}
             required={required}
           />
-        </div>
-        
-        <div>
-          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="cityVillage">
-            City/Municipality {required && <span className="text-red-600 text-lg">*</span>}
-            {required && !address.cityVillage && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
-          </label>
-          <input
-            type="text"
-            name="cityVillage"
-            id="cityVillage"
-            placeholder="e.g., Makati City, Quezon City"
-            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
-              required && !address.cityVillage ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
-            }`}
-            value={address.cityVillage}
-            onChange={handleChange}
-            required={required}
-          />
-        </div>
-      </div>
-
-      {/* Province and Region */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="province">
-            Province {required && <span className="text-red-600 text-lg">*</span>}
-            {required && !address.province && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
-          </label>
-          <input
-            type="text"
-            name="province"
-            id="province"
-            placeholder="e.g., Metro Manila, Cebu"
-            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
-              required && !address.province ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
-            }`}
-            value={address.province}
-            onChange={handleChange}
-            required={required}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-base sm:text-lg font-bold text-gray-800 mb-2" htmlFor="region">
-            Region {required && <span className="text-red-600 text-lg">*</span>}
-            {required && !address.region && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
-          </label>
-          <select
-            name="region"
-            id="region"
-            className={`w-full px-4 sm:px-5 py-4 sm:py-5 text-base sm:text-lg font-medium rounded-xl border-2 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 ${
-              required && !address.region ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
-            }`}
-            value={address.region}
-            onChange={handleChange}
-            required={required}
-          >
-            <option value="">Select Region</option>
-            {philippineRegions.map((region, index) => (
-              <option key={index} value={region}>
-                {region}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 

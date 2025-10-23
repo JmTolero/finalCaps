@@ -26,6 +26,7 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const feedbackRoutes = require('./routes/feedback');
 const passwordResetRoutes = require('./routes/shared/passwordResetRoutes');
 const testEmailRoutes = require('./routes/testEmailRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -133,6 +134,7 @@ app.use('/api', reviewRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/auth', passwordResetRoutes);
 app.use('/api/test', testEmailRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

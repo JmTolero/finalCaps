@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AddressForm from "../../components/shared/AddressForm";
 import FeedbackModal from "../../components/shared/FeedbackModal";
 import LocationPickerModal from "../../components/vendor/LocationPickerModal";
+import { ProvinceDropdown, CityDropdown, RegionDropdown } from "../../components/shared/DropdownSelect";
 import logoImage from "../../assets/images/LOGO.png";
 import { getImageUrl } from "../../utils/imageUtils";
 import axios from "axios";
@@ -220,6 +221,7 @@ export const Vendor = () => {
   const [newDeliveryZone, setNewDeliveryZone] = useState({
     city: '',
     province: '',
+    region: '',
     delivery_price: 0
   });
   const [showAddZoneForm, setShowAddZoneForm] = useState(false);
@@ -716,7 +718,59 @@ export const Vendor = () => {
       const response = await axios.get(`${apiBase}/api/vendor/delivery/${currentVendor.vendor_id}/pricing`);
       
       if (response.data.success) {
-        setDeliveryZones(response.data.delivery_zones || []);
+        // Add region information to existing zones
+        const zonesWithRegion = response.data.delivery_zones.map(zone => {
+          // Determine region based on province
+          let region = '';
+          if (zone.province === 'Metro Manila') {
+            region = 'NCR';
+          } else if (zone.province === 'Cebu') {
+            region = 'Region VII';
+          } else if (zone.province === 'Laguna' || zone.province === 'Cavite' || zone.province === 'Rizal' || zone.province === 'Batangas' || zone.province === 'Quezon') {
+            region = 'Region IV-A';
+          } else if (zone.province === 'Davao del Sur') {
+            region = 'Region XI';
+          } else if (zone.province === 'Bohol' || zone.province === 'Negros Oriental' || zone.province === 'Siquijor') {
+            region = 'Region VII';
+          } else if (zone.province === 'Iloilo' || zone.province === 'Negros Occidental') {
+            region = 'Region VI';
+          } else if (zone.province === 'Leyte' || zone.province === 'Eastern Samar' || zone.province === 'Northern Samar' || zone.province === 'Western Samar' || zone.province === 'Southern Leyte' || zone.province === 'Biliran') {
+            region = 'Region VIII';
+          } else if (zone.province === 'Zamboanga del Norte' || zone.province === 'Zamboanga del Sur' || zone.province === 'Zamboanga Sibugay') {
+            region = 'Region IX';
+          } else if (zone.province === 'Bukidnon' || zone.province === 'Camiguin' || zone.province === 'Lanao del Norte' || zone.province === 'Misamis Occidental' || zone.province === 'Misamis Oriental') {
+            region = 'Region X';
+          } else if (zone.province === 'Compostela Valley' || zone.province === 'Davao del Norte' || zone.province === 'Davao Occidental' || zone.province === 'Davao Oriental') {
+            region = 'Region XI';
+          } else if (zone.province === 'North Cotabato' || zone.province === 'Sarangani' || zone.province === 'South Cotabato' || zone.province === 'Sultan Kudarat') {
+            region = 'Region XII';
+          } else if (zone.province === 'Agusan del Norte' || zone.province === 'Agusan del Sur' || zone.province === 'Dinagat Islands' || zone.province === 'Surigao del Norte' || zone.province === 'Surigao del Sur') {
+            region = 'Region XIII';
+          } else if (zone.province === 'Basilan' || zone.province === 'Lanao del Sur' || zone.province === 'Maguindanao' || zone.province === 'Sulu' || zone.province === 'Tawi-Tawi') {
+            region = 'ARMM';
+          } else if (zone.province === 'Abra' || zone.province === 'Benguet' || zone.province === 'Ifugao' || zone.province === 'Kalinga' || zone.province === 'Mountain Province' || zone.province === 'Apayao') {
+            region = 'CAR';
+          } else if (zone.province === 'Ilocos Norte' || zone.province === 'Ilocos Sur' || zone.province === 'La Union' || zone.province === 'Pangasinan') {
+            region = 'Region I';
+          } else if (zone.province === 'Batanes' || zone.province === 'Cagayan' || zone.province === 'Isabela' || zone.province === 'Nueva Vizcaya' || zone.province === 'Quirino') {
+            region = 'Region II';
+          } else if (zone.province === 'Aurora' || zone.province === 'Bataan' || zone.province === 'Bulacan' || zone.province === 'Nueva Ecija' || zone.province === 'Pampanga' || zone.province === 'Tarlac' || zone.province === 'Zambales') {
+            region = 'Region III';
+          } else if (zone.province === 'Marinduque' || zone.province === 'Mindoro Occidental' || zone.province === 'Mindoro Oriental' || zone.province === 'Palawan' || zone.province === 'Romblon') {
+            region = 'Region IV-B';
+          } else if (zone.province === 'Albay' || zone.province === 'Camarines Norte' || zone.province === 'Camarines Sur' || zone.province === 'Catanduanes' || zone.province === 'Masbate' || zone.province === 'Sorsogon') {
+            region = 'Region V';
+          } else if (zone.province === 'Aklan' || zone.province === 'Antique' || zone.province === 'Capiz' || zone.province === 'Guimaras') {
+            region = 'Region VI';
+          }
+          
+          return {
+            ...zone,
+            region: region
+          };
+        });
+        
+        setDeliveryZones(zonesWithRegion);
       }
     } catch (error) {
       console.error("Error fetching delivery pricing:", error);
@@ -770,6 +824,44 @@ export const Vendor = () => {
     setTempDeliveryZones(updatedZones);
   };
 
+  const handleEditDeliveryZoneDropdownChange = (index, field, selectedOption) => {
+    const updatedZones = [...tempDeliveryZones];
+    
+    if (field === 'region') {
+      updatedZones[index][field] = selectedOption.region;
+      // Clear province and city when region changes
+      updatedZones[index].province = '';
+      updatedZones[index].city = '';
+    } else if (field === 'province') {
+      updatedZones[index][field] = selectedOption.name;
+      // Clear city when province changes
+      updatedZones[index].city = '';
+    } else {
+      updatedZones[index][field] = selectedOption.name;
+    }
+    
+    setTempDeliveryZones(updatedZones);
+  };
+
+  const handleNewDeliveryZoneDropdownChange = (field, selectedOption) => {
+    let updatedZone = { ...newDeliveryZone };
+    
+    if (field === 'region') {
+      updatedZone[field] = selectedOption.region;
+      // Clear province and city when region changes
+      updatedZone.province = '';
+      updatedZone.city = '';
+    } else if (field === 'province') {
+      updatedZone[field] = selectedOption.name;
+      // Clear city when province changes
+      updatedZone.city = '';
+    } else {
+      updatedZone[field] = selectedOption.name;
+    }
+    
+    setNewDeliveryZone(updatedZone);
+  };
+
   const handleAddDeliveryZone = async () => {
     if (!newDeliveryZone.city || !newDeliveryZone.province || newDeliveryZone.delivery_price <= 0) {
       updateStatus("error", "Please fill in all fields with valid values");
@@ -787,7 +879,7 @@ export const Vendor = () => {
       });
 
       if (response.data.success) {
-        setNewDeliveryZone({ city: '', province: '', delivery_price: 0 });
+        setNewDeliveryZone({ city: '', province: '', region: '', delivery_price: 0 });
         setShowAddZoneForm(false);
         fetchDeliveryPricing(); // Refresh the list
         updateStatus("success", "Delivery zone added successfully");
@@ -7251,30 +7343,49 @@ export const Vendor = () => {
                     {showAddZoneForm && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Delivery Zone</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              City
+                              Region
                             </label>
-                            <input
-                              type="text"
-                              value={newDeliveryZone.city}
-                              onChange={(e) => setNewDeliveryZone({...newDeliveryZone, city: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="e.g., Makati City"
+                            <RegionDropdown
+                              value={newDeliveryZone.region}
+                              onChange={(selectedOption) => handleNewDeliveryZoneDropdownChange('region', selectedOption)}
+                              placeholder="Select Region"
+                              className="w-full"
                             />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Province
                             </label>
-                            <input
-                              type="text"
+                            <ProvinceDropdown
                               value={newDeliveryZone.province}
-                              onChange={(e) => setNewDeliveryZone({...newDeliveryZone, province: e.target.value})}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="e.g., Metro Manila"
+                              onChange={(selectedOption) => handleNewDeliveryZoneDropdownChange('province', selectedOption)}
+                              placeholder="Select Province"
+                              className="w-full"
+                              disabled={!newDeliveryZone.region}
+                              region={newDeliveryZone.region}
                             />
+                            {!newDeliveryZone.region && (
+                              <p className="text-xs text-gray-500 mt-1">Select region first</p>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              City/Municipality
+                            </label>
+                            <CityDropdown
+                              value={newDeliveryZone.city}
+                              onChange={(selectedOption) => handleNewDeliveryZoneDropdownChange('city', selectedOption)}
+                              placeholder="Select City"
+                              className="w-full"
+                              disabled={!newDeliveryZone.province}
+                              province={newDeliveryZone.province}
+                            />
+                            {!newDeliveryZone.province && (
+                              <p className="text-xs text-gray-500 mt-1">Select province first</p>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -7301,7 +7412,7 @@ export const Vendor = () => {
                           <button
                             onClick={() => {
                               setShowAddZoneForm(false);
-                              setNewDeliveryZone({ city: '', province: '', delivery_price: 0 });
+                              setNewDeliveryZone({ city: '', province: '', region: '', delivery_price: 0 });
                             }}
                             className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
                           >
@@ -7316,28 +7427,49 @@ export const Vendor = () => {
                       <div className="space-y-4">
                         {tempDeliveryZones.map((zone, index) => (
                           <div key={zone.delivery_pricing_id || index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  City
+                                  Region
                                 </label>
-                                <input
-                                  type="text"
-                                  value={zone.city}
-                                  onChange={(e) => handleDeliveryZoneChange(index, 'city', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                <RegionDropdown
+                                  value={zone.region || ''}
+                                  onChange={(selectedOption) => handleEditDeliveryZoneDropdownChange(index, 'region', selectedOption)}
+                                  placeholder="Select Region"
+                                  className="w-full"
                                 />
                               </div>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                   Province
                                 </label>
-                                <input
-                                  type="text"
-                                  value={zone.province}
-                                  onChange={(e) => handleDeliveryZoneChange(index, 'province', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                <ProvinceDropdown
+                                  value={zone.province || ''}
+                                  onChange={(selectedOption) => handleEditDeliveryZoneDropdownChange(index, 'province', selectedOption)}
+                                  placeholder="Select Province"
+                                  className="w-full"
+                                  disabled={!zone.region}
+                                  region={zone.region}
                                 />
+                                {!zone.region && (
+                                  <p className="text-xs text-gray-500 mt-1">Select region first</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  City/Municipality
+                                </label>
+                                <CityDropdown
+                                  value={zone.city || ''}
+                                  onChange={(selectedOption) => handleEditDeliveryZoneDropdownChange(index, 'city', selectedOption)}
+                                  placeholder="Select City"
+                                  className="w-full"
+                                  disabled={!zone.province}
+                                  province={zone.province}
+                                />
+                                {!zone.province && (
+                                  <p className="text-xs text-gray-500 mt-1">Select province first</p>
+                                )}
                               </div>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">

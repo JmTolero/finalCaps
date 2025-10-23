@@ -9,7 +9,6 @@ export const Checkout = () => {
   const navigate = useNavigate();
   const { clearCart } = useCart();
   const [orderData, setOrderData] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('gcash');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [userAddress, setUserAddress] = useState('');
   const [deliveryDateTime, setDeliveryDateTime] = useState('');
@@ -23,7 +22,6 @@ export const Checkout = () => {
   const [forceRefreshDelivery, setForceRefreshDelivery] = useState(0);
   // const [deliveryAvailable, setDeliveryAvailable] = useState(true); // Removed unused variable
   const [showReceipt, setShowReceipt] = useState(false);
-  const [paymentType, setPaymentType] = useState('full'); // 'full' or 'downpayment'
   const [savedOrderId, setSavedOrderId] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -35,7 +33,7 @@ export const Checkout = () => {
     console.log('🔍 Receipt state changed:', showReceipt);
   }, [showReceipt]);
 
-  // Get delivery price for a specific vendor and location
+  // Get delivery price for a specific vendor and location with fuzzy matching
   const getVendorDeliveryPrice = async (vendorId, city, province) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -46,15 +44,41 @@ export const Checkout = () => {
       
       if (response.data && response.data.success) {
         const price = response.data.delivery_price || 0;
-        console.log(`✅ Vendor ${vendorId} delivery price: ₱${price}`);
-        return price;
+        const matchType = response.data.match_type;
+        const suggestions = response.data.suggestions;
+        
+        console.log(`✅ Vendor ${vendorId} delivery price: ₱${price} (${matchType} match)`);
+        
+        // Show warning for fuzzy matches
+        if (matchType === 'fuzzy' && suggestions) {
+          console.warn(`⚠️ Fuzzy match detected for vendor ${vendorId}:`, suggestions);
+          // You could show a toast notification here
+        }
+        
+        return {
+          price: price,
+          matchType: matchType,
+          suggestions: suggestions,
+          success: true
+        };
       } else {
-        console.log(`❌ Vendor ${vendorId} delivery not available, using ₱0`);
-        return 0;
+        console.log(`❌ Vendor ${vendorId} delivery not available:`, response.data?.message);
+        return {
+          price: 0,
+          matchType: 'none',
+          suggestions: response.data?.suggestions,
+          message: response.data?.message,
+          success: false
+        };
       }
     } catch (error) {
       console.log(`💥 Error getting delivery price for vendor ${vendorId}:`, error.message);
-      return 0; // Free delivery on error
+      return {
+        price: 0,
+        matchType: 'error',
+        success: false,
+        error: error.message
+      };
     }
   };
 
@@ -136,9 +160,51 @@ export const Checkout = () => {
       console.log('🚀 Starting delivery calculation with vendor API calls');
       
       // Extract city and province from the address
+      // Address format: "Street, Barangay, City, Province, Region, Postal"
       const addressParts = userAddress.split(', ');
-      const city = addressParts[addressParts.length - 2] || '';
-      const province = addressParts[addressParts.length - 1] || '';
+      
+      let city = '';
+      let province = '';
+      
+      // Find city and province by looking for known patterns
+      for (let i = 0; i < addressParts.length; i++) {
+        const part = addressParts[i].trim();
+        
+        // Check if this part is a known province
+        const knownProvinces = [
+          'Metro Manila', 'Cebu', 'Davao del Sur', 'Laguna', 'Cavite', 'Rizal', 'Batangas', 'Quezon',
+          'Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales',
+          'Batanes', 'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino',
+          'Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan',
+          'Abra', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province', 'Apayao',
+          'Albay', 'Camarines Norte', 'Camarines Sur', 'Catanduanes', 'Masbate', 'Sorsogon',
+          'Aklan', 'Antique', 'Capiz', 'Guimaras', 'Iloilo', 'Negros Occidental',
+          'Bohol', 'Negros Oriental', 'Siquijor',
+          'Biliran', 'Eastern Samar', 'Leyte', 'Northern Samar', 'Western Samar', 'Southern Leyte',
+          'Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay',
+          'Bukidnon', 'Camiguin', 'Lanao del Norte', 'Misamis Occidental', 'Misamis Oriental',
+          'Compostela Valley', 'Davao del Norte', 'Davao Occidental', 'Davao Oriental',
+          'North Cotabato', 'Sarangani', 'South Cotabato', 'Sultan Kudarat',
+          'Agusan del Norte', 'Agusan del Sur', 'Dinagat Islands', 'Surigao del Norte', 'Surigao del Sur',
+          'Basilan', 'Lanao del Sur', 'Maguindanao', 'Sulu', 'Tawi-Tawi'
+        ];
+        
+        if (knownProvinces.includes(part)) {
+          province = part;
+          // City should be the part before the province
+          if (i > 0) {
+            city = addressParts[i - 1].trim();
+          }
+          break;
+        }
+      }
+      
+      console.log('📍 Parsed address:', { 
+        fullAddress: userAddress, 
+        addressParts, 
+        city, 
+        province 
+      });
       
       if (city && province) {
         setDeliveryCalculationComplete(true); // Prevent multiple runs
@@ -163,9 +229,16 @@ export const Checkout = () => {
             
             for (const vendor of vendors) {
               try {
-                const price = await getVendorDeliveryPrice(vendor.vendor_id, city, province);
-                deliveryFees[vendor.vendor_id] = price;
-                console.log(`💰 Vendor ${vendor.vendor_id} (${vendor.vendor_name}): ₱${price}`);
+                const result = await getVendorDeliveryPrice(vendor.vendor_id, city, province);
+                deliveryFees[vendor.vendor_id] = result.price;
+                console.log(`💰 Vendor ${vendor.vendor_id} (${vendor.vendor_name}): ₱${result.price} (${result.matchType})`);
+                
+                // Show warning for fuzzy matches or no matches
+                if (result.matchType === 'fuzzy' && result.suggestions) {
+                  console.warn(`⚠️ Address correction suggested for vendor ${vendor.vendor_id}:`, result.suggestions);
+                } else if (result.matchType === 'none' && result.suggestions) {
+                  console.warn(`❌ No delivery available for vendor ${vendor.vendor_id}:`, result.suggestions);
+                }
               } catch (error) {
                 console.log(`❌ Failed to get delivery price for vendor ${vendor.vendor_id}:`, error.message);
                 deliveryFees[vendor.vendor_id] = 0; // Free delivery on error
@@ -186,10 +259,17 @@ export const Checkout = () => {
           
           const getSingleDeliveryPrice = async () => {
             try {
-              const price = await getVendorDeliveryPrice(orderData.vendorId, city, province);
-              setVendorDeliveryFees({ [orderData.vendorId]: price });
-              setDeliveryPrice(price);
-              console.log(`💰 Single vendor ${orderData.vendorId} delivery price: ₱${price}`);
+              const result = await getVendorDeliveryPrice(orderData.vendorId, city, province);
+              setVendorDeliveryFees({ [orderData.vendorId]: result.price });
+              setDeliveryPrice(result.price);
+              console.log(`💰 Single vendor ${orderData.vendorId} delivery price: ₱${result.price} (${result.matchType})`);
+              
+              // Show warning for fuzzy matches or no matches
+              if (result.matchType === 'fuzzy' && result.suggestions) {
+                console.warn(`⚠️ Address correction suggested for vendor ${orderData.vendorId}:`, result.suggestions);
+              } else if (result.matchType === 'none' && result.suggestions) {
+                console.warn(`❌ No delivery available for vendor ${orderData.vendorId}:`, result.suggestions);
+              }
             } catch (error) {
               console.log(`❌ Failed to get delivery price for vendor ${orderData.vendorId}:`, error.message);
               setVendorDeliveryFees({ [orderData.vendorId]: 0 });
@@ -356,7 +436,6 @@ export const Checkout = () => {
       console.log('Placing order:', orderData);
       console.log('Delivery address:', finalDeliveryAddress);
       console.log('Delivery date/time:', deliveryDateTime);
-      console.log('Payment type:', paymentType);
       
       // Show order confirmation receipt first
       setShowReceipt(true);
@@ -420,6 +499,7 @@ export const Checkout = () => {
       setIsConfirmingOrder(false);
     }
   };
+
 
   const saveOrderToDatabase = async () => {
     try {
@@ -491,8 +571,6 @@ export const Checkout = () => {
             vendor_id: vendor.vendor_id,
             delivery_address: finalDeliveryAddress,
             delivery_datetime: mysqlDateTime,
-            payment_method: paymentMethod,
-            payment_type: paymentType,
             subtotal: vendorSubtotal,
             delivery_fee: vendorDeliveryFee,
             total_amount: vendorTotal,
@@ -530,8 +608,6 @@ export const Checkout = () => {
           vendor_id: orderData.vendorId,
           delivery_address: finalDeliveryAddress,
           delivery_datetime: mysqlDateTime,
-          payment_method: paymentMethod,
-          payment_type: paymentType,
           subtotal: parseFloat(orderData.totalPrice),
           delivery_fee: deliveryPrice || 0,
           total_amount: getTotalAmount(),
@@ -597,7 +673,6 @@ export const Checkout = () => {
 
   const generateTextReceipt = () => {
     const totalAmount = getTotalAmount();
-    const amountToPay = paymentType === 'downpayment' ? totalAmount * 0.5 : totalAmount;
     
     if (Array.isArray(savedOrderId) && savedOrderId.length > 1) {
       // Multi-vendor order receipt
@@ -613,7 +688,7 @@ Status: PENDING VENDOR APPROVAL
 ---------------------------------
 PAYMENT INFORMATION
 ---------------------------------
-GCash - ${paymentType === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
+GCash Payment (After Vendor Approval)
 Note: Payment required after vendor approval
 
 ---------------------------------
@@ -626,9 +701,9 @@ ${savedOrderId.map(order => {
 ${vendorGroup?.vendor_name || 'Unknown Vendor'}:
 Order ID: #${order.order_id}
 Items: ${vendorGroup?.items?.map(item => `${item.name} x${item.quantity}`).join(', ') || 'N/A'}
-Subtotal: ₱${(order.total_amount - vendorDeliveryFee).toFixed(2)}
+Subtotal: ₱${(parseFloat(order.total_amount) - vendorDeliveryFee).toFixed(2)}
 Delivery: ₱${vendorDeliveryFee.toFixed(2)}
-Total: ₱${order.total_amount.toFixed(2)}`;
+Total: ₱${parseFloat(order.total_amount).toFixed(2)}`;
 }).join('\n')}
 
 ---------------------------------
@@ -647,10 +722,6 @@ ${orderData?.fromCart ?
 }
 
 Grand Total: ₱${totalAmount.toFixed(2)}
-${paymentType === 'downpayment' ? `Estimated Down Payment: ₱${(totalAmount * 0.5).toFixed(2)}` : ''}
-${paymentType === 'downpayment' ? `Remaining Balance: ₱${(totalAmount * 0.5).toFixed(2)}` : ''}
-
-ESTIMATED ${paymentType === 'downpayment' ? 'DOWN PAYMENT' : 'TOTAL'}: ₱${amountToPay.toFixed(2)}
 
 ---------------------------------
 DELIVERY INFORMATION
@@ -666,7 +737,6 @@ NEXT STEPS
 • Payment via GCash will be required after each vendor approval
 • Track each order separately in your order history
 • Keep this confirmation for your records
-${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remaining balance on delivery' : ''}
 
 =================================
         Thank you for your order!
@@ -689,7 +759,7 @@ Status: PENDING VENDOR APPROVAL
 ---------------------------------
 PAYMENT INFORMATION
 ---------------------------------
-GCash - ${paymentType === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
+GCash Payment (After Vendor Approval)
 Note: Payment required after vendor approval
 
 ---------------------------------
@@ -708,10 +778,6 @@ ${orderData?.fromCart ?
 }
 
 Grand Total: ₱${totalAmount.toFixed(2)}
-${paymentType === 'downpayment' ? `Estimated Down Payment: ₱${(totalAmount * 0.5).toFixed(2)}` : ''}
-${paymentType === 'downpayment' ? `Remaining Balance: ₱${(totalAmount * 0.5).toFixed(2)}` : ''}
-
-ESTIMATED ${paymentType === 'downpayment' ? 'DOWN PAYMENT' : 'TOTAL'}: ₱${amountToPay.toFixed(2)}
 
 ---------------------------------
 DELIVERY INFORMATION
@@ -726,7 +792,6 @@ NEXT STEPS
 • You will receive a notification once the vendor responds
 • Payment via GCash will be required after order approval
 • Keep this confirmation for your records
-${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remaining balance on delivery' : ''}
 
 =================================
         Thank you for your order!
@@ -958,43 +1023,23 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
               </div>
             </div>
 
-            {/* Payment Method */}
+            {/* Payment Information */}
             <div className="mb-6 sm:mb-8">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Payment Method</h2>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white font-bold text-xs sm:text-sm">G</span>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Payment Information</h2>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-blue-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </div>
-                  <span className="text-gray-700 font-medium text-sm sm:text-base">GCash Payment</span>
-                </div>
-                
-                {/* Payment Type Options */}
-                <div className="ml-8 sm:ml-11 space-y-3">
-                  <h3 className="text-sm font-medium text-gray-700">Payment Option:</h3>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="full"
-                        checked={paymentType === 'full'}
-                        onChange={(e) => setPaymentType(e.target.value)}
-                        className="mr-3"
-                      />
-                      <span className="text-gray-700">Full Payment</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="downpayment"
-                        checked={paymentType === 'downpayment'}
-                        onChange={(e) => setPaymentType(e.target.value)}
-                        className="mr-3"
-                      />
-                      <span className="text-gray-700">50% Down Payment</span>
-                    </label>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">Payment After Approval</h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>• Payment will be required after the vendor approves your order</p>
+                      <p>• You can pay via GCash when your order is approved</p>
+                      <p>• You'll receive a notification when payment is needed</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1016,21 +1061,9 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                     <span>Grand Total:</span>
                     <span>₱{getTotalAmount().toFixed(2)}</span>
                   </div>
-                  {paymentType === 'downpayment' && (
-                    <>
-                      <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-orange-600">
-                        <span>50% Down Payment:</span>
-                        <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-500">
-                        <span>Remaining Balance:</span>
-                        <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
                   <div className="flex items-center justify-between sm:justify-end space-x-2 text-base sm:text-lg font-bold text-blue-600 border-t border-gray-300 pt-1 mt-1">
-                    <span>Estimated {paymentType === 'downpayment' ? 'Down Payment' : 'Total'}:</span>
-                    <span>₱{(paymentType === 'downpayment' ? getTotalAmount() * 0.5 : getTotalAmount()).toFixed(2)}</span>
+                    <span>Estimated Total:</span>
+                    <span>₱{getTotalAmount().toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -1111,7 +1144,7 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                       <div>
                         <span className="font-medium text-gray-900">GCash</span>
                         <p className="text-sm text-gray-600">
-                          {paymentType === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
+                          Full Payment
                         </p>
                       </div>
                     </div>
@@ -1155,21 +1188,9 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                         <span>Grand Total:</span>
                         <span>₱{getTotalAmount().toFixed(2)}</span>
                       </div>
-                      {paymentType === 'downpayment' && (
-                        <>
-                          <div className="flex justify-between text-sm text-orange-600">
-                            <span>50% Down Payment:</span>
-                            <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>Remaining Balance:</span>
-                            <span>₱{(getTotalAmount() * 0.5).toFixed(2)}</span>
-                          </div>
-                        </>
-                      )}
                       <div className="flex justify-between font-semibold text-lg border-t pt-2 mt-2">
-                        <span>Estimated {paymentType === 'downpayment' ? 'Down Payment' : 'Total'}:</span>
-                        <span className="text-blue-600">₱{(paymentType === 'downpayment' ? getTotalAmount() * 0.5 : getTotalAmount()).toFixed(2)}</span>
+                        <span>Estimated Total:</span>
+                        <span className="text-blue-600">₱{getTotalAmount().toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -1192,32 +1213,38 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
                     <p>• You will receive a notification once the vendor responds</p>
                     <p>• Payment via GCash will be required after order approval</p>
                     <p>• Keep this confirmation for your records</p>
-                    {paymentType === 'downpayment' && (
-                      <p>• You can pay 50% down payment first, remaining balance on delivery</p>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-                <button
-                  onClick={handleReceiptClose}
-                  disabled={isConfirmingOrder}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                    isConfirmingOrder 
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  }`}
-                >
-                  {isConfirmingOrder ? 'Confirming...' : 'Confirm Order'}
-                </button>
-                <button
-                  onClick={() => setShowReceipt(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
-                >
-                  Edit Order
-                </button>
+              {/* Order Confirmation */}
+              <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-800 mb-2">Order Submitted Successfully!</h3>
+                  <p className="text-sm text-green-700">
+                    Your order has been sent to the vendor for approval. You'll receive a notification once the vendor responds.
+                  </p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                  <button
+                    onClick={handleReceiptClose}
+                    disabled={isConfirmingOrder}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                      isConfirmingOrder 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {isConfirmingOrder ? 'Confirming...' : 'Confirm Order'}
+                  </button>
+                  <button
+                    onClick={() => setShowReceipt(false)}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base"
+                  >
+                    Edit Order
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1284,4 +1311,5 @@ ${paymentType === 'downpayment' ? '• You can pay 50% down payment first, remai
     </>
   );
 };
+
 

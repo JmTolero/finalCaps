@@ -6,6 +6,9 @@ const { checkOrderLimit } = require('../../middleware/subscriptionMiddleware');
 // Create a new order
 router.post('/', checkOrderLimit, orderController.createOrder);
 
+// Get a single order by ID
+router.get('/:order_id', orderController.getOrderById);
+
 // Get all orders for admin dashboard
 router.get('/admin/all', orderController.getAllOrdersAdmin);
 
@@ -20,6 +23,9 @@ router.put('/:order_id/status', orderController.updateOrderStatus);
 
 // Update payment status
 router.put('/:order_id/payment-status', orderController.updatePaymentStatus);
+
+// Update payment status (alternative endpoint)
+router.put('/:order_id/payment', orderController.updatePaymentStatus);
 
 // Update drum return status
 router.post('/:order_id/drum-return', orderController.updateDrumReturnStatus);
