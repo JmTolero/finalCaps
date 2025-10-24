@@ -22,6 +22,23 @@ export const Customer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { totalItems } = useCart();
+
+  // Optimized navigation function to prevent back button refreshing
+  const navigateOptimized = useCallback((path, options = {}) => {
+    // Use replace for internal navigation to prevent back button issues
+    const shouldReplace = options.replace !== false && (
+      path === '/customer' || 
+      path.startsWith('/customer/') ||
+      path === '/cart' ||
+      path === '/find-vendors' ||
+      path === '/all-vendor-stores'
+    );
+    
+    navigate(path, { 
+      replace: shouldReplace,
+      ...options 
+    });
+  }, [navigate]);
   const [activeView, setActiveView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('profile');
   const [settingsKey, setSettingsKey] = useState(0);
@@ -54,6 +71,7 @@ export const Customer = () => {
   const [allFlavors, setAllFlavors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Separate input state for non-refreshing input
   
   // Orders data
   const [orders, setOrders] = useState([]);
@@ -94,13 +112,31 @@ export const Customer = () => {
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
   
+  // Handle search button click
+  const handleSearch = useCallback(() => {
+    setSearchTerm(searchInput);
+  }, [searchInput]);
+
+  // Handle Enter key press in search input
+  const handleSearchKeyPress = useCallback((e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }, [handleSearch]);
+
+  // Clear search function
+  const clearSearch = useCallback(() => {
+    setSearchInput('');
+    setSearchTerm('');
+  }, []);
+
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
     setShowFeedbackDropdown(false);
     if (action === 'submit') {
       setShowFeedbackModal(true);
     } else if (action === 'view') {
-      navigate('/customer/my-feedback');
+      navigateOptimized('/customer/my-feedback');
     }
   };
   
@@ -349,8 +385,16 @@ export const Customer = () => {
     }
   }, [activeView, fetchMyReviews]);
 
+  // Track if data has been loaded to prevent unnecessary refetching on back navigation
+  const [dataLoaded, setDataLoaded] = useState({
+    dashboard: false,
+    settings: false,
+    orders: false,
+    notifications: false
+  });
+
   useEffect(() => {
-    // Load user data from session
+    // Load user data from session (only once)
     const userRaw = sessionStorage.getItem('user');
     if (userRaw) {
       const user = JSON.parse(userRaw);
@@ -362,41 +406,47 @@ export const Customer = () => {
         role: user.role || 'customer'
       });
       
-      // Check vendor status if user is a vendor
+      // Check vendor status if user is a vendor (only once)
       if (user.role === 'vendor') {
         checkVendorStatus(user.id);
       }
     }
     
-    // Load marketplace data
-    if (activeView === 'dashboard') {
+    // Load data only if not already loaded (prevents refetching on back navigation)
+    if (activeView === 'dashboard' && !dataLoaded.dashboard) {
       fetchAllFlavors();
+      setDataLoaded(prev => ({ ...prev, dashboard: true }));
     }
     
-    if (activeView === 'settings') {
+    if (activeView === 'settings' && !dataLoaded.settings) {
       fetchCustomerData();
       fetchAddresses();
+      setDataLoaded(prev => ({ ...prev, settings: true }));
     }
     
-    if (activeView === 'orders') {
+    if (activeView === 'orders' && !dataLoaded.orders) {
       fetchCustomerOrders();
+      setDataLoaded(prev => ({ ...prev, orders: true }));
     }
     
-    // Fetch notifications and unread count
-    fetchNotifications();
-    fetchUnreadCount();
-  }, [activeView, fetchNotifications, fetchUnreadCount]);
+    // Fetch notifications only if not already loaded
+    if (!dataLoaded.notifications) {
+      fetchNotifications();
+      fetchUnreadCount();
+      setDataLoaded(prev => ({ ...prev, notifications: true }));
+    }
+  }, [activeView, fetchNotifications, fetchUnreadCount, dataLoaded]);
 
-  // Auto-refresh orders every 1:30 minutes when on orders view to track status changes
+  // Auto-refresh orders every 5 minutes when on orders view (reduced frequency to prevent navigation interference)
   useEffect(() => {
     let interval;
     
-    if (activeView === 'orders') {
-      // Set up auto-refresh every 1:30 minutes for order tracking
+    if (activeView === 'orders' && dataLoaded.orders) {
+      // Set up auto-refresh every 5 minutes for order tracking (less aggressive)
       interval = setInterval(() => {
         console.log('🔄 Auto-refreshing customer orders for status tracking...');
         fetchCustomerOrders();
-      }, 90000); // 1:30 minutes (90 seconds) for better network efficiency
+      }, 300000); // 5 minutes (300 seconds) - less aggressive to prevent navigation issues
     }
     
     // Cleanup interval on component unmount or view change
@@ -405,7 +455,7 @@ export const Customer = () => {
         clearInterval(interval);
       }
     };
-  }, [activeView]);
+  }, [activeView, dataLoaded.orders]);
 
   // Refresh orders when filter changes to get latest data
   useEffect(() => {
@@ -415,19 +465,16 @@ export const Customer = () => {
     }
   }, [orderFilter, activeView]);
 
-  // Auto-refresh customer dashboard every 1:30 minutes when on dashboard view
+  // Auto-refresh customer dashboard every 5 minutes when on dashboard view (reduced frequency)
   useEffect(() => {
     let interval;
     
-    if (activeView === 'dashboard') {
-      // Initial fetch
-      fetchAllFlavors();
-      
-      // Set up auto-refresh every 1:30 minutes
+    if (activeView === 'dashboard' && dataLoaded.dashboard) {
+      // Set up auto-refresh every 5 minutes (less aggressive)
       interval = setInterval(() => {
         console.log('🔄 Auto-refreshing customer dashboard products...');
         fetchAllFlavors(false); // Don't show loading spinner for auto-refresh
-      }, 90000); // 1:30 minutes (90 seconds) for better network efficiency
+      }, 300000); // 5 minutes (300 seconds) - less aggressive to prevent navigation issues
     }
     
     // Cleanup interval on component unmount or view change
@@ -436,13 +483,20 @@ export const Customer = () => {
         clearInterval(interval);
       }
     };
-  }, [activeView]);
+  }, [activeView, dataLoaded.dashboard]);
 
   // Reset customer data helper function
   const resetCustomerData = useCallback(() => {
     setAddresses([]);
     setAllFlavors([]);
     setVendorStatus(null);
+    // Reset data loaded state to allow fresh data loading
+    setDataLoaded({
+      dashboard: false,
+      settings: false,
+      orders: false,
+      notifications: false
+    });
   }, []);
 
   // Track current user ID to detect changes
@@ -631,7 +685,7 @@ export const Customer = () => {
     console.log('💳 Payment button clicked for order:', order.order_id);
     
     // Navigate to dedicated payment page
-    navigate(`/customer/payment/${order.order_id}`);
+    navigateOptimized(`/customer/payment/${order.order_id}`);
   };
 
   // Handle cancel order
@@ -1825,7 +1879,7 @@ export const Customer = () => {
                     onClick={() => {
                       console.log('Products icon clicked - navigating to customer dashboard');
                       setActiveView('dashboard');
-                      navigate('/customer');
+                      navigateOptimized('/customer');
                     }}
                     className={`p-1.5 rounded-lg transition-colors ${
                       location.pathname === '/customer' 
@@ -1852,7 +1906,7 @@ export const Customer = () => {
 
                   {/* Notification Bell */}
                   <button 
-                    onClick={() => navigate('/customer/notifications')}
+                    onClick={() => navigateOptimized('/customer/notifications')}
                     className={`p-1.5 rounded-lg transition-colors relative ${
                       location.pathname === '/customer/notifications' 
                         ? 'bg-blue-100 hover:bg-blue-200' 
@@ -1870,7 +1924,7 @@ export const Customer = () => {
 
                   {/* Cart Icon */}
                   <button 
-                    onClick={() => navigate('/cart')}
+                    onClick={() => navigateOptimized('/cart')}
                     className={`p-1.5 rounded-lg transition-colors relative ${
                       location.pathname === '/cart' 
                         ? 'bg-blue-100 hover:bg-blue-200' 
@@ -1888,7 +1942,7 @@ export const Customer = () => {
                   
                   {/* Feedback Icon */}
                   <button 
-                    onClick={() => navigate('/customer/feedback')}
+                    onClick={() => navigateOptimized('/customer/feedback')}
                     className={`p-1.5 rounded-lg transition-colors ${
                       location.pathname === '/customer/feedback' 
                         ? 'bg-blue-100 hover:bg-blue-200' 
@@ -2487,19 +2541,40 @@ export const Customer = () => {
             
             {/* Bottom Row: Search Bar */}
             <div className="w-full">
-              <div className="relative">
+              <div className="relative flex">
                 <input
                   type="text"
                   placeholder="Search ice cream flavors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  className="flex-1 px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0"
                 />
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                   <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Search"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="ml-2 px-3 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    title="Clear Search"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2507,19 +2582,40 @@ export const Customer = () => {
           {/* Desktop Layout - Side by Side */}
           <div className="hidden sm:flex flex-row items-center justify-between mb-4 lg:mb-6 gap-4 lg:gap-6">
             <div className="flex-1 max-w-md">
-              <div className="relative">
+              <div className="relative flex">
                 <input
                   type="text"
                   placeholder="Search ice cream flavors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  className="flex-1 px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Search"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="ml-2 px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    title="Clear Search"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
             

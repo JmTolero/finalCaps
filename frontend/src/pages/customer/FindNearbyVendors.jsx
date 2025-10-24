@@ -18,10 +18,28 @@ export const FindNearbyVendors = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { totalItems } = useCart();
+
+  // Optimized navigation function to prevent back button refreshing
+  const navigateOptimized = useCallback((path, options = {}) => {
+    // Use replace for internal navigation to prevent back button issues
+    const shouldReplace = options.replace !== false && (
+      path === '/customer' || 
+      path.startsWith('/customer/') ||
+      path === '/cart' ||
+      path === '/find-vendors' ||
+      path === '/all-vendor-stores'
+    );
+    
+    navigate(path, { 
+      replace: shouldReplace,
+      ...options 
+    });
+  }, [navigate]);
   const [vendors, setVendors] = useState([]);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Separate input state for non-refreshing input
   const [userLocation, setUserLocation] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
   
@@ -39,13 +57,31 @@ export const FindNearbyVendors = () => {
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
 
+  // Handle search button click
+  const handleSearch = useCallback(() => {
+    setSearchTerm(searchInput);
+  }, [searchInput]);
+
+  // Handle Enter key press in search input
+  const handleSearchKeyPress = useCallback((e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }, [handleSearch]);
+
+  // Clear search function
+  const clearSearch = useCallback(() => {
+    setSearchInput('');
+    setSearchTerm('');
+  }, []);
+
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
     setShowFeedbackDropdown(false);
     if (action === 'submit') {
       setShowFeedbackModal(true);
     } else if (action === 'view') {
-      navigate('/customer/my-feedback');
+      navigateOptimized('/customer/my-feedback');
     }
   };
   
@@ -281,7 +317,7 @@ export const FindNearbyVendors = () => {
               <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
                 {/* Products/Flavors Icon */}
                 <button
-                  onClick={() => navigate("/customer")}
+                  onClick={() => navigateOptimized("/customer")}
                   className={`p-1.5 rounded-lg transition-colors ${
                     location.pathname === '/customer' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -294,7 +330,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Shops Icon */}
                 <button 
-                  onClick={() => navigate("/all-vendor-stores")}
+                  onClick={() => navigateOptimized("/all-vendor-stores")}
                   className={`p-1.5 rounded-lg transition-colors ${
                     location.pathname === '/all-vendor-stores' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -307,7 +343,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Notification Bell */}
                 <button
-                  onClick={() => navigate("/customer/notifications")}
+                  onClick={() => navigateOptimized("/customer/notifications")}
                   className={`p-1.5 rounded-lg transition-colors relative ${
                     location.pathname === '/customer/notifications' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -329,7 +365,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Cart Icon */}
                 <button 
-                  onClick={() => navigate("/cart")}
+                  onClick={() => navigateOptimized("/cart")}
                   className={`p-1.5 rounded-lg transition-all duration-200 relative ${
                     location.pathname === '/cart'
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
@@ -388,13 +424,14 @@ export const FindNearbyVendors = () => {
             
             {/* Bottom Row: Search Bar */}
             <div className="w-full">
-              <div className="relative">
+              <div className="relative flex">
                 <input
                   type="text"
                   placeholder="Search vendor nearby..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  className="flex-1 px-3 py-2.5 pl-8 pr-3 text-sm text-gray-700 bg-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0"
                 />
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                   <svg
@@ -411,6 +448,26 @@ export const FindNearbyVendors = () => {
                     />
                   </svg>
                 </div>
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Search"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="ml-2 px-3 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    title="Clear Search"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -418,13 +475,14 @@ export const FindNearbyVendors = () => {
           {/* Desktop Layout - Side by Side */}
           <div className="hidden sm:flex flex-row items-center justify-between mb-4 lg:mb-6 gap-4 lg:gap-6">
             <div className="flex-1 max-w-md">
-              <div className="relative">
+              <div className="relative flex">
                 <input
                   type="text"
                   placeholder="Search vendor nearby..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleSearchKeyPress}
+                  className="flex-1 px-4 py-3 pl-10 pr-4 text-base text-gray-700 bg-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
@@ -441,6 +499,26 @@ export const FindNearbyVendors = () => {
                     />
                   </svg>
                 </div>
+                <button
+                  onClick={handleSearch}
+                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Search"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="ml-2 px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    title="Clear Search"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
             
@@ -461,7 +539,7 @@ export const FindNearbyVendors = () => {
               <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3 bg-white rounded-lg px-2.5 py-1.5 shadow-sm sm:px-3 sm:py-2 lg:px-4">
                 {/* Products/Flavors Icon */}
                 <button
-                  onClick={() => navigate("/customer")}
+                  onClick={() => navigateOptimized("/customer")}
                   className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                     location.pathname === '/customer' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -474,7 +552,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Shops Icon */}
                 <button 
-                  onClick={() => navigate("/all-vendor-stores")}
+                  onClick={() => navigateOptimized("/all-vendor-stores")}
                   className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                     location.pathname === '/all-vendor-stores' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -487,7 +565,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Notification Bell */}
                 <button
-                  onClick={() => navigate("/customer/notifications")}
+                  onClick={() => navigateOptimized("/customer/notifications")}
                   className={`p-1.5 sm:p-2 rounded-lg transition-colors relative ${
                     location.pathname === '/customer/notifications' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
@@ -509,7 +587,7 @@ export const FindNearbyVendors = () => {
 
                 {/* Cart Icon */}
                 <button 
-                  onClick={() => navigate("/cart")}
+                  onClick={() => navigateOptimized("/cart")}
                   className={`p-1.5 sm:p-2 rounded-lg transition-all duration-200 relative ${
                     location.pathname === '/cart'
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
@@ -815,7 +893,7 @@ export const FindNearbyVendors = () => {
                         {/* Action Buttons */}
                         <div className="flex justify-center sm:justify-start">
                           <button 
-                            onClick={() => navigate(`/vendor/${vendor.vendor_id}/store`)}
+                            onClick={() => navigateOptimized(`/vendor/${vendor.vendor_id}/store`)}
                             className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-sm text-sm sm:text-base"
                           >
                             View Shop
