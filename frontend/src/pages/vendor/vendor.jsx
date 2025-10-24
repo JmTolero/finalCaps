@@ -6156,7 +6156,35 @@ export const Vendor = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {transactions.map((transaction) => (
+                  {transactions
+                    .filter(transaction => {
+                      // Apply date filters
+                      if (transactionFilters.start_date) {
+                        const transactionDate = new Date(transaction.order_date);
+                        const startDate = new Date(transactionFilters.start_date);
+                        if (transactionDate < startDate) return false;
+                      }
+                      
+                      if (transactionFilters.end_date) {
+                        const transactionDate = new Date(transaction.order_date);
+                        const endDate = new Date(transactionFilters.end_date);
+                        endDate.setHours(23, 59, 59, 999); // Include the entire end date
+                        if (transactionDate > endDate) return false;
+                      }
+                      
+                      // Apply payment method filter
+                      if (transactionFilters.payment_method !== 'all') {
+                        if (transaction.transaction_type !== transactionFilters.payment_method) return false;
+                      }
+                      
+                      // Apply status filter
+                      if (transactionFilters.status !== 'all') {
+                        if (transaction.transaction_status !== transactionFilters.status) return false;
+                      }
+                      
+                      return true;
+                    })
+                    .map((transaction) => (
                     <div key={transaction.order_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -7146,19 +7174,31 @@ export const Vendor = () => {
                             const deliveryDate = new Date(order.delivery_datetime);
                             const selectedDate = new Date(dateFilter.selectedDate);
                             
+                        
+                            
                             // Compare only the date part (year, month, day) ignoring time
                             const deliveryDateOnly = new Date(deliveryDate.getFullYear(), deliveryDate.getMonth(), deliveryDate.getDate());
                             const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
                             
-                            return deliveryDateOnly.getTime() === selectedDateOnly.getTime();
+                            const isMatch = deliveryDateOnly.getTime() === selectedDateOnly.getTime();
+                            console.log('🔍 Date Match Result:', isMatch);
+                            
+                            return isMatch;
                           })
                         : statusFilteredOrders;
 
-                      console.log('🔍 Debug - vendorOrders.length:', vendorOrders.length);
-                      console.log('🔍 Debug - filteredOrders.length:', filteredOrders.length);
-                      console.log('🔍 Debug - ordersLoading:', ordersLoading);
-                      console.log('🔍 Debug - orderFilter:', orderFilter);
-                      console.log('🔍 Debug - vendorOrders:', vendorOrders);
+                      // console.log('🔍 Debug - vendorOrders.length:', vendorOrders.length);
+                      // console.log('🔍 Debug - filteredOrders.length:', filteredOrders.length);
+                      // console.log('🔍 Debug - ordersLoading:', ordersLoading);
+                      // console.log('🔍 Debug - orderFilter:', orderFilter);
+                      // console.log('🔍 Debug - dateFilter:', dateFilter);
+                      // console.log('🔍 Debug - statusFilteredOrders.length:', statusFilteredOrders.length);
+                      // console.log('🔍 Debug - All orders with delivery dates:', vendorOrders.map(o => ({
+                      //   orderId: o.order_id,
+                      //   status: o.status,
+                      //   delivery_datetime: o.delivery_datetime,
+                      //   delivery_date_formatted: o.delivery_datetime ? new Date(o.delivery_datetime).toLocaleDateString() : 'No date'
+                      // })));
                       
                       return ordersLoading ? (
                         <div className="text-center py-12">
