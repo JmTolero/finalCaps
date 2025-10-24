@@ -11,6 +11,7 @@ import feedbackIcon from "../../assets/images/customerIcon/feedbacks.png";
 import notifIcon from "../../assets/images/customerIcon/notifbell.png";
 import productsIcon from "../../assets/images/customerIcon/productsflavor.png";
 import shopsIcon from "../../assets/images/customerIcon/shops.png";
+import findNearbyIcon from "../../assets/images/vendordashboardicon/findnearby.png";
 
 export const AllVendorStores = () => {
   const navigate = useNavigate();
@@ -154,9 +155,9 @@ export const AllVendorStores = () => {
             <div className="flex items-center justify-between">
               <button
                 onClick={() => navigate("/find-vendors")}
-                className="text-blue-700 hover:text-blue-800 font-medium text-sm"
+                className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm"
               >
-                Find nearby Vendors
+                <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
               </button>
               
               {/* Navigation Icons */}
@@ -314,7 +315,7 @@ export const AllVendorStores = () => {
             <div className="flex items-center space-x-4 lg:space-x-8">
               <button
                 onClick={() => navigate("/find-vendors")}
-                className="text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap"
+                className="text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base whitespace-nowrap"
               >
                 Find nearby Vendors
               </button>
@@ -378,7 +379,7 @@ export const AllVendorStores = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className="w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5" 
+                    className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200" 
                   />
                   {totalItems > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold sm:w-5 sm:h-5">

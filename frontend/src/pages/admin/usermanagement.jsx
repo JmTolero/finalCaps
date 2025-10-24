@@ -25,6 +25,8 @@ export const AdminUserManagement = () => {
   // Modal states for user management actions
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showDeleteWarningModal, setShowDeleteWarningModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [loadingAction, setLoadingAction] = useState(false);
@@ -223,6 +225,8 @@ export const AdminUserManagement = () => {
   const closeModals = () => {
     setShowEditModal(false);
     setShowViewModal(false);
+    setShowDeleteWarningModal(false);
+    setShowDeleteConfirmModal(false);
     setSelectedUser(null);
     setEditForm({
       fname: '',
@@ -234,6 +238,50 @@ export const AdminUserManagement = () => {
       gender: '',
       role: 'customer'
     });
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    
+    setLoadingAction(true);
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.delete(`${apiBase}/api/admin/users/${selectedUser.user_id}`);
+      
+      if (response.data.success) {
+        setSuccessMessage(`User ${selectedUser.fname} ${selectedUser.lname} has been deleted successfully`);
+        setShowSuccessModal(true);
+        setShowDeleteConfirmModal(false);
+        setShowViewModal(false);
+        setSelectedUser(null);
+        // Refresh the users list
+        await fetchUsers();
+        
+        // Auto-hide success modal after 3 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+        }, 3000);
+      } else {
+        setErrorMessage('Failed to delete user');
+        setShowErrorModal(true);
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to delete user';
+      setErrorMessage(`Failed to delete user: ${errorMsg}`);
+      setShowErrorModal(true);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    setShowDeleteWarningModal(true);
+  };
+
+  const proceedToDeleteConfirmation = () => {
+    setShowDeleteWarningModal(false);
+    setShowDeleteConfirmModal(true);
   };
 
   const viewDocument = (documentUrl, title) => {
@@ -814,6 +862,12 @@ export const AdminUserManagement = () => {
                       Deactivate
                     </button>
                   )}
+                  <button
+                    onClick={confirmDeleteUser}
+                    className="px-4 py-2 bg-red-600 text-white font-medium rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    Delete User
+                  </button>
                 </div>
                 
                 {/* Main Action Buttons */}
@@ -1088,6 +1142,99 @@ export const AdminUserManagement = () => {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Warning */}
+      {showDeleteWarningModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full p-4 sm:p-8 max-h-[90vh] overflow-y-auto">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-red-600 mb-3 sm:mb-4 text-center">⚠️ CRITICAL WARNING ⚠️</h3>
+            <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-4 sm:mb-6">
+              <p className="text-red-800 font-semibold text-base sm:text-lg mb-2">
+                You are about to PERMANENTLY DELETE:
+              </p>
+              <p className="text-red-700 font-bold text-lg sm:text-xl mb-3">
+                {selectedUser.fname} {selectedUser.lname}
+              </p>
+              <div className="text-red-700 space-y-1 text-sm sm:text-base">
+                <p>• User account and profile</p>
+                <p>• All notifications and messages</p>
+                <p>• All cart items and preferences</p>
+                <p>• All addresses and location data</p>
+                {selectedUser.role === 'vendor' && (
+                  <>
+                    <p>• <strong>ALL VENDOR DATA:</strong></p>
+                    <p className="ml-4">• Store profile and documents</p>
+                    <p className="ml-4">• All products and flavors</p>
+                    <p className="ml-4">• All orders and order history</p>
+                    <p className="ml-4">• All reviews and ratings</p>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <p className="text-yellow-800 font-bold text-center text-sm sm:text-base">
+                🚨 THIS ACTION CANNOT BE UNDONE! 🚨
+              </p>
+              <p className="text-yellow-700 text-center mt-2 text-xs sm:text-sm">
+                All data will be permanently removed from the database and cannot be recovered.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">
+              <button
+                onClick={() => setShowDeleteWarningModal(false)}
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-gray-500 text-white font-bold rounded-full hover:bg-gray-600 transition-colors text-base sm:text-lg"
+              >
+                Cancel - Keep User
+              </button>
+              <button
+                onClick={proceedToDeleteConfirmation}
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-red-600 text-white font-bold rounded-full hover:bg-red-700 transition-colors text-base sm:text-lg"
+              >
+                I Understand - Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Confirmation */}
+      {showDeleteConfirmModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2 text-center">Final Confirmation</h3>
+            <p className="text-gray-600 mb-2 text-center">
+              Delete <strong>{selectedUser.fname} {selectedUser.lname}</strong> permanently?
+            </p>
+            <p className="text-red-600 text-sm mb-6 text-center font-semibold">
+              ⚠️ This action cannot be undone. All user data will be permanently deleted.
+            </p>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 justify-center">
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="w-full sm:w-auto px-6 py-2 bg-gray-500 text-white font-medium rounded-full hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="w-full sm:w-auto px-6 py-2 bg-red-600 text-white font-medium rounded-full hover:bg-red-700 transition-colors"
+              >
+                Yes, Delete User
+              </button>
+            </div>
           </div>
         </div>
       )}

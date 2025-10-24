@@ -12,6 +12,7 @@ import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
 import notifIcon from '../../assets/images/customerIcon/notifbell.png';
 import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
 import shopsIcon from '../../assets/images/customerIcon/shops.png';
+import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.png';
 
 export const CartView = () => {
   const navigate = useNavigate();
@@ -325,9 +326,26 @@ export const CartView = () => {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
           <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
-            <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+            <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6 relative">
+              {/* Mobile: Find nearby Vendors icon in absolute top-left corner */}
+              <Link 
+                to="/find-vendors" 
+                className="absolute left-0 top-0 p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm sm:hidden z-10"
+              >
+                <img 
+                  src={findNearbyIcon} 
+                  alt="Find nearby Vendors" 
+                  className="w-5 h-5" 
+                />
+              </Link>
+              
+              {/* Desktop: Find nearby Vendors text grouped with navigation icons */}
               <div className="flex items-center space-x-2 sm:space-x-4">
-                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
+                {/* Desktop: Find nearby Vendors text */}
+                <Link 
+                  to="/find-vendors" 
+                  className="hidden sm:inline text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base"
+                >
                   Find nearby Vendors
                 </Link>
                 
@@ -476,9 +494,26 @@ export const CartView = () => {
       {/* Header */}
       <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="flex items-center justify-end mb-6">
+          <div className="flex items-center justify-end mb-6 relative">
+            {/* Mobile: Find nearby Vendors icon in absolute top-left corner */}
+            <Link 
+              to="/find-vendors" 
+              className="absolute left-0 top-0 p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm sm:hidden z-10"
+            >
+              <img 
+                src={findNearbyIcon} 
+                alt="Find nearby Vendors" 
+                className="w-5 h-5" 
+              />
+            </Link>
+            
+            {/* Desktop: Find nearby Vendors text grouped with navigation icons */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base">
+              {/* Desktop: Find nearby Vendors text */}
+              <Link 
+                to="/find-vendors" 
+                className="hidden sm:inline text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base"
+              >
                 Find nearby Vendors
               </Link>
               
@@ -670,7 +705,7 @@ export const CartView = () => {
                     <h3 className="text-sm sm:text-lg font-semibold text-blue-600 mb-0.5 sm:mb-1">
                       {item.vendor_name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-800 font-medium mb-1 sm:mb-2">
+                    <p className="text-xs sm:text-sm text-gray-800 font-medium mb-1 sm:mb-2 truncate" title={item.flavor_name || item.name || 'No flavor name'}>
                       {item.flavor_name || item.name || 'No flavor name'}
                     </p>
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-0.5 sm:space-y-0 sm:space-x-4">

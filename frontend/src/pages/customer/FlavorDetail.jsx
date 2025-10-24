@@ -14,6 +14,7 @@ import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
 import notifIcon from '../../assets/images/customerIcon/notifbell.png';
 import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
 import shopsIcon from '../../assets/images/customerIcon/shops.png';
+import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.png';
 
 export const FlavorDetail = () => {
   const { flavorId } = useParams();
@@ -453,7 +454,107 @@ export const FlavorDetail = () => {
       {/* Header Section */}
       <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+          {/* Mobile Layout - Stacked */}
+          <div className="flex flex-col gap-3 sm:hidden mb-3">
+            {/* Top Row: Find nearby Vendors + Icons */}
+            <div className="flex items-center justify-between">
+              <Link to="/find-vendors" className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm">
+                <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
+              </Link>
+              
+              {/* Navigation Icons */}
+              <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                {/* Products/Flavors Icon */}
+                <button
+                  onClick={() => navigate("/customer")}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <img src={productsIcon} alt="Products" className="w-4 h-4" />
+                </button>
+
+                {/* Shops Icon */}
+                <button 
+                  onClick={() => navigate('/all-vendor-stores')}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
+                </button>
+
+                {/* Notification Bell */}
+                <button
+                  onClick={() => navigate("/customer/notifications")}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <img
+                    src={notifIcon}
+                    alt="Notifications"
+                    className="w-4 h-4"
+                  />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Cart Icon */}
+                <button 
+                  onClick={() => navigate("/cart")}
+                  className="p-1.5 rounded-lg transition-all duration-200 relative hover:bg-gray-100"
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                >
+                  <img 
+                    src={cartIcon} 
+                    alt="Cart" 
+                    className="w-4 h-4 transition-transform duration-200"
+                  />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </span>
+                  )}
+                </button>
+
+                {/* Feedback Icon with Dropdown */}
+                <div className="relative feedback-dropdown">
+                  <button 
+                    onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Feedback Options"
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showFeedbackDropdown && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[9999]">
+                      <button
+                        onClick={() => handleFeedbackAction('submit')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Submit Feedback
+                      </button>
+                      <button
+                        onClick={() => handleFeedbackAction('view')}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        My Feedback
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden sm:flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
             <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
               <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                 Find nearby Vendors

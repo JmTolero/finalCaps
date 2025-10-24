@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
 import StarRating from '../../components/shared/StarRating';
@@ -14,10 +14,13 @@ import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
 import notifIcon from '../../assets/images/customerIcon/notifbell.png';
 import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
 import shopsIcon from '../../assets/images/customerIcon/shops.png';
+import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.png';
+import locationIcon from '../../assets/images/vendordashboardicon/location.png';
 
 export const Customer = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { totalItems } = useCart();
   const [activeView, setActiveView] = useState('dashboard');
   const [activeTab, setActiveTab] = useState('profile');
@@ -497,6 +500,46 @@ export const Customer = () => {
       window.removeEventListener('userChanged', handleUserChange);
     };
   }, [activeView, resetCustomerData, currentUserId]);
+
+  // Auto-scroll to status message and auto-hide success messages
+  useEffect(() => {
+    if (status.type) {
+      // Scroll to status message
+      setTimeout(() => {
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+          statusElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 100);
+
+      // Auto-hide success messages after 3 seconds
+      if (status.type === 'success') {
+        const timer = setTimeout(() => {
+          setStatus({ type: null, message: '' });
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [status.type, status.message]);
+
+  // Auto-scroll to address form when it opens
+  useEffect(() => {
+    if (showAddressForm) {
+      setTimeout(() => {
+        const addressForm = document.querySelector('[data-address-form]');
+        if (addressForm) {
+          addressForm.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 100);
+    }
+  }, [showAddressForm]);
 
 
   const fetchCustomerData = async () => {
@@ -1763,7 +1806,99 @@ export const Customer = () => {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8 mt-16">
           <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
-            <div className="flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
+            {/* Mobile Layout - Stacked */}
+            <div className="flex flex-col gap-3 sm:hidden mb-3">
+              {/* Top Row: Find nearby Vendors + Icons */}
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/find-vendors"
+                  className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm"
+                >
+                  <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
+                </Link>
+                
+                {/* Navigation Icons */}
+                <div className="flex items-center space-x-1.5 bg-white rounded-lg px-2.5 py-1.5 shadow-sm">
+                  {/* Products/Flavors Icon */}
+                  <button
+                    onClick={() => {
+                      console.log('Products icon clicked - navigating to customer dashboard');
+                      setActiveView('dashboard');
+                      navigate('/customer');
+                    }}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      location.pathname === '/customer' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <img src={productsIcon} alt="Products" className="w-4 h-4" />
+                  </button>
+
+                  {/* Shops Icon */}
+                  <Link 
+                    to="/all-vendor-stores" 
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      location.pathname === '/all-vendor-stores' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
+                  </Link>
+
+                  {/* Notification Bell */}
+                  <button 
+                    onClick={() => navigate('/customer/notifications')}
+                    className={`p-1.5 rounded-lg transition-colors relative ${
+                      location.pathname === '/customer/notifications' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <img src={notifIcon} alt="Notifications" className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Cart Icon */}
+                  <button 
+                    onClick={() => navigate('/cart')}
+                    className={`p-1.5 rounded-lg transition-colors relative ${
+                      location.pathname === '/cart' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  >
+                    <img src={cartIcon} alt="Cart" className="w-4 h-4" />
+                    {totalItems > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {totalItems > 9 ? '9+' : totalItems}
+                      </span>
+                    )}
+                  </button>
+                  
+                  {/* Feedback Icon */}
+                  <button 
+                    onClick={() => navigate('/customer/feedback')}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      location.pathname === '/customer/feedback' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Layout */}
+            <div className="hidden sm:flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
               <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
                 <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
                   Find nearby Vendors
@@ -1778,21 +1913,36 @@ export const Customer = () => {
                       setActiveView('dashboard');
                       navigate('/customer');
                     }}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                    className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                      location.pathname === '/customer' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
                     title="Browse Products"
                   >
                     <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   
                   {/* Shops Icon */}
-                  <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                  <Link 
+                    to="/all-vendor-stores" 
+                    className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                      location.pathname === '/all-vendor-stores' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
+                  >
                     <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Link>
                   
                   {/* Notification Bell */}
                   <button 
                     onClick={() => navigate('/customer/notifications')}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
+                    className={`p-1.5 rounded-lg transition-colors relative sm:p-2 ${
+                      location.pathname === '/customer/notifications' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
                   >
                     <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                     {unreadCount > 0 && (
@@ -1805,7 +1955,11 @@ export const Customer = () => {
                   {/* Cart Icon */}
                   <button 
                     onClick={() => navigate('/cart')}
-                    className="p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 hover:bg-gray-100"
+                    className={`p-1.5 rounded-lg transition-colors relative sm:p-2 ${
+                      location.pathname === '/cart' 
+                        ? 'bg-blue-100 hover:bg-blue-200' 
+                        : 'hover:bg-gray-100'
+                    }`}
                     title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
                   >
                     <img 
@@ -1825,7 +1979,11 @@ export const Customer = () => {
                   <div className="relative feedback-dropdown">
                     <button 
                       onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2"
+                      className={`p-1.5 rounded-lg transition-colors sm:p-2 ${
+                        location.pathname === '/customer/feedback' 
+                          ? 'bg-blue-100 hover:bg-blue-200' 
+                          : 'hover:bg-gray-100'
+                      }`}
                       title="Feedback Options"
                     >
                       <img src={feedbackIcon} alt="Feedback" className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1866,10 +2024,13 @@ export const Customer = () => {
 
             {/* Status Messages */}
             {status.type && (
-              <div className={`p-4 rounded-lg mb-6 ${
-                status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
-                'bg-red-50 text-red-700 border border-red-200'
-              }`}>
+              <div 
+                id="status-message"
+                className={`p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base ${
+                  status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
+                  'bg-red-50 text-red-700 border border-red-200'
+                }`}
+              >
                 {status.message}
               </div>
             )}
@@ -1878,19 +2039,22 @@ export const Customer = () => {
               {/* Sidebar Navigation */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-                  <nav className="space-y-1 sm:space-y-2">
+                  {/* Mobile: Horizontal Layout */}
+                  <nav className="flex flex-wrap gap-1 sm:space-y-2 sm:flex-col sm:flex-nowrap">
                     {settingsTabs.map((tab) => (
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg transition-colors text-sm sm:text-base ${
+                        className={`flex-1 sm:w-full text-center sm:text-left px-2 py-2 sm:px-4 sm:py-3 rounded-lg transition-colors text-xs sm:text-base ${
                           activeTab === tab.id
                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : 'text-gray-600 hover:bg-gray-50'
                         }`}
                       >
-                        <span className="mr-2 sm:mr-3">{tab.icon}</span>
-                        {tab.label}
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start">
+                          <span className="mb-1 sm:mb-0 sm:mr-3">{tab.icon}</span>
+                          <span className="text-xs sm:text-sm leading-tight">{tab.label}</span>
+                        </div>
                       </button>
                     ))}
                   </nav>
@@ -1973,8 +2137,8 @@ export const Customer = () => {
                   {/* Addresses Tab */}
                   {activeTab === 'addresses' && (
                     <div>
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-semibold">Delivery Addresses</h2>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
+                        <h2 className="text-xl sm:text-2xl font-semibold">Delivery Addresses</h2>
                         <button
                           onClick={() => {
                             setShowAddressForm(true);
@@ -1992,7 +2156,7 @@ export const Customer = () => {
                             });
                             setAddressLabel('Home');
                           }}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                          className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
                         >
                           + Add Address
                         </button>
@@ -2001,66 +2165,57 @@ export const Customer = () => {
                       {/* Address List */}
                       <div className="space-y-4 mb-6">
                         {addresses.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            <div className="text-4xl mb-4">🏠</div>
-                            <p className="text-lg">No delivery addresses yet</p>
-                            <p className="text-sm">Add an address for faster checkout</p>
+                          <div className="text-center py-6 sm:py-8 text-gray-500">
+                            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">🏠</div>
+                            <p className="text-base sm:text-lg">No delivery addresses yet</p>
+                            <p className="text-xs sm:text-sm">Add an address for faster checkout</p>
                           </div>
                         ) : (
                           addresses.map((address, index) => (
-                            <div key={index} className={`border rounded-lg p-4 ${
+                            <div key={index} className={`border rounded-lg p-3 sm:p-4 ${
                               address.is_default ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
                             }`}>
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <h3 className="font-semibold text-lg">{address.address_label}</h3>
-                                    {address.is_default && (
-                                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                        Default
-                                      </span>
-                                    )}
-                                    {address.is_primary && (
-                                      <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                                        Primary
-                                      </span>
-                                    )}
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                    <h3 className="font-semibold text-base sm:text-lg">{address.address_label}</h3>
+                                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                                      {address.is_default && (
+                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                          Default
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <p className="text-gray-600">
+                                  <p className="text-gray-600 text-sm sm:text-base break-words">
                                     {address.unit_number && `${address.unit_number}, `}
                                     {address.street_name}, {address.barangay}, {address.cityVillage}, {address.province}
                                     {address.postal_code && ` ${address.postal_code}`}
                                   </p>
                                   {address.landmark && (
-                                    <p className="text-sm text-gray-500 mt-1">
+                                    <p className="text-xs sm:text-sm text-gray-500 mt-1 break-words">
                                       Landmark: {address.landmark}
                                     </p>
                                   )}
                                 </div>
-                                <div className="flex flex-col space-y-2">
+                                <div className="flex flex-wrap gap-2 sm:flex-col sm:space-y-2 sm:gap-0">
                                   <button
                                     onClick={() => editAddress(address)}
-                                    className="text-blue-600 hover:text-blue-800 text-sm"
+                                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm px-2 py-1 sm:px-0 sm:py-0 rounded sm:rounded-none hover:bg-blue-50 sm:hover:bg-transparent"
                                   >
                                     Edit
                                   </button>
                                   {!address.is_default && (
                                     <button
                                       onClick={() => setDefaultAddress(address.address_id)}
-                                      className="text-green-600 hover:text-green-800 text-sm"
+                                      className="text-green-600 hover:text-green-800 text-xs sm:text-sm px-2 py-1 sm:px-0 sm:py-0 rounded sm:rounded-none hover:bg-green-50 sm:hover:bg-transparent"
                                     >
                                       Set Default
                                     </button>
                                   )}
                                   <button
-                                    onClick={() => setPrimaryAddress(address.address_id)}
-                                    className="text-purple-600 hover:text-purple-800 text-sm"
-                                  >
-                                    Set as Primary
-                                  </button>
-                                  <button
                                     onClick={() => deleteAddress(address.address_id)}
-                                    className="text-red-600 hover:text-red-800 text-sm"
+                                    className="text-red-600 hover:text-red-800 text-xs sm:text-sm px-2 py-1 sm:px-0 sm:py-0 rounded sm:rounded-none hover:bg-red-50 sm:hover:bg-transparent"
                                   >
                                     Delete
                                   </button>
@@ -2073,7 +2228,7 @@ export const Customer = () => {
 
                       {/* Address Form */}
                       {showAddressForm && (
-                        <div className="border-t pt-6">
+                        <div className="border-t pt-6" data-address-form>
                           <h3 className="text-lg font-semibold mb-4">
                             {editingAddress ? 'Edit Address' : 'Add New Address'}
                           </h3>
@@ -2101,19 +2256,19 @@ export const Customer = () => {
                             addressType="residential"
                             required={true}
                           />
-                          <div className="flex justify-end space-x-4 mt-6">
+                          <div className="flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 sm:gap-0 mt-6">
                             <button
                               onClick={() => {
                                 setShowAddressForm(false);
                                 setEditingAddress(null);
                               }}
-                              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={saveAddress}
-                              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                             >
                               {editingAddress ? 'Update Address' : 'Save Address'}
                             </button>
@@ -2126,25 +2281,25 @@ export const Customer = () => {
                   {/* QR Payments Tab */}
                   {activeTab === 'gcash' && (
                     <div>
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-semibold">QR Payment System</h2>
+                      <div className="mb-4 sm:mb-6">
+                        <h2 className="text-xl sm:text-2xl font-semibold">QR Payment System</h2>
                       </div>
 
-                      <div className="bg-green-50 rounded-lg p-6">
-                        <div className="flex items-center mb-4">
-                          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                            <span className="text-2xl">📱</span>
+                      <div className="bg-green-50 rounded-lg p-4 sm:p-6">
+                        <div className="flex items-center mb-3 sm:mb-4">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
+                            <span className="text-xl sm:text-2xl">📱</span>
                           </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Direct QR Payments</h3>
-                            <p className="text-sm text-gray-600">Pay vendors directly using GCash QR codes</p>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Direct QR Payments</h3>
+                            <p className="text-xs sm:text-sm text-gray-600">Pay vendors directly using GCash QR codes</p>
                           </div>
                         </div>
 
-                        <div className="space-y-4">
-                          <div className="bg-white rounded-lg p-4 border border-green-200">
-                            <h4 className="font-medium text-gray-900 mb-2">💡 How it works:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
+                        <div className="space-y-3 sm:space-y-4">
+                          <div className="bg-white rounded-lg p-3 sm:p-4 border border-green-200">
+                            <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">💡 How it works:</h4>
+                            <ul className="text-xs sm:text-sm text-gray-600 space-y-1">
                               <li>• Scan vendor's GCash QR code during checkout</li>
                               <li>• Pay directly to vendor - no platform fees</li>
                               <li>• Vendor receives 100% of payment</li>
@@ -2152,9 +2307,9 @@ export const Customer = () => {
                             </ul>
                           </div>
 
-                          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                            <h4 className="font-medium text-blue-900 mb-2">📱 Payment Process:</h4>
-                            <ol className="text-sm text-blue-800 space-y-1">
+                          <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                            <h4 className="font-medium text-blue-900 mb-2 text-sm sm:text-base">📱 Payment Process:</h4>
+                            <ol className="text-xs sm:text-sm text-blue-800 space-y-1">
                               <li>1. Place your order and proceed to checkout</li>
                               <li>2. Scan the vendor's GCash QR code</li>
                               <li>3. Pay the exact amount in your GCash app</li>
@@ -2165,7 +2320,7 @@ export const Customer = () => {
 
                           <div className="flex justify-center">
                             <div className="text-center">
-                              <p className="text-sm text-gray-600 mb-2">Ready to pay with QR codes?</p>
+                              <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Ready to pay with QR codes?</p>
                               <p className="text-xs text-gray-500">QR payment option will appear during checkout</p>
                             </div>
                           </div>
@@ -2234,8 +2389,8 @@ export const Customer = () => {
           <div className="flex flex-col gap-3 sm:hidden mb-3">
             {/* Top Row: Find nearby Vendors + Icons */}
             <div className="flex items-center justify-between">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm">
-                Find nearby Vendors
+              <Link to="/find-vendors" className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm">
+                <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
               </Link>
               
               {/* Navigation Icons */}
@@ -2361,7 +2516,7 @@ export const Customer = () => {
             </div>
             
             <div className="flex items-center space-x-4 lg:space-x-6">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base whitespace-nowrap ml-3">
                 Find nearby Vendors
               </Link>
               
@@ -2537,12 +2692,19 @@ export const Customer = () => {
 
                     {/* Location */}
                     <div className="text-left">
-                      <span className="text-xs text-gray-600">
-                        {flavor.location && flavor.location !== 'Location not specified' 
-                          ? flavor.location 
-                          : 'Location not specified'
-                        }
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        <img 
+                          src={locationIcon} 
+                          alt="Location" 
+                          className="w-3 h-3 flex-shrink-0" 
+                        />
+                        <span className="text-xs text-gray-600 truncate" title={flavor.location && flavor.location !== 'Location not specified' ? flavor.location : 'Location not specified'}>
+                          {flavor.location && flavor.location !== 'Location not specified' 
+                            ? flavor.location 
+                            : 'Location not specified'
+                          }
+                        </span>
+                      </div>
                     </div>
 
                     {/* Rating and Sold Count */}
@@ -2553,11 +2715,9 @@ export const Customer = () => {
                           size="xs"
                           showCount={false}
                           totalRatings={0}
-                          showRating={false}
+                          showRating={true}
+                          singleStarMode={true}
                         />
-                        <span className="text-xs sm:text-sm text-gray-700 font-medium">
-                          {parseFloat(flavor.average_rating || 0).toFixed(1)}
-                        </span>
                       </div>
                       <span className="text-xs sm:text-sm text-gray-600">
                         {flavor.sold_count || 0} sold

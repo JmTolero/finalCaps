@@ -12,6 +12,7 @@ import feedbackIcon from "../../assets/images/customerIcon/feedbacks.png";
 import notifIcon from "../../assets/images/customerIcon/notifbell.png";
 import productsIcon from "../../assets/images/customerIcon/productsflavor.png";
 import shopsIcon from "../../assets/images/customerIcon/shops.png";
+import findNearbyIcon from "../../assets/images/vendordashboardicon/findnearby.png";
 
 export const FindNearbyVendors = () => {
   const navigate = useNavigate();
@@ -266,11 +267,13 @@ export const FindNearbyVendors = () => {
             <div className="flex items-center justify-between">
               <Link
                 to="/find-vendors"
-                className={`text-blue-700 hover:text-blue-800 font-medium text-sm ${
-                  location.pathname === '/find-vendors' ? 'underline' : ''
+                className={`p-1.5 rounded-lg transition-colors shadow-sm ${
+                  location.pathname === '/find-vendors' 
+                    ? 'bg-blue-100 hover:bg-blue-200' 
+                    : 'bg-white hover:bg-gray-100'
                 }`}
               >
-                Find nearby Vendors
+                <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
               </Link>
               
               {/* Navigation Icons */}
@@ -440,8 +443,10 @@ export const FindNearbyVendors = () => {
             <div className="flex items-center space-x-4 lg:space-x-4">
               <Link
                 to="/find-vendors"
-                className={`text-blue-700 hover:text-blue-800 font-medium text-base whitespace-nowrap ${
-                  location.pathname === '/find-vendors' ? 'underline' : ''
+                className={`px-3 py-1.5 rounded-lg font-medium text-sm sm:text-base whitespace-nowrap ml-3 transition-colors ${
+                  location.pathname === '/find-vendors' 
+                    ? 'bg-blue-100 hover:bg-blue-200 text-blue-800' 
+                    : 'text-blue-700 hover:text-blue-800 hover:bg-gray-100'
                 }`}
               >
                 Find nearby Vendors
@@ -452,31 +457,31 @@ export const FindNearbyVendors = () => {
                 {/* Products/Flavors Icon */}
                 <button
                   onClick={() => navigate("/customer")}
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                     location.pathname === '/customer' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
                 >
-                  <img src={productsIcon} alt="Products" className="w-5 h-5" />
+                  <img src={productsIcon} alt="Products" className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
 
                 {/* Shops Icon */}
                 <button 
                   onClick={() => navigate("/all-vendor-stores")}
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                     location.pathname === '/all-vendor-stores' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
                 >
-                  <img src={shopsIcon} alt="Shops" className="w-5 h-5" />
+                  <img src={shopsIcon} alt="Shops" className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
 
                 {/* Notification Bell */}
                 <button
                   onClick={() => navigate("/customer/notifications")}
-                  className={`p-2 rounded-lg transition-colors relative ${
+                  className={`p-1.5 sm:p-2 rounded-lg transition-colors relative ${
                     location.pathname === '/customer/notifications' 
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
@@ -485,10 +490,10 @@ export const FindNearbyVendors = () => {
                   <img
                     src={notifIcon}
                     alt="Notifications"
-                    className="w-5 h-5"
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                   />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -497,7 +502,7 @@ export const FindNearbyVendors = () => {
                 {/* Cart Icon */}
                 <button 
                   onClick={() => navigate("/cart")}
-                  className={`p-2 rounded-lg transition-all duration-200 relative ${
+                  className={`p-1.5 sm:p-2 rounded-lg transition-all duration-200 relative ${
                     location.pathname === '/cart'
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
@@ -507,10 +512,10 @@ export const FindNearbyVendors = () => {
                   <img 
                     src={cartIcon} 
                     alt="Cart" 
-                    className="w-5 h-5 transition-transform duration-200"
+                    className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200"
                   />
                   {totalItems > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                       {totalItems > 9 ? '9+' : totalItems}
                     </span>
                   )}
@@ -520,10 +525,10 @@ export const FindNearbyVendors = () => {
                 <div className="relative feedback-dropdown">
                   <button 
                     onClick={() => setShowFeedbackDropdown(!showFeedbackDropdown)}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
                     title="Feedback Options"
                   >
-                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5" />
+                    <img src={feedbackIcon} alt="Feedback" className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   
                   {/* Dropdown Menu */}
@@ -776,7 +781,8 @@ export const FindNearbyVendors = () => {
                                 .map((flavor, index) => (
                                   <span
                                     key={index}
-                                    className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded"
+                                    className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded truncate max-w-20"
+                                    title={flavor.flavor_name}
                                   >
                                     {flavor.flavor_name}
                                   </span>

@@ -527,4 +527,127 @@ const updateUserStatus = async (req, res) => {
     }
 };
 
-module.exports = { countTotal, getAllVendors, getVendorById, updateVendorStatus, checkVendorOngoingOrders, getAllUsers, getUserById, updateUser, updateUserStatus };
+const deleteUser = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+        
+        console.log('Deleting user:', user_id);
+        
+        // Get user information before deletion for logging
+        const [userInfo] = await pool.query(
+            'SELECT fname, lname, email, role FROM users WHERE user_id = ?',
+            [user_id]
+        );
+        
+        if (userInfo.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const user = userInfo[0];
+        
+        // Check if user is a vendor - if so, we need to handle vendor data cleanup
+        if (user.role === 'vendor') {
+            // Get vendor ID
+            const [vendorInfo] = await pool.query(
+                'SELECT vendor_id FROM vendors WHERE user_id = ?',
+                [user_id]
+            );
+            
+            if (vendorInfo.length > 0) {
+                const vendorId = vendorInfo[0].vendor_id;
+                
+                // Delete vendor-related data in proper order to avoid foreign key constraints
+                console.log(`Cleaning up vendor data for vendor ID: ${vendorId}`);
+                
+                // Delete order_items that reference this vendor's products
+                await pool.query(`
+                    DELETE oi FROM order_items oi 
+                    INNER JOIN products p ON oi.product_id = p.product_id 
+                    WHERE p.vendor_id = ?
+                `, [vendorId]);
+                
+                // Delete order_items from orders directly linked to this vendor
+                await pool.query(`
+                    DELETE oi FROM order_items oi 
+                    INNER JOIN orders o ON oi.order_id = o.order_id 
+                    WHERE o.vendor_id = ?
+                `, [vendorId]);
+                
+                // Delete cart_items that reference this vendor's flavors
+                await pool.query(`
+                    DELETE ci FROM cart_items ci 
+                    INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
+                    WHERE f.vendor_id = ?
+                `, [vendorId]);
+                
+                // Delete products that reference this vendor's flavors
+                await pool.query(`
+                    DELETE p FROM products p 
+                    INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
+                    WHERE f.vendor_id = ?
+                `, [vendorId]);
+                
+                // Delete products directly linked to this vendor
+                await pool.query(
+                    'DELETE FROM products WHERE vendor_id = ?',
+                    [vendorId]
+                );
+                
+                // Delete flavors belonging to this vendor
+                await pool.query(
+                    'DELETE FROM flavors WHERE vendor_id = ?',
+                    [vendorId]
+                );
+                
+                // Delete vendor reviews
+                await pool.query(
+                    'DELETE FROM vendor_reviews WHERE vendor_id = ?',
+                    [vendorId]
+                );
+                
+                // Delete orders from this vendor
+                await pool.query(
+                    'DELETE FROM orders WHERE vendor_id = ?',
+                    [vendorId]
+                );
+                
+                // Delete vendor record
+                await pool.query(
+                    'DELETE FROM vendors WHERE vendor_id = ?',
+                    [vendorId]
+                );
+            }
+        }
+        
+        // Delete user-related data
+        await pool.query('DELETE FROM notifications WHERE user_id = ?', [user_id]);
+        await pool.query('DELETE FROM cart_items WHERE user_id = ?', [user_id]);
+        await pool.query('DELETE FROM user_addresses WHERE user_id = ?', [user_id]);
+        
+        // Finally, delete the user record
+        const [result] = await pool.query(
+            'DELETE FROM users WHERE user_id = ?',
+            [user_id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        console.log(`User ${user.fname} ${user.lname} (${user.email}) deleted successfully`);
+        
+        res.json({
+            success: true,
+            message: 'User deleted successfully'
+        });
+        
+    } catch (err) {
+        console.error('Failed to delete user:', err);
+        res.status(500).json({
+            error: 'Failed to delete user',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { countTotal, getAllVendors, getVendorById, updateVendorStatus, checkVendorOngoingOrders, getAllUsers, getUserById, updateUser, updateUserStatus, deleteUser };

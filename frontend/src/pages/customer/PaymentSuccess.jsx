@@ -326,7 +326,7 @@ const PaymentSuccess = () => {
                   <div key={index} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
                     <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
+                          <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate" title={item.flavor_description || item.flavor_name || 'Ice Cream Flavor'}>
                             {item.flavor_description || item.flavor_name || 'Ice Cream Flavor'}
                           </h4>
                         {item.drum_size && (

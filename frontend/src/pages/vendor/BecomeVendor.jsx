@@ -9,8 +9,6 @@ export const BecomeVendor = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    city: '',
-    province: '',
     valid_id: null,
     business_permit: null,
     proof_image: null
@@ -115,8 +113,6 @@ export const BecomeVendor = () => {
       formData.append('birth_date', userData.birth_date || '1990-01-01'); // Default if not provided
       formData.append('gender', userData.gender || 'prefer_not_to_say'); // Default if not provided
       formData.append('store_name', ''); // Store name will be set after approval
-      formData.append('city', form.city);
-      formData.append('province', form.province);
       formData.append('role', 'vendor');
       formData.append('valid_id', form.valid_id);
       formData.append('business_permit', form.business_permit);
@@ -239,35 +235,6 @@ export const BecomeVendor = () => {
             
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Store Information - Store name will be set after approval */}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={form.city}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                    placeholder="Enter city"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Province
-                  </label>
-                  <input
-                    type="text"
-                    name="province"
-                    value={form.province}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                    placeholder="Enter province"
-                  />
-                </div>
-              </div>
 
               {/* File Uploads */}
               <div className="space-y-4">

@@ -10,6 +10,7 @@ router.get('/users', adminController.getAllUsers);
 router.get('/users/:user_id', adminController.getUserById);
 router.put('/users/:user_id', adminController.updateUser);
 router.put('/users/:user_id/status', adminController.updateUserStatus);
+router.delete('/users/:user_id', adminController.deleteUser);
 
 // Vendor management routes
 router.get('/vendors', adminController.getAllVendors);
