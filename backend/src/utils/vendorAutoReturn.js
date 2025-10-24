@@ -76,7 +76,62 @@ const processVendorAutoReturns = async () => {
                 console.log(`🗑️ Deleting physical files for vendor ${rejection.vendor_id}...`);
                 await deleteVendorFiles(rejection);
                 
-                // STEP 2: DELETE the vendor application record completely
+                // STEP 2: Delete related data in proper order to avoid foreign key constraints
+                console.log(`🔄 Cleaning up related data for vendor ${rejection.vendor_id}...`);
+                
+                // First, delete order_items that reference this vendor's products
+                await pool.query(`
+                    DELETE oi FROM order_items oi 
+                    INNER JOIN products p ON oi.product_id = p.product_id 
+                    WHERE p.vendor_id = ?
+                `, [rejection.vendor_id]);
+                
+                // Also delete order_items from orders directly linked to this vendor
+                await pool.query(`
+                    DELETE oi FROM order_items oi 
+                    INNER JOIN orders o ON oi.order_id = o.order_id 
+                    WHERE o.vendor_id = ?
+                `, [rejection.vendor_id]);
+                
+                // Delete cart_items that reference this vendor's flavors
+                await pool.query(`
+                    DELETE ci FROM cart_items ci 
+                    INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
+                    WHERE f.vendor_id = ?
+                `, [rejection.vendor_id]);
+                
+                // Delete products that reference this vendor's flavors
+                await pool.query(`
+                    DELETE p FROM products p 
+                    INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
+                    WHERE f.vendor_id = ?
+                `, [rejection.vendor_id]);
+                
+                // Then delete any remaining products directly linked to this vendor
+                await pool.query(
+                    'DELETE FROM products WHERE vendor_id = ?',
+                    [rejection.vendor_id]
+                );
+                
+                // Delete flavors belonging to this vendor
+                await pool.query(
+                    'DELETE FROM flavors WHERE vendor_id = ?',
+                    [rejection.vendor_id]
+                );
+                
+                // Delete vendor reviews
+                await pool.query(
+                    'DELETE FROM vendor_reviews WHERE vendor_id = ?',
+                    [rejection.vendor_id]
+                );
+                
+                // Delete orders from this vendor
+                await pool.query(
+                    'DELETE FROM orders WHERE vendor_id = ?',
+                    [rejection.vendor_id]
+                );
+                
+                // Finally, delete the vendor record
                 await pool.query(
                     'DELETE FROM vendors WHERE vendor_id = ?',
                     [rejection.vendor_id]
