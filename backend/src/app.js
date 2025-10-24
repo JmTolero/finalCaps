@@ -27,6 +27,7 @@ const feedbackRoutes = require('./routes/feedback');
 const passwordResetRoutes = require('./routes/shared/passwordResetRoutes');
 const testEmailRoutes = require('./routes/testEmailRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const vendorQRRoutes = require('./routes/vendorQRRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -93,8 +94,8 @@ app.use(passport.session());
 app.use(vendorPassport.initialize());
 app.use(vendorPassport.session());
 
-app.use(express.json());
-app.use(express.urlencoded({extended:true}))
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Serve uploaded files for legacy support (Cloudinary is primary storage)
 // Note: New uploads go to Cloudinary, but we serve old local files for backward compatibility
@@ -135,6 +136,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/auth', passwordResetRoutes);
 app.use('/api/test', testEmailRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/vendor', vendorQRRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {

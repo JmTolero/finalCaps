@@ -887,7 +887,8 @@ export const Customer = () => {
 
   const settingsTabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'addresses', label: 'Delivery Addresses', icon: '📍' }
+    { id: 'addresses', label: 'Delivery Addresses', icon: '📍' },
+    { id: 'gcash', label: 'QR Payments', icon: '📱' }
   ];
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
@@ -2119,6 +2120,57 @@ export const Customer = () => {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* QR Payments Tab */}
+                  {activeTab === 'gcash' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-semibold">QR Payment System</h2>
+                      </div>
+
+                      <div className="bg-green-50 rounded-lg p-6">
+                        <div className="flex items-center mb-4">
+                          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                            <span className="text-2xl">📱</span>
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Direct QR Payments</h3>
+                            <p className="text-sm text-gray-600">Pay vendors directly using GCash QR codes</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="bg-white rounded-lg p-4 border border-green-200">
+                            <h4 className="font-medium text-gray-900 mb-2">💡 How it works:</h4>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              <li>• Scan vendor's GCash QR code during checkout</li>
+                              <li>• Pay directly to vendor - no platform fees</li>
+                              <li>• Vendor receives 100% of payment</li>
+                              <li>• Faster and more secure payment process</li>
+                            </ul>
+                          </div>
+
+                          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <h4 className="font-medium text-blue-900 mb-2">📱 Payment Process:</h4>
+                            <ol className="text-sm text-blue-800 space-y-1">
+                              <li>1. Place your order and proceed to checkout</li>
+                              <li>2. Scan the vendor's GCash QR code</li>
+                              <li>3. Pay the exact amount in your GCash app</li>
+                              <li>4. Upload payment confirmation screenshot</li>
+                              <li>5. Order is confirmed and vendor is notified</li>
+                            </ol>
+                          </div>
+
+                          <div className="flex justify-center">
+                            <div className="text-center">
+                              <p className="text-sm text-gray-600 mb-2">Ready to pay with QR codes?</p>
+                              <p className="text-xs text-gray-500">QR payment option will appear during checkout</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

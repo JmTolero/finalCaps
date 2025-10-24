@@ -100,7 +100,8 @@ const userLogin = async (req, res) => {
                 username: envUser,
                 firstName: 'Admin',
                 lastName: '',
-                role: 'admin'
+                role: 'admin',
+                profile_image_url: null
             };
             
             const token = generateToken(adminUser);
@@ -134,6 +135,19 @@ const userLogin = async (req, res) => {
         }
 
         const resolvedRole = user.role || user.user_role || null; // support various schemas
+        
+        // If user is a vendor, get profile image from vendors table (vendors store their profile image there)
+        let profileImageUrl = user.profile_image_url || null;
+        if (resolvedRole === 'vendor') {
+            const [vendorRows] = await pool.query(
+                'SELECT profile_image_url FROM vendors WHERE user_id = ? LIMIT 1',
+                [user.user_id]
+            );
+            if (vendorRows && vendorRows.length > 0 && vendorRows[0].profile_image_url) {
+                profileImageUrl = vendorRows[0].profile_image_url;
+            }
+        }
+        
         const userData = {
             id: user.user_id,
             username: user.username,
@@ -141,7 +155,8 @@ const userLogin = async (req, res) => {
             lastName: user.lname,
             email: user.email,
             contact_no: user.contact_no,
-            role: resolvedRole || 'customer'
+            role: resolvedRole || 'customer',
+            profile_image_url: profileImageUrl
         };
         
         const token = generateToken(userData);

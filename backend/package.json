@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@api/paymongo": "file:.api/apis/paymongo",
     "@googlemaps/react-wrapper": "^1.2.0",
     "axios": "^1.11.0",
     "cloudinary": "^1.41.3",

@@ -26,6 +26,7 @@ export const ProfileDropdown = () => {
       setUser(userData);
     };
 
+
     // Initial load
     updateUser();
 
@@ -131,11 +132,15 @@ export const ProfileDropdown = () => {
         className={`flex items-center justify-center w-10 h-10 ${getRoleColor(user.role)} rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 overflow-hidden`}
         aria-label="Profile menu"
       >
-        {user.profile_image_url ? (
+        {user.profile_image_url && user.profile_image_url.trim() !== '' ? (
           <img 
             src={user.profile_image_url} 
             alt="Profile" 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              // Hide the image if it fails to load
+              e.target.style.display = 'none';
+            }}
           />
         ) : (
           <svg
@@ -183,10 +188,13 @@ export const ProfileDropdown = () => {
                   // Verify admin access before navigation
                   try {
                     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                    const token = sessionStorage.getItem('token');
+                    
                     const response = await fetch(`${apiBase}/api/auth/verify-admin`, {
                       credentials: 'include',
                       headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
                       },
                     });
                     
@@ -220,10 +228,13 @@ export const ProfileDropdown = () => {
                   // Verify vendor access before navigation
                   try {
                     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                    const token = sessionStorage.getItem('token');
+                    
                     const response = await fetch(`${apiBase}/api/auth/verify-vendor`, {
                       credentials: 'include',
                       headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
                       },
                     });
                     
@@ -304,10 +315,13 @@ export const ProfileDropdown = () => {
                 onClick={async () => {
                   try {
                     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                    const token = sessionStorage.getItem('token');
+                    
                     const response = await fetch(`${apiBase}/api/auth/verify-vendor`, {
                       credentials: 'include',
                       headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
                       },
                     });
                     

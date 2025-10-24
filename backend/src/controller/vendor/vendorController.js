@@ -168,6 +168,7 @@ const getCurrentVendor = async (req, res) => {
                 v.business_permit_url,
                 v.valid_id_url,
                 v.proof_image_url,
+                v.qr_code_setup_completed,
                 u.fname,
                 u.lname,
                 u.username,

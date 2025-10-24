@@ -1219,12 +1219,6 @@ NEXT STEPS
 
               {/* Order Confirmation */}
               <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-green-800 mb-2">Order Submitted Successfully!</h3>
-                  <p className="text-sm text-green-700">
-                    Your order has been sent to the vendor for approval. You'll receive a notification once the vendor responds.
-                  </p>
-                </div>
                 
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                   <button

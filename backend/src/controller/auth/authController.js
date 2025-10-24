@@ -1,10 +1,28 @@
-    const pool = require('../../db/config');
+const pool = require('../../db/config');
+const jwt = require('jsonwebtoken');
+
+// Helper function to get user ID from token or session
+const getUserId = (req) => {
+    // First try to get from JWT token
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+            const token = authHeader.substring(7);
+            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+            return decoded.user_id || decoded.id;
+        } catch (error) {
+            console.log('JWT token verification failed:', error.message);
+        }
+    }
+    
+    // Fallback to session or user object
+    return req.session?.userId || req.user?.id || req.user?.user_id;
+};
 
 // Middleware to verify admin access
 const verifyAdmin = async (req, res) => {
     try {
-        // Get user ID from session or JWT token
-        const userId = req.session?.userId || req.user?.id;
+        const userId = getUserId(req);
         
         if (!userId) {
             return res.status(401).json({ 
@@ -44,8 +62,7 @@ const verifyAdmin = async (req, res) => {
 // Middleware to verify vendor access
 const verifyVendor = async (req, res) => {
     try {
-        // Get user ID from session or JWT token
-        const userId = req.session?.userId || req.user?.id;
+        const userId = getUserId(req);
         
         if (!userId) {
             return res.status(401).json({ 
@@ -85,8 +102,7 @@ const verifyVendor = async (req, res) => {
 // Middleware to verify customer access
 const verifyCustomer = async (req, res) => {
     try {
-        // Get user ID from session or JWT token
-        const userId = req.session?.userId || req.user?.id;
+        const userId = getUserId(req);
         
         if (!userId) {
             return res.status(401).json({ 

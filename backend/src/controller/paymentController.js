@@ -1,8 +1,8 @@
-const paymongoService = require('../services/paymongoService');
+const xenditService = require('../services/xenditService');
 const pool = require('../db/config');
 
 /**
- * Create a payment intent for GCash payment
+ * Create a payment invoice for GCash payment
  */
 const createPaymentIntent = async (req, res) => {
   try {
@@ -14,7 +14,10 @@ const createPaymentIntent = async (req, res) => {
       customer_id,
       vendor_id,
       delivery_fee = 0,
-      items = []
+      items = [],
+      customer_name,
+      customer_email,
+      customer_phone
     } = req.body;
 
     // Validate required fields
@@ -32,31 +35,29 @@ const createPaymentIntent = async (req, res) => {
       });
     }
 
-    // Create payment intent with PayMongo
-    const paymentIntent = await paymongoService.createPaymentIntent({
+    // Create invoice with Xendit
+    const invoice = await xenditService.createInvoice({
       amount: parseFloat(amount),
       currency,
       description: description || `Order #${order_id} - Ice Cream Delivery`,
-      metadata: {
-        order_id,
-        customer_id: customer_id || null,
-        vendor_id: vendor_id || null,
-        delivery_fee: parseFloat(delivery_fee),
-        items_count: items.length,
-        items_summary: items.map(item => `${item.name || item.flavor_name || 'Item'} x${item.quantity || 1}`).join(', '),
-        payment_method: 'gcash',
-        platform: 'ice_cream_delivery_app'
-      }
+      order_id,
+      customer_id: customer_id || null,
+      vendor_id: vendor_id || null,
+      delivery_fee: parseFloat(delivery_fee),
+      items: items.map(item => ({
+        name: item.name || item.flavor_name || 'Ice Cream',
+        quantity: item.quantity || 1,
+        price: item.price || 0,
+        category: 'Food & Beverage'
+      })),
+      items_count: items.length.toString(),
+      items_summary: items.map(item => `${item.name || item.flavor_name || 'Item'} x${item.quantity || 1}`).join(', '),
+      customer_name: customer_name || 'Customer',
+      customer_email: customer_email || 'customer@example.com',
+      customer_phone: customer_phone || '+639123456789'
     });
 
-    if (!paymentIntent.success) {
-      return res.status(400).json({
-        success: false,
-        error: paymentIntent.error || 'Failed to create payment intent'
-      });
-    }
-
-    // Store payment intent in database
+    // Store invoice in database
     try {
       await pool.execute(
         `INSERT INTO payment_intents (
@@ -72,36 +73,42 @@ const createPaymentIntent = async (req, res) => {
           created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
-          paymentIntent.payment_intent.id,
+          invoice.id,
           order_id,
           customer_id || null,
           vendor_id || null,
           parseFloat(amount),
           currency,
-          paymentIntent.payment_intent.attributes.status,
+          invoice.status,
           'gcash',
-          JSON.stringify(paymentIntent.payment_intent.attributes.metadata),
+          JSON.stringify({
+            external_id: invoice.external_id,
+            invoice_url: invoice.invoice_url,
+            items_count: items.length,
+            items_summary: items.map(item => `${item.name || item.flavor_name || 'Item'} x${item.quantity || 1}`).join(', ')
+          }),
         ]
       );
     } catch (dbError) {
-      console.error('Database error storing payment intent:', dbError);
+      console.error('Database error storing invoice:', dbError);
       // Continue even if database storage fails
     }
 
     res.json({
       success: true,
-      payment_intent: {
-        id: paymentIntent.payment_intent.id,
-        client_key: paymentIntent.client_key,
-        amount: paymentIntent.payment_intent.attributes.amount / 100,
-        currency: paymentIntent.payment_intent.attributes.currency,
-        status: paymentIntent.payment_intent.attributes.status,
-        next_action: paymentIntent.payment_intent.attributes.next_action
+      invoice: {
+        id: invoice.id,
+        external_id: invoice.external_id,
+        amount: invoice.amount,
+        currency: invoice.currency,
+        status: invoice.status,
+        invoice_url: invoice.invoice_url,
+        expiry_date: invoice.expiry_date
       }
     });
 
   } catch (error) {
-    console.error('Create payment intent error:', error);
+    console.error('Create invoice error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -110,7 +117,7 @@ const createPaymentIntent = async (req, res) => {
 };
 
 /**
- * Get payment intent status
+ * Get invoice status
  */
 const getPaymentIntentStatus = async (req, res) => {
   try {
@@ -119,35 +126,31 @@ const getPaymentIntentStatus = async (req, res) => {
     if (!payment_intent_id) {
       return res.status(400).json({
         success: false,
-        error: 'Payment intent ID is required'
+        error: 'Invoice ID is required'
       });
     }
 
-    // Get payment intent from PayMongo
-    const paymentIntent = await paymongoService.getPaymentIntent(payment_intent_id);
-
-    if (!paymentIntent.success) {
-      return res.status(404).json({
-        success: false,
-        error: paymentIntent.error || 'Payment intent not found'
-      });
-    }
+    // Get invoice from Xendit
+    const invoice = await xenditService.getInvoiceStatus(payment_intent_id);
 
     res.json({
       success: true,
-      payment_intent: {
-        id: paymentIntent.payment_intent.id,
-        amount: paymentIntent.payment_intent.attributes.amount / 100,
-        currency: paymentIntent.payment_intent.attributes.currency,
-        status: paymentIntent.payment_intent.attributes.status,
-        metadata: paymentIntent.payment_intent.attributes.metadata,
-        created_at: paymentIntent.payment_intent.attributes.created_at,
-        updated_at: paymentIntent.payment_intent.attributes.updated_at
+      invoice: {
+        id: invoice.id,
+        external_id: invoice.external_id,
+        amount: invoice.amount,
+        currency: invoice.currency,
+        status: invoice.status,
+        invoice_url: invoice.invoice_url,
+        expiry_date: invoice.expiry_date,
+        paid_at: invoice.paid_at,
+        created: invoice.created,
+        metadata: invoice.metadata || {}
       }
     });
 
   } catch (error) {
-    console.error('Get payment intent status error:', error);
+    console.error('Get invoice status error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -156,15 +159,15 @@ const getPaymentIntentStatus = async (req, res) => {
 };
 
 /**
- * Handle PayMongo webhook events
+ * Handle Xendit webhook events
  */
 const handleWebhook = async (req, res) => {
   try {
-    const signature = req.headers['paymongo-signature'];
+    const signature = req.headers['x-xendit-signature'];
     const payload = JSON.stringify(req.body);
 
     // Verify webhook signature
-    if (!paymongoService.verifyWebhookSignature(payload, signature)) {
+    if (!xenditService.verifyWebhookSignature(payload, signature)) {
       console.error('Invalid webhook signature');
       return res.status(401).json({
         success: false,
@@ -172,28 +175,20 @@ const handleWebhook = async (req, res) => {
       });
     }
 
-    const eventData = req.body;
-    const processedEvent = paymongoService.processWebhookEvent(eventData);
+    const webhookData = req.body;
+    const processedEvent = xenditService.handleWebhook(webhookData);
 
-    if (!processedEvent.success) {
-      console.error('Failed to process webhook event:', processedEvent.error);
-      return res.status(400).json({
-        success: false,
-        error: processedEvent.error
-      });
-    }
-
-    // Update payment intent status in database
+    // Update invoice status in database
     try {
       await pool.execute(
         `UPDATE payment_intents 
          SET status = ?, updated_at = NOW() 
          WHERE payment_intent_id = ?`,
-        [processedEvent.status, processedEvent.payment_intent_id]
+        [processedEvent.status, processedEvent.invoice_id]
       );
 
       // If payment succeeded, update order status
-      if (processedEvent.event_type === 'payment_succeeded') {
+      if (processedEvent.status === 'PAID') {
         await pool.execute(
           `UPDATE orders 
            SET payment_status = 'paid', 
@@ -201,11 +196,11 @@ const handleWebhook = async (req, res) => {
                payment_intent_id = ?,
                updated_at = NOW() 
            WHERE order_id = ?`,
-          [processedEvent.payment_intent_id, processedEvent.metadata?.order_id]
+          [processedEvent.invoice_id, processedEvent.metadata?.order_id]
         );
 
         console.log(`✅ Payment succeeded for order ${processedEvent.metadata?.order_id}`);
-      } else if (processedEvent.event_type === 'payment_failed') {
+      } else if (processedEvent.status === 'EXPIRED') {
         await pool.execute(
           `UPDATE orders 
            SET payment_status = 'failed', 
@@ -214,7 +209,7 @@ const handleWebhook = async (req, res) => {
           [processedEvent.metadata?.order_id]
         );
 
-        console.log(`❌ Payment failed for order ${processedEvent.metadata?.order_id}`);
+        console.log(`⏰ Payment expired for order ${processedEvent.metadata?.order_id}`);
       }
 
     } catch (dbError) {
@@ -224,7 +219,7 @@ const handleWebhook = async (req, res) => {
     res.json({
       success: true,
       message: 'Webhook processed successfully',
-      event_type: processedEvent.event_type
+      status: processedEvent.status
     });
 
   } catch (error) {
@@ -264,7 +259,7 @@ const getPaymentHistory = async (req, res) => {
          pi.payment_method,
          pi.metadata,
          pi.created_at,
-         o.order_status,
+         o.status as order_status,
          o.delivery_datetime
        FROM payment_intents pi
        LEFT JOIN orders o ON pi.order_id = o.order_id
@@ -312,123 +307,35 @@ const getPaymentHistory = async (req, res) => {
 };
 
 /**
- * Test PayMongo integration
+ * Test Xendit integration
  */
-const testPayMongoIntegration = async (req, res) => {
+const testXenditIntegration = async (req, res) => {
   try {
-    console.log('🧪 Starting PayMongo integration test...');
+    console.log('🧪 Starting Xendit integration test...');
     
-    const testResults = {
-      timestamp: new Date().toISOString(),
-      tests: []
-    };
+    const testResults = await xenditService.testIntegration();
 
-    // Test 1: Environment Variables
-    console.log('Test 1: Checking environment variables...');
-    const envTest = {
-      name: 'Environment Variables',
-      status: 'pass',
-      details: {
-        PAYMONGO_PUBLIC_KEY: process.env.PAYMONGO_PUBLIC_KEY ? 'Set' : 'Missing',
-        PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY ? 'Set' : 'Missing',
-        PAYMONGO_API_URL: process.env.PAYMONGO_API_URL || 'Using default',
-        PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET ? 'Set' : 'Missing'
-      }
-    };
-    
-    if (!process.env.PAYMONGO_PUBLIC_KEY || !process.env.PAYMONGO_SECRET_KEY) {
-      envTest.status = 'fail';
-      envTest.error = 'Missing required PayMongo API keys';
-    }
-    
-    testResults.tests.push(envTest);
-
-    // Test 2: PayMongo Service Initialization
-    console.log('Test 2: Testing PayMongo service initialization...');
-    const serviceTest = {
-      name: 'PayMongo Service',
-      status: 'pass',
-      details: {}
-    };
-
-    try {
-      const paymongoService = require('../services/paymongoService');
-      serviceTest.details.service = 'Initialized successfully';
-      serviceTest.details.baseURL = paymongoService.baseURL;
-      serviceTest.details.publicKey = paymongoService.publicKey ? `${paymongoService.publicKey.substring(0, 10)}...` : 'Not set';
-    } catch (error) {
-      serviceTest.status = 'fail';
-      serviceTest.error = error.message;
-    }
-
-    testResults.tests.push(serviceTest);
-
-    // Test 3: Create Test Payment Intent
-    console.log('Test 3: Creating test payment intent...');
-    const paymentIntentTest = {
-      name: 'Payment Intent Creation',
-      status: 'pass',
-      details: {}
-    };
-
-    try {
-      const testPaymentData = {
-        amount: 1.00, // ₱1.00 test amount
-        currency: 'PHP',
-        description: 'PayMongo Integration Test',
-        metadata: {
-          test: 'true',
-          timestamp: new Date().toISOString()
-        }
-      };
-
-      const result = await paymongoService.createPaymentIntent(testPaymentData);
-      
-      if (result.success) {
-        paymentIntentTest.details.paymentIntentId = result.payment_intent.id;
-        paymentIntentTest.details.clientKey = result.payment_intent.client_key;
-        paymentIntentTest.details.status = result.payment_intent.status;
-        paymentIntentTest.details.amount = result.payment_intent.amount;
-      } else {
-        paymentIntentTest.status = 'fail';
-        paymentIntentTest.error = result.error;
-      }
-    } catch (error) {
-      paymentIntentTest.status = 'fail';
-      paymentIntentTest.error = error.message;
-    }
-
-    testResults.tests.push(paymentIntentTest);
-
-    // Test 4: Database Connection
-    console.log('Test 4: Testing database connection...');
-    const dbTest = {
-      name: 'Database Connection',
-      status: 'pass',
-      details: {}
-    };
-
+    // Test Database Connection
     try {
       const [rows] = await pool.query('SELECT 1 as test');
-      dbTest.details.connection = 'Success';
-      dbTest.details.testQuery = rows[0].test;
+      testResults.tests.push({
+        name: 'Database Connection',
+        status: 'pass',
+        details: {
+          connection: 'Success',
+          testQuery: rows[0].test
+        }
+      });
     } catch (error) {
-      dbTest.status = 'fail';
-      dbTest.error = error.message;
+      testResults.tests.push({
+        name: 'Database Connection',
+        status: 'fail',
+        error: error.message
+      });
     }
 
-    testResults.tests.push(dbTest);
-
-    // Test 5: Payment Tables
-    console.log('Test 5: Checking payment tables...');
-    const tablesTest = {
-      name: 'Payment Tables',
-      status: 'pass',
-      details: {}
-    };
-
+    // Test Payment Tables
     try {
-      // Check if payment_intents table exists
       const [tables] = await pool.query(`
         SELECT TABLE_NAME 
         FROM INFORMATION_SCHEMA.TABLES 
@@ -436,26 +343,29 @@ const testPayMongoIntegration = async (req, res) => {
         AND TABLE_NAME IN ('payment_intents', 'orders')
       `);
       
-      tablesTest.details.existingTables = tables.map(t => t.TABLE_NAME);
-      tablesTest.details.paymentIntentsTable = tables.some(t => t.TABLE_NAME === 'payment_intents');
-      tablesTest.details.ordersTable = tables.some(t => t.TABLE_NAME === 'orders');
-      
-      if (!tablesTest.details.paymentIntentsTable || !tablesTest.details.ordersTable) {
-        tablesTest.status = 'fail';
-        tablesTest.error = 'Required tables missing';
-      }
+      const existingTables = tables.map(t => t.TABLE_NAME);
+      testResults.tests.push({
+        name: 'Payment Tables',
+        status: 'pass',
+        details: {
+          existingTables,
+          paymentIntentsTable: existingTables.includes('payment_intents'),
+          ordersTable: existingTables.includes('orders')
+        }
+      });
     } catch (error) {
-      tablesTest.status = 'fail';
-      tablesTest.error = error.message;
+      testResults.tests.push({
+        name: 'Payment Tables',
+        status: 'fail',
+        error: error.message
+      });
     }
-
-    testResults.tests.push(tablesTest);
 
     // Calculate overall status
     const failedTests = testResults.tests.filter(test => test.status === 'fail');
     const overallStatus = failedTests.length === 0 ? 'PASS' : 'FAIL';
 
-    console.log(`🧪 PayMongo integration test completed: ${overallStatus}`);
+    console.log(`🧪 Xendit integration test completed: ${overallStatus}`);
     console.log(`✅ Passed: ${testResults.tests.filter(t => t.status === 'pass').length}`);
     console.log(`❌ Failed: ${failedTests.length}`);
 
@@ -471,7 +381,7 @@ const testPayMongoIntegration = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ PayMongo integration test failed:', error);
+    console.error('❌ Xendit integration test failed:', error);
     res.status(500).json({
       success: false,
       error: 'Test execution failed',
@@ -485,5 +395,5 @@ module.exports = {
   getPaymentIntentStatus,
   handleWebhook,
   getPaymentHistory,
-  testPayMongoIntegration
+  testXenditIntegration
 };

@@ -53,10 +53,13 @@ const getOrderById = async (req, res) => {
                 p.name as flavor_name,
                 oi.price,
                 p.product_url_image as image_url,
-                f.flavor_name as flavor_description
+                f.flavor_name as flavor_description,
+                cd.size as drum_size,
+                cd.gallons
             FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.product_id
             LEFT JOIN flavors f ON p.flavor_id = f.flavor_id
+            LEFT JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
             WHERE oi.order_id = ?
         `, [order_id]);
 
@@ -165,7 +168,10 @@ const createOrder = async (req, res) => {
 
         // Create notifications for both customer and vendor
         try {
+            console.log(`📬 Creating notifications for new order #${orderId}`);
+            
             // Notification for customer
+            console.log(`📤 Creating customer notification for customer_id: ${customer_id}`);
             await createNotification({
                 user_id: customer_id,
                 user_type: 'customer',
@@ -176,22 +182,38 @@ const createOrder = async (req, res) => {
                 related_vendor_id: vendor_id,
                 related_customer_id: customer_id
             });
+            console.log(`✅ Customer notification created for order #${orderId}`);
 
-            // Notification for vendor
-            await createNotification({
-                user_id: vendor_id,
-                user_type: 'vendor',
-                title: 'New Order Received',
-                message: `You have received a new order #${orderId} from a customer. Please review and respond.`,
-                notification_type: 'order_placed',
-                related_order_id: orderId,
-                related_vendor_id: vendor_id,
-                related_customer_id: customer_id
-            });
+            // Notification for vendor - get vendor's user_id first
+            console.log(`🔍 Looking up vendor user_id for vendor_id: ${vendor_id}`);
+            const [vendorUser] = await pool.query(`
+                SELECT user_id FROM vendors WHERE vendor_id = ?
+            `, [vendor_id]);
+            
+            console.log(`🔍 Vendor user lookup result:`, vendorUser);
+            
+            if (vendorUser.length > 0) {
+                console.log(`📤 Creating vendor notification for user_id: ${vendorUser[0].user_id}`);
+                await createNotification({
+                    user_id: vendorUser[0].user_id,
+                    user_type: 'vendor',
+                    title: 'New Order Received',
+                    message: `You have received a new order #${orderId} from a customer. Please review and respond.`,
+                    notification_type: 'order_placed',
+                    related_order_id: orderId,
+                    related_vendor_id: vendor_id,
+                    related_customer_id: customer_id
+                });
+                console.log(`✅ Vendor notification created for order #${orderId}`);
+            } else {
+                console.error(`❌ No vendor found with vendor_id: ${vendor_id}`);
+            }
 
-            console.log('📬 Notifications created for order:', orderId);
+            console.log(`📬 All notifications created successfully for order #${orderId}`);
         } catch (notificationError) {
-            console.error('Failed to create notifications for order:', orderId, notificationError);
+            console.error('❌ Failed to create notifications for order:', orderId, notificationError);
+            console.error('❌ Notification error details:', notificationError.message);
+            console.error('❌ Notification error stack:', notificationError.stack);
             // Don't fail the order creation if notification creation fails
         }
 
@@ -425,9 +447,38 @@ const getVendorOrders = async (req, res) => {
 
         console.log('Found orders for vendor:', orders.length);
 
+        // Get payment confirmation data for orders that have QR payments
+        const orderIds = orders.map(order => order.order_id);
+        let paymentData = {};
+        
+        if (orderIds.length > 0) {
+            try {
+                const [paymentRows] = await pool.query(`
+                    SELECT order_id, payment_confirmation_image, customer_notes as payment_notes, 
+                           payment_amount as qr_payment_amount, payment_method as qr_payment_method
+                    FROM qr_payment_transactions 
+                    WHERE order_id IN (${orderIds.map(() => '?').join(',')})
+                `, orderIds);
+                
+                // Create a lookup object for payment data
+                paymentRows.forEach(payment => {
+                    paymentData[payment.order_id] = payment;
+                });
+            } catch (error) {
+                console.error('Error fetching payment data:', error);
+                // Continue without payment data if there's an error
+            }
+        }
+
+        // Merge payment data with orders
+        const ordersWithPaymentData = orders.map(order => ({
+            ...order,
+            ...paymentData[order.order_id]
+        }));
+
         res.json({
             success: true,
-            orders: orders
+            orders: ordersWithPaymentData
         });
 
     } catch (error) {
@@ -571,6 +622,12 @@ const updateOrderStatus = async (req, res) => {
 const updatePaymentStatus = async (req, res) => {
     try {
         const { order_id } = req.params;
+        
+        // Check if this is a QR payment confirmation with image
+        if (req.body.payment_method === 'gcash_qr' && (req.file || req.body.payment_confirmation_image)) {
+            return await updateQRPaymentStatus(req, res);
+        }
+        
         const { payment_status } = req.body;
 
         console.log('Updating payment status:', order_id, 'to', payment_status);
@@ -629,17 +686,23 @@ const updatePaymentStatus = async (req, res) => {
                             related_customer_id: customer_id
                         });
 
-                        // Create notification for vendor
-                        await createNotification({
-                            user_id: vendor_id,
-                            user_type: 'vendor',
-                            title: 'Payment Received',
-                            message: `Payment confirmed for order #${order_id}. You can now start preparing the order.`,
-                            notification_type: 'payment_confirmed',
-                            related_order_id: parseInt(order_id),
-                            related_vendor_id: vendor_id,
-                            related_customer_id: customer_id
-                        });
+                        // Create notification for vendor - get vendor's user_id first
+                        const [vendorUser] = await pool.query(`
+                            SELECT user_id FROM vendors WHERE vendor_id = ?
+                        `, [vendor_id]);
+                        
+                        if (vendorUser.length > 0) {
+                            await createNotification({
+                                user_id: vendorUser[0].user_id,
+                                user_type: 'vendor',
+                                title: 'Payment Received',
+                                message: `Payment confirmed for order #${order_id}. You can now start preparing the order.`,
+                                notification_type: 'payment_confirmed',
+                                related_order_id: parseInt(order_id),
+                                related_vendor_id: vendor_id,
+                                related_customer_id: customer_id
+                            });
+                        }
                         break;
                     case 'partial':
                         notificationType = 'payment_confirmed';
@@ -679,6 +742,185 @@ const updatePaymentStatus = async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to update payment status',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+// Handle QR payment confirmation with image
+const updateQRPaymentStatus = async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        const { payment_status, payment_method, customer_notes } = req.body;
+        
+        console.log('Updating QR payment status for order:', order_id);
+        
+        // Get order details
+        const [orderDetails] = await pool.query(`
+            SELECT customer_id, vendor_id, total_amount, status, payment_status 
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+        
+        if (orderDetails.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+        
+        const order = orderDetails[0];
+        
+        // Check if payment is already confirmed
+        if (order.payment_status === 'paid') {
+            return res.status(400).json({
+                success: false,
+                error: 'Payment already confirmed',
+                message: 'This order has already been paid and cannot be modified'
+            });
+        }
+        
+        // Handle payment confirmation image upload to Cloudinary
+        let paymentConfirmationImageUrl = null;
+        if (req.file) {
+            try {
+                const cloudinary = require('cloudinary').v2;
+                
+                const cloudinaryResult = await new Promise((resolve, reject) => {
+                    cloudinary.uploader.upload_stream(
+                        {
+                            resource_type: 'image',
+                            folder: 'payment-confirmations',
+                            public_id: `payment-${order_id}-${Date.now()}`,
+                            transformation: [
+                                { width: 800, height: 600, crop: 'limit' },
+                                { quality: 'auto' }
+                            ]
+                        },
+                        (error, result) => {
+                            if (error) reject(error);
+                            else resolve(result);
+                        }
+                    ).end(req.file.buffer);
+                });
+                
+                paymentConfirmationImageUrl = cloudinaryResult.secure_url;
+                console.log('Payment confirmation image uploaded to Cloudinary:', paymentConfirmationImageUrl);
+            } catch (uploadError) {
+                console.error('Error uploading payment confirmation image:', uploadError);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to upload payment confirmation image'
+                });
+            }
+        }
+        
+        // Update order payment status
+        await pool.query(`
+            UPDATE orders 
+            SET payment_status = ?, status = 'confirmed'
+            WHERE order_id = ?
+        `, ['paid', order_id]);
+        
+        // Create QR payment transaction record
+        await pool.query(`
+            INSERT INTO qr_payment_transactions (
+                order_id,
+                customer_id,
+                vendor_id,
+                payment_amount,
+                payment_method,
+                payment_status,
+                payment_confirmation_image,
+                customer_notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        `, [
+            order_id,
+            order.customer_id,
+            order.vendor_id,
+            order.total_amount,
+            payment_method || 'gcash_qr',
+            'completed',
+            paymentConfirmationImageUrl,
+            customer_notes
+        ]);
+        
+        // Create notifications
+        try {
+            // Notification for customer
+            console.log(`📤 Creating customer notification for customer_id: ${order.customer_id}`);
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+            `, [
+                order.customer_id,
+                'customer',
+                'Payment Confirmed',
+                `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`,
+                'payment_confirmed',
+                false,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+            console.log(`✅ Customer notification created successfully`);
+            
+            // Notification for vendor - get vendor's user_id first
+            console.log(`🔍 Looking up vendor user_id for vendor_id: ${order.vendor_id}`);
+            const [vendorUser] = await pool.query(`
+                SELECT user_id FROM vendors WHERE vendor_id = ?
+            `, [order.vendor_id]);
+            
+            console.log(`🔍 Vendor user lookup result:`, vendorUser);
+            
+            if (vendorUser.length > 0) {
+                console.log(`📤 Creating vendor notification for user_id: ${vendorUser[0].user_id}`);
+                const [result] = await pool.query(`
+                    INSERT INTO notifications (
+                        user_id, user_type, title, message, notification_type, is_read, created_at,
+                        related_order_id, related_vendor_id, related_customer_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+                `, [
+                    vendorUser[0].user_id,
+                    'vendor',
+                    'Payment Received',
+                    `Customer has paid for order #${order_id}. You can now start preparing the order.`,
+                    'payment_confirmed',
+                    false,
+                    order_id,
+                    order.vendor_id,
+                    order.customer_id
+                ]);
+                console.log(`✅ Vendor notification created successfully with ID: ${result.insertId}`);
+                
+                // Verify the notification was created
+                const [verifyNotification] = await pool.query(`
+                    SELECT * FROM notifications WHERE notification_id = ?
+                `, [result.insertId]);
+                console.log(`🔍 Verification - Notification created:`, verifyNotification[0]);
+            } else {
+                console.error(`❌ No vendor found with vendor_id: ${order.vendor_id}`);
+            }
+            
+            console.log(`📬 QR payment notifications created for order ${order_id}`);
+        } catch (notificationError) {
+            console.error('Failed to create QR payment notifications:', notificationError);
+        }
+        
+        res.json({
+            success: true,
+            message: 'QR payment confirmed successfully',
+            payment_confirmation_image: paymentConfirmationImageUrl
+        });
+        
+    } catch (error) {
+        console.error('Error updating QR payment status:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to confirm QR payment',
             message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
@@ -876,17 +1118,23 @@ const updateDrumReturnStatus = async (req, res) => {
                 const { customer_id, vendor_id, customer_fname, customer_lname, store_name } = orderDetails[0];
                 
                 try {
-                    // Create notification for vendor
-                    await createNotification({
-                        user_id: vendor_id,
-                        user_type: 'vendor',
-                        title: 'Drum Return Requested 📦',
-                        message: `Customer ${customer_fname} ${customer_lname} has requested to return the drum for order #${order_id}. Please arrange to pick up the drum from the customer.`,
-                        notification_type: 'drum_return_requested',
-                        related_order_id: parseInt(order_id),
-                        related_vendor_id: vendor_id,
-                        related_customer_id: customer_id
-                    });
+                    // Create notification for vendor - get vendor's user_id first
+                    const [vendorUser] = await pool.query(`
+                        SELECT user_id FROM vendors WHERE vendor_id = ?
+                    `, [vendor_id]);
+                    
+                    if (vendorUser.length > 0) {
+                        await createNotification({
+                            user_id: vendorUser[0].user_id,
+                            user_type: 'vendor',
+                            title: 'Drum Return Requested 📦',
+                            message: `Customer ${customer_fname} ${customer_lname} has requested to return the drum for order #${order_id}. Please arrange to pick up the drum from the customer.`,
+                            notification_type: 'drum_return_requested',
+                            related_order_id: parseInt(order_id),
+                            related_vendor_id: vendor_id,
+                            related_customer_id: customer_id
+                        });
+                    }
                     
                     console.log(`Drum return notification sent to vendor ${vendor_id} for order ${order_id}`);
                 } catch (notificationError) {
@@ -913,6 +1161,137 @@ const updateDrumReturnStatus = async (req, res) => {
     }
 };
 
+// Get vendor transactions for transaction history
+const getVendorTransactions = async (req, res) => {
+    try {
+        const { vendor_id } = req.params;
+        const { start_date, end_date, payment_method, status, page = 1, limit = 20 } = req.query;
+        
+        console.log('Fetching transactions for vendor:', vendor_id);
+        
+        // Calculate offset for pagination
+        const offset = (page - 1) * limit;
+        
+        // Build the query conditions
+        let whereConditions = ['o.vendor_id = ?'];
+        let queryParams = [vendor_id];
+        
+        // Date range filter
+        if (start_date && end_date) {
+            whereConditions.push('DATE(o.created_at) BETWEEN ? AND ?');
+            queryParams.push(start_date, end_date);
+        }
+        
+        // Payment method filter
+        if (payment_method && payment_method !== 'all') {
+            if (payment_method === 'gcash_qr') {
+                whereConditions.push('qpt.payment_method IS NOT NULL');
+            } else if (payment_method === 'cash') {
+                whereConditions.push('qpt.payment_method IS NULL');
+            }
+        }
+        
+        // Status filter
+        if (status && status !== 'all') {
+            if (status === 'completed') {
+                whereConditions.push('o.payment_status = "paid"');
+            } else if (status === 'pending') {
+                whereConditions.push('o.payment_status = "unpaid"');
+            }
+        }
+        
+        const whereClause = whereConditions.join(' AND ');
+        
+        // Main query to get transactions
+        const [transactions] = await pool.query(`
+            SELECT 
+                o.order_id,
+                o.customer_id,
+                o.vendor_id,
+                o.total_amount,
+                o.payment_status,
+                o.status as order_status,
+                o.created_at as order_date,
+                u.fname as customer_fname,
+                u.lname as customer_lname,
+                u.contact_no as customer_contact,
+                v.store_name as vendor_name,
+                MAX(qpt.payment_method) as payment_method,
+                MAX(qpt.payment_amount) as qr_payment_amount,
+                MAX(qpt.customer_notes) as customer_notes,
+                MAX(qpt.payment_confirmation_image) as payment_confirmation_image,
+                MAX(qpt.created_at) as payment_date,
+                CASE 
+                    WHEN MAX(qpt.payment_method) IS NOT NULL THEN 'GCash QR'
+                    ELSE 'Cash'
+                END as transaction_type,
+                CASE 
+                    WHEN o.payment_status = 'paid' THEN 'completed'
+                    WHEN o.payment_status = 'unpaid' THEN 'pending'
+                    ELSE o.payment_status
+                END as transaction_status
+            FROM orders o
+            LEFT JOIN users u ON o.customer_id = u.user_id
+            LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+            LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+            WHERE ${whereClause}
+            GROUP BY o.order_id, o.customer_id, o.vendor_id, o.total_amount, o.payment_status, o.status, o.created_at, u.fname, u.lname, u.contact_no, v.store_name
+            ORDER BY o.created_at DESC
+            LIMIT ? OFFSET ?
+        `, [...queryParams, parseInt(limit), parseInt(offset)]);
+        
+        // Get total count for pagination
+        const [countResult] = await pool.query(`
+            SELECT COUNT(DISTINCT o.order_id) as total
+            FROM orders o
+            LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+            WHERE ${whereClause}
+        `, queryParams);
+        
+        // Get transaction statistics
+        const [stats] = await pool.query(`
+            SELECT 
+                COUNT(*) as total_transactions,
+                SUM(CASE WHEN payment_status = 'paid' THEN CAST(total_amount AS DECIMAL(10,2)) ELSE 0 END) as total_earnings,
+                SUM(CASE WHEN payment_status = 'unpaid' THEN 1 ELSE 0 END) as pending_count,
+                SUM(CASE WHEN payment_status = 'paid' AND has_qr_payment = 1 THEN 1 ELSE 0 END) as gcash_transactions,
+                SUM(CASE WHEN payment_status = 'paid' AND has_qr_payment = 0 THEN 1 ELSE 0 END) as cash_transactions
+            FROM (
+                SELECT DISTINCT 
+                    o.order_id,
+                    o.payment_status,
+                    o.total_amount,
+                    CASE WHEN qpt.payment_method IS NOT NULL THEN 1 ELSE 0 END as has_qr_payment
+                FROM orders o
+                LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+                WHERE o.vendor_id = ?
+            ) as unique_orders
+        `, [vendor_id]);
+        
+        console.log('Found transactions for vendor:', transactions.length);
+        
+        res.json({
+            success: true,
+            transactions: transactions,
+            pagination: {
+                current_page: parseInt(page),
+                total_pages: Math.ceil(countResult[0].total / limit),
+                total_transactions: countResult[0].total,
+                limit: parseInt(limit)
+            },
+            statistics: stats[0]
+        });
+        
+    } catch (error) {
+        console.error('Error fetching vendor transactions:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch vendor transactions',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
 module.exports = {
     getOrderRecord,
     getOrderById,
@@ -921,6 +1300,8 @@ module.exports = {
     getVendorOrders,
     updateOrderStatus,
     updatePaymentStatus,
+    updateQRPaymentStatus,
     getAllOrdersAdmin,
-    updateDrumReturnStatus
+    updateDrumReturnStatus,
+    getVendorTransactions
 };

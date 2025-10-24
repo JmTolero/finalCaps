@@ -18,6 +18,12 @@ const getNotifications = async (req, res) => {
 
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
+    
+    // Debug: Check if there are any notifications for this user
+    const [debugNotifications] = await pool.query(`
+      SELECT COUNT(*) as total FROM notifications WHERE user_id = ? AND user_type = ?
+    `, [user_id, user_type]);
+    console.log(`🔍 Debug: Found ${debugNotifications[0].total} total notifications for ${user_type} ${user_id}`);
 
     // Build query - handle vendor notifications correctly
     let query = `

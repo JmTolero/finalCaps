@@ -2,7 +2,7 @@ import axios from 'axios';
 
 class PayMongoService {
   constructor() {
-    this.apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+    this.apiBase = process.env.REACT_APP_API_URL || "https://finalcaps-3.onrender.com";
   }
 
   /**
@@ -12,7 +12,7 @@ class PayMongoService {
    */
   async createPaymentIntent(paymentData) {
     try {
-      const response = await axios.post(`${this.apiBase}/api/payments/create-intent`, paymentData);
+      const response = await axios.post(`${this.apiBase}/api/payments/create-payment-intent`, paymentData);
       
       if (response.data.success) {
         return {

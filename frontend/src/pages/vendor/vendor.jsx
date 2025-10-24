@@ -15,6 +15,7 @@ import ordersIcon from "../../assets/images/vendordashboardicon/vendorOrderIcon.
 import addCustomerIcon from "../../assets/images/vendordashboardicon/addcustomericon.png";
 import paymentsIcon from "../../assets/images/vendordashboardicon/paymentsvendoricon.png";
 import subscriptionIcon from "../../assets/images/vendordashboardicon/subscription.png";
+import transactionIcon from "../../assets/images/vendordashboardicon/transaction.png";
   import profileIcon from "../../assets/images/vendordashboardicon/profileVendorIcon.png";
 import storeIcon from "../../assets/images/vendordashboardicon/shop.png";
 import bellNotificationIcon from "../../assets/images/bellNotification.png";
@@ -62,6 +63,7 @@ export const Vendor = () => {
   const [showStatus, setShowStatus] = useState(false);
   const [currentVendor, setCurrentVendor] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
+  const [qrSetupCompleted, setQrSetupCompleted] = useState(false);
   const [newProfileImage, setNewProfileImage] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
   const [isInitialLoading, setIsInitialLoading] = useState(() => {
@@ -74,6 +76,10 @@ export const Vendor = () => {
   // Location picker modal state
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [selectedAddressForLocation, setSelectedAddressForLocation] = useState(null);
+  
+  // Payment proof modal state
+  const [showPaymentProofModal, setShowPaymentProofModal] = useState(false);
+  const [selectedOrderForPaymentProof, setSelectedOrderForPaymentProof] = useState(null);
   
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState({
@@ -314,6 +320,25 @@ export const Vendor = () => {
   const [walkInDeliveryTime, setWalkInDeliveryTime] = useState('');
   const [showWalkInSuccess, setShowWalkInSuccess] = useState(false);
 
+  // Transaction history state
+  const [transactions, setTransactions] = useState([]);
+  const [transactionStats, setTransactionStats] = useState({
+    total_transactions: 0,
+    total_earnings: 0,
+    pending_count: 0,
+    gcash_transactions: 0,
+    cash_transactions: 0
+  });
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionFilters, setTransactionFilters] = useState({
+    start_date: '',
+    end_date: '',
+    payment_method: 'all',
+    status: 'all'
+  });
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+
   const fetchAddresses = useCallback(
     async (userId = null) => {
     try {
@@ -397,6 +422,7 @@ export const Vendor = () => {
       if (response.data.success && response.data.vendor) {
         console.log('Vendor data received:', response.data.vendor);
         setCurrentVendor(response.data.vendor);
+        setQrSetupCompleted(response.data.vendor.qr_code_setup_completed || false);
         setVendorData({
           fname: response.data.vendor.fname || '',
           email: response.data.vendor.email || '',
@@ -911,42 +937,82 @@ export const Vendor = () => {
      }
    };
 
-   // Fetch vendor orders
-   const fetchVendorOrders = async () => {
-     if (!currentVendor?.vendor_id) {
-       console.log('❌ Cannot fetch vendor orders: no vendor_id', currentVendor);
-       return;
-     }
-     
-     try {
-       console.log('🔄 Fetching orders for vendor_id:', currentVendor.vendor_id);
-       setOrdersLoading(true);
-       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-       const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}`);
-       
-       console.log('📦 Vendor orders response:', response.data);
-       
-       if (response.data.success) {
-         console.log('✅ Vendor orders found:', response.data.orders.length);
-         console.log('📊 Order details:', response.data.orders.map(o => ({
-           id: o.order_id,
-           status: o.status,
-           payment_status: o.payment_status,
-           customer: `${o.customer_fname} ${o.customer_lname}`,
-           amount: o.total_amount
-         })));
-         setVendorOrders(response.data.orders);
-       } else {
-         console.log('❌ API returned unsuccessful response:', response.data);
-         setVendorOrders([]);
-       }
-     } catch (error) {
-       console.error("❌ Error fetching vendor orders:", error);
-       setVendorOrders([]);
-     } finally {
-       setOrdersLoading(false);
-     }
-   };
+  // Fetch vendor orders
+  const fetchVendorOrders = async () => {
+    if (!currentVendor?.vendor_id) {
+      console.log('❌ Cannot fetch vendor orders: no vendor_id', currentVendor);
+      return;
+    }
+    
+    try {
+      console.log('🔄 Fetching orders for vendor_id:', currentVendor.vendor_id);
+      setOrdersLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}`);
+      
+      console.log('📦 Vendor orders response:', response.data);
+      
+      if (response.data.success) {
+        console.log('✅ Vendor orders found:', response.data.orders.length);
+        console.log('📊 Order details:', response.data.orders.map(o => ({
+          id: o.order_id,
+          status: o.status,
+          payment_status: o.payment_status,
+          customer: `${o.customer_fname} ${o.customer_lname}`,
+          amount: o.total_amount
+        })));
+        console.log('✅ Successfully fetched orders:', response.data.orders?.length || 0);
+        console.log('📋 Orders data:', response.data.orders);
+        setVendorOrders(response.data.orders);
+      } else {
+        console.log('❌ API returned unsuccessful response:', response.data);
+        setVendorOrders([]);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching vendor orders:", error);
+      setVendorOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // Fetch vendor transactions
+  const fetchVendorTransactions = async () => {
+    if (!currentVendor?.vendor_id) {
+      console.log('❌ Cannot fetch vendor transactions: no vendor_id', currentVendor);
+      return;
+    }
+    
+    try {
+      console.log('🔄 Fetching transactions for vendor_id:', currentVendor.vendor_id);
+      setTransactionsLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const queryParams = new URLSearchParams({
+        ...transactionFilters,
+        page: 1,
+        limit: 50
+      });
+      
+      const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}/transactions?${queryParams}`);
+      
+      console.log('💰 Vendor transactions response:', response.data);
+      
+      if (response.data.success) {
+        console.log('✅ Vendor transactions found:', response.data.transactions.length);
+        setTransactions(response.data.transactions);
+        setTransactionStats(response.data.statistics);
+      } else {
+        console.log('❌ Failed to fetch vendor transactions:', response.data.error);
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching vendor transactions:', error);
+      setTransactions([]);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
 
    // Manual refresh vendor orders
    const handleRefreshOrders = async () => {
@@ -979,7 +1045,7 @@ export const Vendor = () => {
        
        setNotificationsLoading(true);
        
-       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}`, {
+       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.user_id}`, {
          headers: {
            Authorization: `Bearer ${sessionStorage.getItem('token')}`
          }
@@ -989,8 +1055,8 @@ export const Vendor = () => {
          setNotifications(response.data.notifications);
          console.log('📬 Fetched vendor notifications:', response.data.notifications.length);
          console.log('📬 Notifications data:', response.data.notifications);
-         console.log('📬 API URL called:', `${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}`);
-         console.log('📬 Vendor ID used:', currentVendor.vendor_id);
+         console.log('📬 API URL called:', `${apiBase}/api/notifications/vendor/${currentVendor.user_id}`);
+         console.log('📬 User ID used:', currentVendor.user_id);
        }
      } catch (error) {
        console.error('Error fetching vendor notifications:', error);
@@ -1006,7 +1072,7 @@ export const Vendor = () => {
 
        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
        
-       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}/unread-count`, {
+       const response = await axios.get(`${apiBase}/api/notifications/vendor/${currentVendor.user_id}/unread-count`, {
          headers: {
            Authorization: `Bearer ${sessionStorage.getItem('token')}`
          }
@@ -1050,7 +1116,7 @@ export const Vendor = () => {
      try {
        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
        
-       await axios.put(`${apiBase}/api/notifications/vendor/${currentVendor.vendor_id}/mark-all-read`, {}, {
+       await axios.put(`${apiBase}/api/notifications/vendor/${currentVendor.user_id}/mark-all-read`, {}, {
          headers: {
            Authorization: `Bearer ${sessionStorage.getItem('token')}`
          }
@@ -1575,7 +1641,38 @@ export const Vendor = () => {
     setCurrentImageIndex(0);
   };
 
-  const startEditFlavor = (flavor) => {
+  const handleViewPaymentProof = (order) => {
+    setSelectedOrderForPaymentProof(order);
+    setShowPaymentProofModal(true);
+  };
+
+  const handleClosePaymentProofModal = (e) => {
+    if (e.target === e.currentTarget) {
+      setShowPaymentProofModal(false);
+      setSelectedOrderForPaymentProof(null);
+    }
+  };
+
+  const handleToggleOrderDetails = (orderId) => {
+    const isExpanding = expandedOrderId !== orderId;
+    setExpandedOrderId(isExpanding ? orderId : null);
+    
+    // Auto-scroll to the expanded content after a short delay to allow DOM update
+    if (isExpanding) {
+      setTimeout(() => {
+        const orderElement = document.getElementById(`order-${orderId}`);
+        if (orderElement) {
+          orderElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+    }
+  };
+
+    const startEditFlavor = (flavor) => { 
     setEditingFlavor(flavor);
     setIsEditingFlavor(true);
     
@@ -2217,11 +2314,45 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
+  // Fetch vendor orders when dashboard view is active (for sidebar order counts)
+  useEffect(() => {
+    if ((activeView === "dashboard" || activeView === "orders") && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Triggering fetchVendorOrders for dashboard/orders - conditions:', {
+        activeView,
+        vendorId: currentVendor?.vendor_id,
+        isInitialLoading,
+        isUserChanging
+      });
+      fetchVendorOrders();
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+
+  // Fetch vendor orders when vendor is first loaded (for sidebar order counts)
+  useEffect(() => {
+    if (currentVendor?.vendor_id && !isInitialLoading && !isUserChanging && vendorOrders.length === 0) {
+      console.log('🔄 Triggering fetchVendorOrders on vendor load - conditions:', {
+        vendorId: currentVendor?.vendor_id,
+        isInitialLoading,
+        isUserChanging,
+        currentOrdersLength: vendorOrders.length
+      });
+      fetchVendorOrders();
+    }
+  }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, vendorOrders.length]);
+
   // Fetch saved flavors when walk-in order view is active
   useEffect(() => {
     if (activeView === "addCustomerOrders" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
       console.log('🔄 Loading flavors for walk-in orders');
       fetchSavedFlavors();
+    }
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+
+  // Fetch transactions when transaction history view is active
+  useEffect(() => {
+    if (activeView === "transactions" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
+      console.log('🔄 Loading transaction history');
+      fetchVendorTransactions();
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
@@ -2650,11 +2781,12 @@ export const Vendor = () => {
     { id: "profile", label: "Profile", icon: "👤" },
     { id: "addresses", label: "Store Addresses", icon: "📍" },
     { id: "documents", label: "Documents", icon: "📄" },
+    { id: "gcash", label: "QR Code Setup", icon: "📱" },
   ];
 
   const sidebarItems = [
     { id: "dashboard", label: "Dashboard", icon: dashboardIcon },
-    { id: "inventory", label: "Product Management", icon: inventoryIcon },
+    ...(qrSetupCompleted ? [{ id: "inventory", label: "Product Management", icon: inventoryIcon }] : []),
     { id: "my-store", label: "My Store", icon: storeIcon },
     { id: "orders", label: "Orders", icon: ordersIcon },
     {
@@ -2662,6 +2794,11 @@ export const Vendor = () => {
       label: "Add Customer Orders",
       icon: addCustomerIcon,
     },
+        {
+          id: "transactions",
+          label: "Transaction History",
+          icon: transactionIcon,
+        },
     { id: "payments", label: "Pricing", icon: paymentsIcon },
     { id: "subscription", label: "Subscription", icon: subscriptionIcon },
   ];
@@ -2918,7 +3055,7 @@ export const Vendor = () => {
                          }`}
                        />
                        {isSidebarOpen && (
-                         <span className="font-medium text-xs sm:text-sm">{item.label}</span>
+                         <span className="font-medium text-xs">{item.label}</span>
                        )}
                      </button>
                    </li>
@@ -2959,7 +3096,7 @@ export const Vendor = () => {
                     }`}
                   />
                   {isSidebarOpen && (
-                    <span className="font-medium text-xs sm:text-sm">Profile</span>
+                    <span className="font-medium text-xs">Profile</span>
                   )}
                  </button>
                </div>
@@ -3003,6 +3140,7 @@ export const Vendor = () => {
                           <div className="space-y-1">
                             <h3 className="text-base font-bold text-gray-800 text-center">{currentVendor.store_name}</h3>
                             <p className="text-xs text-gray-600 text-center">Owner: {currentVendor.fname}</p>
+                            <p className="text-xs text-gray-500 text-center">ID: {currentVendor.vendor_id}</p>
                             <div className="flex justify-center">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 currentVendor.status === 'active' 
@@ -3062,7 +3200,10 @@ export const Vendor = () => {
                             <span className="font-medium">{currentVendor.store_name}</span>
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            Owner: {currentVendor.fname} | Status: 
+                            Owner: {currentVendor.fname} | ID: {currentVendor.vendor_id}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Status: 
                             <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
                               currentVendor.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 
@@ -3138,7 +3279,7 @@ export const Vendor = () => {
                           }`}
                         >
                           <span className="text-lg sm:text-xl mb-1 flex-shrink-0">{tab.icon}</span>
-                          <span className="font-medium text-xs sm:text-sm text-center leading-tight">{tab.label}</span>
+                          <span className="font-medium text-xs text-center leading-tight">{tab.label}</span>
                         </button>
                       ))}
                     </nav>
@@ -3155,7 +3296,7 @@ export const Vendor = () => {
                           }`}
                         >
                           <span className="text-xl mr-3 flex-shrink-0">{tab.icon}</span>
-                          <span className="font-medium text-base flex-1">{tab.label}</span>
+                          <span className="font-medium text-xs flex-1">{tab.label}</span>
                           {activeTab === tab.id && (
                             <svg className="w-4 h-4 ml-auto text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -3562,6 +3703,65 @@ export const Vendor = () => {
                     )}
 
                     {/* Documents Tab */}
+                      {activeTab === "gcash" && (
+                      <div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
+                          <h2 className="text-xl sm:text-2xl font-semibold">
+                            GCash QR Code Setup
+                          </h2>
+                          <button
+                            onClick={() => navigate('/vendor/gcash-account')}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            Manage QR Code
+                          </button>
+                        </div>
+
+                        <div className="bg-green-50 rounded-lg p-6">
+                          <div className="flex items-center mb-4">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                              <span className="text-2xl">📱</span>
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Direct QR Payments</h3>
+                              <p className="text-sm text-gray-600">Set up your GCash QR code for direct customer payments</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="bg-white rounded-lg p-4 border border-green-200">
+                              <h4 className="font-medium text-gray-900 mb-2">💡 How direct payments work:</h4>
+                              <ul className="text-sm text-gray-600 space-y-1">
+                                <li>• You receive 100% of payment - no platform fees</li>
+                                <li>• Customers scan your QR code and pay directly</li>
+                                <li>• Money goes straight to your GCash account</li>
+                                <li>• Build direct relationship with customers</li>
+                              </ul>
+                            </div>
+
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                              <h4 className="font-medium text-blue-900 mb-2">📱 Setup Process:</h4>
+                              <ol className="text-sm text-blue-800 space-y-1">
+                                <li>1. Get your GCash QR code from the app</li>
+                                <li>2. Upload it to your vendor profile</li>
+                                <li>3. Customers will scan it during checkout</li>
+                                <li>4. Receive payments directly to your GCash</li>
+                              </ol>
+                            </div>
+
+                            <div className="flex justify-center">
+                              <button
+                                onClick={() => navigate('/vendor/gcash-account')}
+                                className="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200"
+                              >
+                                Set Up QR Code
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      )}
+
                       {activeTab === "documents" && (
                       <div>
                           <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
@@ -4052,7 +4252,7 @@ export const Vendor = () => {
                        }`}
                      />
                     {isSidebarOpen && (
-                      <span className="font-medium text-xs sm:text-sm">{item.label}</span>
+                      <span className="font-medium text-xs">{item.label}</span>
                     )}
                    </button>
                  </li>
@@ -4092,7 +4292,7 @@ export const Vendor = () => {
                      activeView === "settings" ? 'brightness-0 invert' : ''
                    }`}
                  />
-                 {isSidebarOpen && <span className="font-medium text-xs sm:text-sm">Profile</span>}
+                 {isSidebarOpen && <span className="font-medium text-xs">Profile</span>}
                </button>
              </div>
            </div>
@@ -4121,6 +4321,39 @@ export const Vendor = () => {
                     business here.
                   </p>
                 </div>
+
+                {/* QR Setup Warning Banner */}
+                {!qrSetupCompleted && (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-r-lg">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-2 sm:ml-3">
+                        <h3 className="text-xs sm:text-sm font-medium text-blue-800">
+                          QR Code Setup Required
+                        </h3>
+                        <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-blue-700">
+                          <p>
+                            Complete your GCash QR code setup to start managing products and receiving payments. 
+                            Go to Settings → QR Code Setup to upload your QR code.
+                          </p>
+                          <button
+                            onClick={() => {
+                              setActiveView('settings');
+                              setActiveTab('gcash');
+                            }}
+                            className="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            Complete Setup Now
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Suspended Warning Banner */}
                 {currentVendor?.status === 'suspended' && (
@@ -5759,6 +5992,367 @@ export const Vendor = () => {
               </div>
             )}
 
+            {/* Transaction History View */}
+            {activeView === "transactions" && (
+              <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 p-6">
+                <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="bg-sky-100 rounded-2xl p-6 mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
+                  <p className="text-gray-600">Track your financial transactions and earnings</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="bg-sky-100 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Earnings</p>
+                    <p className="text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-2xl font-bold text-blue-600">₱</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-sky-100 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+                    <p className="text-2xl font-bold text-blue-600">{transactionStats.total_transactions || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-sky-100 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pending Payments</p>
+                    <p className="text-2xl font-bold text-blue-600">{transactionStats.pending_count || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-sky-100 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">GCash Transactions</p>
+                    <p className="text-2xl font-bold text-blue-600">{transactionStats.gcash_transactions || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-sky-100 rounded-2xl p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={transactionFilters.start_date}
+                    onChange={(e) => setTransactionFilters({...transactionFilters, start_date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={transactionFilters.end_date}
+                    onChange={(e) => setTransactionFilters({...transactionFilters, end_date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                  <select
+                    value={transactionFilters.payment_method}
+                    onChange={(e) => setTransactionFilters({...transactionFilters, payment_method: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Methods</option>
+                    <option value="gcash_qr">GCash QR</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={transactionFilters.status}
+                    onChange={(e) => setTransactionFilters({...transactionFilters, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4 flex space-x-4">
+                <button
+                  onClick={fetchVendorTransactions}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Apply Filters
+                </button>
+                <button
+                  onClick={() => setTransactionFilters({start_date: '', end_date: '', payment_method: 'all', status: 'all'})}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>  
+
+            {/* Transactions List */}
+            <div className="bg-sky-100 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+                <button
+                  onClick={fetchVendorTransactions}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
+              
+              {transactionsLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-gray-500">No transactions found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {transactions.map((transaction) => (
+                    <div key={transaction.order_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-shrink-0">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                transaction.transaction_status === 'completed' ? 'bg-blue-100' : 'bg-blue-100'
+                              }`}>
+                                <span className={`text-xl font-bold ${
+                                  transaction.transaction_status === 'completed' ? 'text-blue-600' : 'text-blue-600'
+                                }`}>₱</span>
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <h4 className="font-semibold text-gray-900">Order #{transaction.order_id}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  transaction.transaction_status === 'completed' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {transaction.transaction_status}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {transaction.customer_fname} {transaction.customer_lname}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(transaction.order_date).toLocaleDateString()} • {transaction.transaction_type}
+                              </p>
+                              {transaction.customer_notes && (
+                                <p className="text-sm text-blue-600 mt-1">
+                                  📝 {transaction.customer_notes.substring(0, 50)}...
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900">₱{parseFloat(transaction.total_amount || 0).toFixed(2)}</p>
+                          <button
+                            onClick={() => {
+                              setSelectedTransaction(transaction);
+                              setShowTransactionModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transaction Details Modal */}
+            {showTransactionModal && selectedTransaction && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+                <div className="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-y-auto my-4">
+                  {/* Modal Header */}
+                  <div className="flex justify-between items-center p-3 sm:p-4 border-b">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                      Transaction Details - Order #{selectedTransaction.order_id}
+                    </h3>
+                    <button
+                      onClick={() => setShowTransactionModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  {/* Modal Content */}
+                  <div className="p-3 sm:p-4">
+                    {/* Transaction Information */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Transaction Information</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-700">Order ID:</span>
+                          <span className="ml-2 text-gray-900">#{selectedTransaction.order_id}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Customer:</span>
+                          <span className="ml-2 text-gray-900">
+                            {selectedTransaction.customer_fname} {selectedTransaction.customer_lname}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Amount:</span>
+                          <span className="ml-2 text-gray-900 font-semibold">
+                            ₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Payment Method:</span>
+                          <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Status:</span>
+                          <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedTransaction.transaction_status === 'completed' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {selectedTransaction.transaction_status}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Date:</span>
+                          <span className="ml-2 text-gray-900">
+                            {new Date(selectedTransaction.order_date).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Customer Contact Information */}
+                    {selectedTransaction.customer_contact && (
+                      <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                        <h4 className="font-medium text-blue-900 mb-2">Customer Contact</h4>
+                        <p className="text-sm text-blue-800">
+                          📞 {selectedTransaction.customer_contact}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Customer Notes */}
+                    {selectedTransaction.customer_notes && (
+                      <div className="bg-yellow-50 rounded-lg p-4 mb-4">
+                        <h4 className="font-medium text-yellow-900 mb-2">Customer Notes</h4>
+                        <p className="text-sm text-yellow-800 bg-white p-3 rounded border">
+                          {selectedTransaction.customer_notes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Payment Proof Screenshot */}
+                    {selectedTransaction.payment_confirmation_image && (
+                      <div className="bg-green-50 rounded-lg p-4 mb-4">
+                        <h4 className="font-medium text-green-900 mb-3">Payment Confirmation Screenshot</h4>
+                        <div className="text-center">
+                          <img 
+                            src={selectedTransaction.payment_confirmation_image} 
+                            alt="Payment Proof" 
+                            className="w-full max-w-md mx-auto border border-gray-200 rounded-lg shadow-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Order Status Information */}
+                    <div className="bg-purple-50 rounded-lg p-4 mb-4">
+                      <h4 className="font-medium text-purple-900 mb-2">Order Status</h4>
+                      <div className="text-sm text-purple-800">
+                        <p><span className="font-medium">Current Status:</span> {selectedTransaction.order_status}</p>
+                        <p><span className="font-medium">Payment Status:</span> {selectedTransaction.payment_status}</p>
+                      </div>
+                    </div>
+
+                    {/* No Payment Proof Message */}
+                    {!selectedTransaction.payment_confirmation_image && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <div className="text-gray-400 text-4xl mb-2">📱</div>
+                        <p className="text-gray-600 text-sm">No payment proof available for this transaction.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Modal Footer */}
+                  <div className="flex justify-end p-3 sm:p-4 border-t">
+                    <button
+                      onClick={() => setShowTransactionModal(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeView === "addCustomerOrders" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
                 <div className="max-w-6xl mx-auto">
@@ -6560,6 +7154,12 @@ export const Vendor = () => {
                           })
                         : statusFilteredOrders;
 
+                      console.log('🔍 Debug - vendorOrders.length:', vendorOrders.length);
+                      console.log('🔍 Debug - filteredOrders.length:', filteredOrders.length);
+                      console.log('🔍 Debug - ordersLoading:', ordersLoading);
+                      console.log('🔍 Debug - orderFilter:', orderFilter);
+                      console.log('🔍 Debug - vendorOrders:', vendorOrders);
+                      
                       return ordersLoading ? (
                         <div className="text-center py-12">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -6601,7 +7201,7 @@ export const Vendor = () => {
                         </div>
                       ) : (
                         filteredOrders.map((order) => (
-                        <div key={order.order_id} className="bg-gray-50 rounded-lg border border-gray-200">
+                        <div key={order.order_id} id={`order-${order.order_id}`} className="bg-gray-50 rounded-lg border border-gray-200">
                           {/* Condensed Order Summary - Mobile Responsive */}
                           <div className="p-3 sm:p-4">
                             {/* Mobile Layout - Stacked */}
@@ -6695,7 +7295,7 @@ export const Vendor = () => {
                               {/* Action Button */}
                               <div className="w-full">
                                 <button
-                                  onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
+                                  onClick={() => handleToggleOrderDetails(order.order_id)}
                                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
                                 >
                                   {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
@@ -6792,7 +7392,7 @@ export const Vendor = () => {
                                   {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ') : 'N/A'}
                                 </span>
                                 <button
-                                  onClick={() => setExpandedOrderId(expandedOrderId === order.order_id ? null : order.order_id)}
+                                  onClick={() => handleToggleOrderDetails(order.order_id)}
                                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
                                 >
                                   {expandedOrderId === order.order_id ? 'Hide Details' : 'View Details'}
@@ -7024,12 +7624,22 @@ export const Vendor = () => {
                               <p className="text-blue-700 text-sm mb-3">
                                 Customer has paid. You can now start preparing the ice cream.
                               </p>
-                              <button
-                                onClick={() => handlePrepareOrder(order)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-                              >
-                                🍦 Start Preparing Ice Cream
-                              </button>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  onClick={() => handlePrepareOrder(order)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                >
+                                  🍦 Start Preparing Ice Cream
+                                </button>
+                                {order.payment_confirmation_image && (
+                                  <button
+                                    onClick={() => handleViewPaymentProof(order)}
+                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                  >
+                                    📱 View Payment Proof
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
 
@@ -8307,6 +8917,81 @@ export const Vendor = () => {
                   {confirmModalData.confirmText}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Proof Modal */}
+      {showPaymentProofModal && selectedOrderForPaymentProof && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto"
+          onClick={handleClosePaymentProofModal}
+        >
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-full overflow-y-auto my-4">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-3 sm:p-4 border-b">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payment Proof</h3>
+              <button
+                onClick={() => setShowPaymentProofModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-3 sm:p-4">
+              {/* Order Information */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-2">Order Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <p><span className="font-medium">Order ID:</span> #{selectedOrderForPaymentProof.order_id}</p>
+                  <p><span className="font-medium">Customer:</span> {selectedOrderForPaymentProof.customer_fname} {selectedOrderForPaymentProof.customer_lname}</p>
+                  <p><span className="font-medium">Amount:</span> ₱{parseFloat(selectedOrderForPaymentProof.total_amount || 0).toFixed(2)}</p>
+                  <p><span className="font-medium">Payment Method:</span> {selectedOrderForPaymentProof.qr_payment_method || 'GCash QR'}</p>
+                </div>
+              </div>
+
+              {/* Payment Screenshot */}
+              {selectedOrderForPaymentProof.payment_confirmation_image && (
+                <div className="text-center">
+                  <h4 className="font-medium text-gray-900 mb-3">Payment Confirmation Screenshot</h4>
+                  <img 
+                    src={selectedOrderForPaymentProof.payment_confirmation_image} 
+                    alt="Payment Proof" 
+                    className="w-full max-w-md mx-auto border border-gray-200 rounded-lg shadow-sm"
+                  />
+                </div>
+              )}
+
+              {/* Customer Notes */}
+              {selectedOrderForPaymentProof.payment_notes && (
+                <div className="mt-4 bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Customer Notes</h4>
+                  <p className="text-sm text-blue-800">{selectedOrderForPaymentProof.payment_notes}</p>
+                </div>
+              )}
+
+              {/* No Payment Proof Message */}
+              {!selectedOrderForPaymentProof.payment_confirmation_image && (
+                <div className="text-center py-8">
+                  <div className="text-gray-400 text-4xl mb-4">📱</div>
+                  <p className="text-gray-600">No payment proof available for this order.</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end p-3 sm:p-4 border-t">
+              <button
+                onClick={() => setShowPaymentProofModal(false)}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
