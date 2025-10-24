@@ -30,6 +30,8 @@ import CustomerPayment from "./pages/customer/CustomerPayment.jsx";
 import CustomerGCashAccount from "./pages/customer/CustomerGCashAccount.jsx";
 import PaymentSuccess from "./pages/customer/PaymentSuccess.jsx";
 import VendorGCashAccount from "./pages/vendor/VendorGCashAccount.jsx";
+import SubscriptionSuccess from "./pages/vendor/SubscriptionSuccess.jsx";
+import SubscriptionFailed from "./pages/vendor/SubscriptionFailed.jsx";
 import LoginTest from "./pages/shared/LoginTest.jsx";
 import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
     // import Nav from '../src/components/nav';
@@ -139,6 +141,8 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/customer/gcash-account/:orderId" element={requireRole('customer', <CustomerGCashAccount />)} />
           <Route path="/customer/payment/success/:orderId" element={requireRole('customer', <PaymentSuccess />)} />
           <Route path="/vendor/gcash-account" element={requireRole('vendor', <VendorGCashAccount />)} />
+          <Route path="/vendor/subscription/success" element={requireRole('vendor', <SubscriptionSuccess />)} />
+          <Route path="/vendor/subscription/failed" element={requireRole('vendor', <SubscriptionFailed />)} />
           <Route path="/find-vendors" element={requireRole('customer', <FindNearbyVendors />)} />
           <Route path="/all-vendor-stores" element={requireRole('customer', <AllVendorStores />)} />
           <Route path="/vendor/:vendorId/store" element={requireRole('customer', <VendorStore />)} />

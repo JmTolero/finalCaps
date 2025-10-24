@@ -8,6 +8,7 @@ import {
   CreditCard,
   DollarSign
 } from 'lucide-react';
+import subscriptionService from '../../services/subscriptionService';
 
 const VendorSubscription = () => {
   const [subscription, setSubscription] = useState(null);
@@ -60,6 +61,7 @@ const VendorSubscription = () => {
   };
 
   const handleUpgradeRequest = (plan) => {
+    console.log('🔄 Frontend: Upgrade requested for plan:', plan);
     setSelectedPlan(plan);
     setShowPaymentModal(true);
   };
@@ -67,56 +69,35 @@ const VendorSubscription = () => {
   const processPayment = async () => {
     setUpgrading(true);
     try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const user = JSON.parse(sessionStorage.getItem('user'));
-      
-      if (!user || !user.id) {
-        console.error('No user ID found');
-        return;
-      }
+      // Create subscription payment via Xendit
+      const paymentData = {
+        plan_name: selectedPlan,
+        amount: getPlanPrice(selectedPlan),
+        billing_cycle: 'monthly'
+      };
 
-      // Get the current vendor info using the correct endpoint and header
-      const vendorResponse = await fetch(`${apiBase}/api/vendor/current`, {
-        headers: {
-          'x-user-id': user.id
+      console.log('🔄 Frontend: Starting payment process...', paymentData);
+      const response = await subscriptionService.createSubscriptionPayment(paymentData);
+      console.log('✅ Frontend: Payment response received:', response);
+      
+      if (response.success) {
+        if (response.data.test_mode) {
+          console.log('✅ Test mode payment successful, redirecting to success page');
+          // Add a small delay to ensure backend processing is complete
+          setTimeout(() => {
+            window.location.href = '/vendor/subscription/success?test_mode=true';
+          }, 1000);
+        } else {
+          console.log('✅ Production payment successful, redirecting to Xendit');
+          // Redirect to Xendit payment page
+          window.location.href = response.data.invoice_url;
         }
-      });
-      const vendorData = await vendorResponse.json();
-      
-      if (!vendorData.success || !vendorData.vendor?.vendor_id) {
-        console.error('No vendor ID found for user');
-        return;
-      }
-
-      const vendorId = vendorData.vendor.vendor_id;
-      
-      // For now, we'll simulate payment processing
-      // In a real implementation, you'd integrate with payment providers like:
-      // - GCash API
-      // - PayMaya API  
-      // - Stripe
-      // - PayPal
-      
-      const response = await fetch(`${apiBase}/api/admin/subscription/vendor/${vendorId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ subscription_plan: selectedPlan }),
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(`Successfully upgraded to ${selectedPlan} plan!`);
-        setShowPaymentModal(false);
-        fetchVendorSubscription(); // Refresh data
       } else {
-        alert('Payment failed: ' + data.error);
+        alert('Payment creation failed: ' + response.error);
       }
     } catch (error) {
       console.error('Error processing payment:', error);
-      alert('Payment processing failed');
+      alert('Payment processing failed: ' + error.message);
     } finally {
       setUpgrading(false);
     }
@@ -334,31 +315,18 @@ const VendorSubscription = () => {
             </div>
 
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-3">Choose payment method:</p>
-              <div className="space-y-2">
-                <button className="w-full p-3 border border-gray-300 rounded-md hover:bg-gray-50 text-left">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
-                      <span className="text-green-600 font-bold text-sm">G</span>
-                    </div>
-                    <span>GCash</span>
+              <p className="text-sm text-gray-600 mb-3">Payment method:</p>
+              <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-sm">G</span>
                   </div>
-                </button>
-                <button className="w-full p-3 border border-gray-300 rounded-md hover:bg-gray-50 text-left">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                      <span className="text-blue-600 font-bold text-sm">P</span>
-                    </div>
-                    <span>PayMaya</span>
-                  </div>
-                </button>
-                <button className="w-full p-3 border border-gray-300 rounded-md hover:bg-gray-50 text-left">
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="h-5 w-5 text-gray-600" />
-                    <span>Credit/Debit Card</span>
-                  </div>
-                </button>
+                  <span className="font-medium">GCash</span>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                You will be redirected to GCash to complete your payment securely.
+              </p>
             </div>
 
             <div className="flex space-x-3">
@@ -369,7 +337,10 @@ const VendorSubscription = () => {
                 Cancel
               </button>
               <button
-                onClick={processPayment}
+                onClick={() => {
+                  console.log('🔄 Frontend: Pay Now button clicked');
+                  processPayment();
+                }}
                 disabled={upgrading}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
               >

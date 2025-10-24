@@ -137,6 +137,7 @@ app.use('/api/auth', passwordResetRoutes);
 app.use('/api/test', testEmailRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/vendor', vendorQRRoutes);
+app.use('/api/subscription', require('./routes/vendor/subscriptionRoutes'));
 
 // app.get('/users', async (req, res) => {
 //     try {

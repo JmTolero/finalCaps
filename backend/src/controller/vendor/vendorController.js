@@ -155,7 +155,7 @@ const getCurrentVendor = async (req, res) => {
             });
         }
         
-        console.log('Fetching vendor data for user ID:', userId);
+        console.log('Fetching vendor data for user ID:', userId, 'at', new Date().toISOString());
         
         // Get vendor data by user_id instead of vendor_id
         const [vendors] = await pool.query(`
@@ -169,6 +169,11 @@ const getCurrentVendor = async (req, res) => {
                 v.valid_id_url,
                 v.proof_image_url,
                 v.qr_code_setup_completed,
+                v.subscription_plan,
+                v.subscription_end_date,
+                v.flavor_limit,
+                v.drum_limit,
+                v.order_limit,
                 u.fname,
                 u.lname,
                 u.username,
@@ -192,7 +197,12 @@ const getCurrentVendor = async (req, res) => {
             vendor_id: vendors[0].vendor_id,
             store_name: vendors[0].store_name,
             status: vendors[0].status,
-            user_id: vendors[0].user_id
+            user_id: vendors[0].user_id,
+            subscription_plan: vendors[0].subscription_plan,
+            subscription_end_date: vendors[0].subscription_end_date,
+            flavor_limit: vendors[0].flavor_limit,
+            drum_limit: vendors[0].drum_limit,
+            order_limit: vendors[0].order_limit
         });
         
         res.json({

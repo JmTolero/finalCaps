@@ -140,7 +140,7 @@ class XenditService {
         },
         success_redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor/subscription/success`,
         failure_redirect_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor/subscription/failed`,
-        payment_methods: ['GCASH', 'PAYMAYA', 'SHOPEEPAY'],
+        payment_methods: ['GCASH'],
         currency: 'PHP',
         items: [
           {
