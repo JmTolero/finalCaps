@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { useCart } from "../../contexts/CartContext";
 import FeedbackModal from '../../components/shared/FeedbackModal';
+import { getImageUrl } from "../../utils/imageUtils";
 import axios from "axios";
 
 // Import customer icons
@@ -524,9 +525,7 @@ export const AllVendorStores = () => {
                   {vendor.profile_image_url ? (
                     <img
                       src={
-                        vendor.profile_image_url.startsWith('http') 
-                          ? vendor.profile_image_url 
-                          : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                        getImageUrl(vendor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')
                       }
                       alt={vendor.store_name || "Vendor Store"}
                       className="w-full h-full object-cover rounded-md"

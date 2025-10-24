@@ -808,6 +808,17 @@ export const Vendor = () => {
   const handleDeliveryEdit = () => {
     setIsEditingDelivery(true);
     setTempDeliveryZones([...deliveryZones]);
+    // Auto-scroll to the edit form after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const formElement = document.getElementById('edit-zones-form');
+      if (formElement) {
+        formElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   const handleDeliverySave = async () => {
@@ -839,6 +850,21 @@ export const Vendor = () => {
     setTempDeliveryZones([...deliveryZones]);
     setIsEditingDelivery(false);
     setShowAddZoneForm(false);
+  };
+
+  const handleAddZoneClick = () => {
+    setShowAddZoneForm(true);
+    // Auto-scroll to the form after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const formElement = document.getElementById('add-zone-form');
+      if (formElement) {
+        formElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   const handleDeliveryZoneChange = (index, field, value) => {
@@ -2517,6 +2543,33 @@ export const Vendor = () => {
     setNewAddress(addressData);
   };
 
+  const handleAddStoreAddressClick = () => {
+    setShowAddressForm(true);
+    setEditingAddress(null);
+    setNewAddress({
+      unit_number: "",
+      street_name: "",
+      barangay: "",
+      cityVillage: "",
+      province: "",
+      region: "",
+      postal_code: "",
+      landmark: "",
+      address_type: "business",
+    });
+    // Auto-scroll to the form after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const formElement = document.getElementById('add-store-address-form');
+      if (formElement) {
+        formElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
+  };
+
   const saveAddress = async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -2696,16 +2749,29 @@ export const Vendor = () => {
     setStatus({ type, message });
     setShowStatus(true);
     
-    // Auto-hide success messages after 3 seconds
-    if (type === "success") {
+    // Auto-scroll to status message after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const statusElement = document.getElementById('status-message');
+      if (statusElement) {
+        const navbarHeight = 80; // Approximate navbar height
+        const elementPosition = statusElement.offsetTop;
+        const offsetPosition = elementPosition - navbarHeight - 20; // Extra 20px padding
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+    
+    // Auto-hide all messages after 3 seconds
+    setTimeout(() => {
+      setShowStatus(false);
+      // Clear the status message after animation
       setTimeout(() => {
-        setShowStatus(false);
-        // Clear the status message after animation
-        setTimeout(() => {
-          setStatus({ type: null, message: "" });
-        }, 300); // Match the transition duration
-      }, 3000);
-    }
+        setStatus({ type: null, message: "" });
+      }, 300); // Match the transition duration
+    }, 3000);
   };
 
   const handleSaveProfile = async () => {
@@ -2778,10 +2844,10 @@ export const Vendor = () => {
   };
 
   const settingsTabs = [
-    { id: "profile", label: "Profile", icon: "👤" },
-    { id: "addresses", label: "Store Addresses", icon: "📍" },
-    { id: "documents", label: "Documents", icon: "📄" },
-    { id: "gcash", label: "QR Code Setup", icon: "📱" },
+    { id: "profile", label: "Profile" },
+    { id: "addresses", label: "Store Addresses" },
+    { id: "documents", label: "Documents" },
+    { id: "gcash", label: "QR Code Setup" },
   ];
 
   const sidebarItems = [
@@ -3239,6 +3305,7 @@ export const Vendor = () => {
               {/* Status Messages */}
               {status.type && showStatus && (
                   <div
+                    id="status-message"
                     className={`p-4 rounded-lg mb-6 transition-all duration-300 transform ${
                       showStatus
                         ? "opacity-100 translate-y-0"
@@ -3278,7 +3345,6 @@ export const Vendor = () => {
                                 : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-md active:bg-blue-100"
                           }`}
                         >
-                          <span className="text-lg sm:text-xl mb-1 flex-shrink-0">{tab.icon}</span>
                           <span className="font-medium text-xs text-center leading-tight">{tab.label}</span>
                         </button>
                       ))}
@@ -3295,7 +3361,6 @@ export const Vendor = () => {
                                 : "text-gray-600 hover:bg-blue-50 hover:text-gray-900 hover:shadow-md active:bg-blue-100"
                           }`}
                         >
-                          <span className="text-xl mr-3 flex-shrink-0">{tab.icon}</span>
                           <span className="font-medium text-xs flex-1">{tab.label}</span>
                           {activeTab === tab.id && (
                             <svg className="w-4 h-4 ml-auto text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3497,21 +3562,7 @@ export const Vendor = () => {
                               Store Addresses
                             </h2>
                           <button
-                            onClick={() => {
-                              setShowAddressForm(true);
-                              setEditingAddress(null);
-                              setNewAddress({
-                                  unit_number: "",
-                                  street_name: "",
-                                  barangay: "",
-                                  cityVillage: "",
-                                  province: "",
-                                  region: "",
-                                  postal_code: "",
-                                  landmark: "",
-                                  address_type: "business",
-                              });
-                            }}
+                            onClick={handleAddStoreAddressClick}
                             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg text-sm sm:text-base w-full sm:w-auto"
                           >
                             + Add Store Address
@@ -3664,7 +3715,7 @@ export const Vendor = () => {
 
                         {/* Address Form */}
                         {showAddressForm && (
-                          <div className="border-t pt-4 sm:pt-6">
+                          <div id="add-store-address-form" className="border-t pt-4 sm:pt-6">
                             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
                                 {editingAddress
                                   ? "Edit Store Address"
@@ -3790,7 +3841,7 @@ export const Vendor = () => {
                                 <div className="space-y-3">
                                   <div className="relative">
                                     <img
-                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`}
+                                      src={getImageUrl(currentVendor.business_permit_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')}
                                       alt="Business Permit"
                                       className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
@@ -3808,7 +3859,7 @@ export const Vendor = () => {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.business_permit_url}`, '_blank')}
+                                    onClick={() => window.open(getImageUrl(currentVendor.business_permit_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents'), '_blank')}
                                     className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
@@ -3842,7 +3893,7 @@ export const Vendor = () => {
                                 <div className="space-y-3">
                                   <div className="relative">
                                     <img
-                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`}
+                                      src={getImageUrl(currentVendor.valid_id_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')}
                                       alt="Valid ID"
                                       className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
@@ -3860,7 +3911,7 @@ export const Vendor = () => {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.valid_id_url}`, '_blank')}
+                                    onClick={() => window.open(getImageUrl(currentVendor.valid_id_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents'), '_blank')}
                                     className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
@@ -3895,7 +3946,7 @@ export const Vendor = () => {
                                 <div className="space-y-3">
                                   <div className="relative">
                                     <img
-                                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`}
+                                      src={getImageUrl(currentVendor.proof_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')}
                                       alt="Proof of Address"
                                       className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200"
                                       onError={(e) => {
@@ -3914,7 +3965,7 @@ export const Vendor = () => {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => window.open(`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${currentVendor.proof_image_url}`, '_blank')}
+                                    onClick={() => window.open(getImageUrl(currentVendor.proof_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents'), '_blank')}
                                     className="w-full px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
                                   >
                                     View Document
@@ -5997,70 +6048,70 @@ export const Vendor = () => {
               <div className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 p-6">
                 <div className="max-w-6xl mx-auto">
             {/* Header */}
-            <div className="bg-sky-100 rounded-2xl p-6 mb-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-sky-100 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 sm:w-7 sm:h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
-                  <p className="text-gray-600">Track your financial transactions and earnings</p>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Transaction History</h1>
+                  <p className="text-sm sm:text-base text-gray-600">Track your financial transactions and earnings</p>
                 </div>
               </div>
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="bg-sky-100 rounded-2xl p-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
+              <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                    <p className="text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Earnings</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-2xl font-bold text-blue-600">₱</span>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-600">₱</span>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-sky-100 rounded-2xl p-6">
+              <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-                    <p className="text-2xl font-bold text-blue-600">{transactionStats.total_transactions || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Transactions</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{transactionStats.total_transactions || 0}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-sky-100 rounded-2xl p-6">
+              <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Pending Payments</p>
-                    <p className="text-2xl font-bold text-blue-600">{transactionStats.pending_count || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Pending Payments</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{transactionStats.pending_count || 0}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-sky-100 rounded-2xl p-6">
+              <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">GCash Transactions</p>
-                    <p className="text-2xl font-bold text-blue-600">{transactionStats.gcash_transactions || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">GCash Transactions</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{transactionStats.gcash_transactions || 0}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -6069,33 +6120,33 @@ export const Vendor = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-sky-100 rounded-2xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
+              <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Filters</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Start Date</label>
                   <input
                     type="date"
                     value={transactionFilters.start_date}
                     onChange={(e) => setTransactionFilters({...transactionFilters, start_date: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">End Date</label>
                   <input
                     type="date"
                     value={transactionFilters.end_date}
                     onChange={(e) => setTransactionFilters({...transactionFilters, end_date: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Payment Method</label>
                   <select
                     value={transactionFilters.payment_method}
                     onChange={(e) => setTransactionFilters({...transactionFilters, payment_method: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   >
                     <option value="all">All Methods</option>
                     <option value="gcash_qr">GCash QR</option>
@@ -6103,11 +6154,11 @@ export const Vendor = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Status</label>
                   <select
                     value={transactionFilters.status}
                     onChange={(e) => setTransactionFilters({...transactionFilters, status: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                   >
                     <option value="all">All Status</option>
                     <option value="completed">Completed</option>
@@ -6115,16 +6166,16 @@ export const Vendor = () => {
                   </select>
                 </div>
               </div>
-              <div className="mt-4 flex space-x-4">
+              <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                 <button
                   onClick={fetchVendorTransactions}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-xs sm:text-sm"
                 >
                   Apply Filters
                 </button>
                 <button
                   onClick={() => setTransactionFilters({start_date: '', end_date: '', payment_method: 'all', status: 'all'})}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-xs sm:text-sm"
                 >
                   Clear Filters
                 </button>
@@ -6132,12 +6183,12 @@ export const Vendor = () => {
             </div>  
 
             {/* Transactions List */}
-            <div className="bg-sky-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+            <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-2 sm:space-y-0">
+                <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900">Recent Transactions</h3>
                 <button
                   onClick={fetchVendorTransactions}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-xs sm:text-sm"
                 >
                   Refresh
                 </button>
@@ -6185,23 +6236,23 @@ export const Vendor = () => {
                       return true;
                     })
                     .map((transaction) => (
-                    <div key={transaction.order_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
+                    <div key={transaction.order_id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
                             <div className="flex-shrink-0">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                              <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center ${
                                 transaction.transaction_status === 'completed' ? 'bg-blue-100' : 'bg-blue-100'
                               }`}>
-                                <span className={`text-xl font-bold ${
+                                <span className={`text-sm sm:text-base lg:text-xl font-bold ${
                                   transaction.transaction_status === 'completed' ? 'text-blue-600' : 'text-blue-600'
                                 }`}>₱</span>
                               </div>
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2">
-                                <h4 className="font-semibold text-gray-900">Order #{transaction.order_id}</h4>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-1 sm:space-y-0">
+                                <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">Order #{transaction.order_id}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${
                                   transaction.transaction_status === 'completed' 
                                     ? 'bg-green-100 text-green-800' 
                                     : 'bg-yellow-100 text-yellow-800'
@@ -6209,28 +6260,28 @@ export const Vendor = () => {
                                   {transaction.transaction_status}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-xs sm:text-sm text-gray-600 truncate">
                                 {transaction.customer_fname} {transaction.customer_lname}
                               </p>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-xs sm:text-sm text-gray-500">
                                 {new Date(transaction.order_date).toLocaleDateString()} • {transaction.transaction_type}
                               </p>
                               {transaction.customer_notes && (
-                                <p className="text-sm text-blue-600 mt-1">
+                                <p className="text-xs sm:text-sm text-blue-600 mt-1 truncate">
                                   📝 {transaction.customer_notes.substring(0, 50)}...
                                 </p>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-gray-900">₱{parseFloat(transaction.total_amount || 0).toFixed(2)}</p>
+                        <div className="flex items-center justify-between sm:flex-col sm:items-end sm:space-y-2">
+                          <p className="text-base sm:text-lg font-bold text-gray-900">₱{parseFloat(transaction.total_amount || 0).toFixed(2)}</p>
                           <button
                             onClick={() => {
                               setSelectedTransaction(transaction);
                               setShowTransactionModal(true);
                             }}
-                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                            className="text-blue-600 hover:text-blue-700 text-xs sm:text-sm font-medium"
                           >
                             View Details
                           </button>
@@ -6385,17 +6436,17 @@ export const Vendor = () => {
               <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
                 <div className="max-w-6xl mx-auto">
                   {/* Header */}
-                  <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg border-t-4 border-blue-400">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <div className="bg-sky-100 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
                         <img 
                           src={addCustomerIcon} 
                           alt="Walk-in Orders" 
-                          className="w-7 h-7"
+                          className="w-5 h-5 sm:w-7 sm:h-7"
                         />
                       </div>
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                           Walk-in Customer Orders
                         </h1>
                       </div>
@@ -6403,21 +6454,21 @@ export const Vendor = () => {
                   </div>
 
                   {/* Monthly Order Limit Display */}
-                  <div className="bg-white rounded-2xl p-4 mb-6 shadow-lg border-l-4 border-blue-400">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                      <div className="flex items-center space-x-2 sm:space-x-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900">Monthly Orders</h3>
-                          <p className="text-sm text-gray-600">Current month's order count</p>
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Monthly Orders</h3>
+                          <p className="text-xs sm:text-sm text-gray-600">Current month's order count</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className={`text-2xl font-bold ${
+                      <div className="text-left sm:text-right">
+                        <div className={`text-lg sm:text-xl lg:text-2xl font-bold ${
                           (() => {
                             const currentMonth = new Date().getMonth();
                             const currentYear = new Date().getFullYear();
@@ -6443,7 +6494,7 @@ export const Vendor = () => {
                             return currentMonthOrders.length;
                           })()}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500">
                           {subscriptionLimits.order_limit === -1 ? (
                             <span className="text-green-600">Unlimited (Premium Plan)</span>
                           ) : (
@@ -6487,32 +6538,32 @@ export const Vendor = () => {
 
                   {/* Success Message */}
                   {showWalkInSuccess && (
-                    <div className="bg-blue-100 border-2 border-blue-400 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-center shadow-md">
-                      <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="bg-sky-100 text-blue-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 flex items-center shadow-md">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      <span className="font-medium">Order created successfully!</span>
+                      <span className="font-medium text-sm sm:text-base">Order created successfully!</span>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
                     {/* Left Side - Order Form */}
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-400">
-                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                        <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg">
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         Add Items
                       </h2>
 
                       {/* Customer Information Section */}
-                      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                      <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-white rounded-lg">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 sm:mb-4">
                           Customer Information
                         </h3>
                         
                         {/* Delivery Address - Inside Customer Info */}
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 rounded-lg">
                           <h4 className="text-xs font-semibold text-gray-900 mb-3 flex items-center">
                             <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -6526,39 +6577,39 @@ export const Vendor = () => {
                                 type="text"
                                 value={customerAddress.street}
                                 onChange={(e) => setCustomerAddress({...customerAddress, street: e.target.value})}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Street Address *"
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <input
                                 type="text"
                                 value={customerAddress.barangay}
                                 onChange={(e) => setCustomerAddress({...customerAddress, barangay: e.target.value})}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Barangay *"
                               />
                               <input
                                 type="text"
                                 value={customerAddress.city}
                                 onChange={(e) => setCustomerAddress({...customerAddress, city: e.target.value})}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="City *"
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <input
                                 type="text"
                                 value={customerAddress.province}
                                 onChange={(e) => setCustomerAddress({...customerAddress, province: e.target.value})}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Province (optional)"
                               />
                               <input
                                 type="text"
                                 value={customerAddress.postalCode}
                                 onChange={(e) => setCustomerAddress({...customerAddress, postalCode: e.target.value})}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Postal Code (optional)"
                               />
                             </div>
@@ -6566,30 +6617,30 @@ export const Vendor = () => {
                         </div>
 
                         {/* Customer Name */}
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="mb-2 sm:mb-3">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                             Name *
                           </label>
                           <input
                             type="text"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="Enter customer name"
                             required
                           />
                         </div>
 
                         {/* Customer Contact */}
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="mb-2 sm:mb-3">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                             Contact No. *
                           </label>
                           <input
                             type="tel"
                             value={customerContact}
                             onChange={(e) => setCustomerContact(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="09123456789"
                             required
                           />
@@ -6597,28 +6648,28 @@ export const Vendor = () => {
 
                         {/* Customer Email */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                             Email (Optional)
                           </label>
                           <input
                             type="email"
                             value={customerEmail}
                             onChange={(e) => setCustomerEmail(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="customer@email.com"
                           />
                         </div>
                       </div>
 
                       {/* Flavor Selection */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="mb-3 sm:mb-4">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Select Flavor *
                         </label>
                         <select
                           value={selectedFlavor}
                           onChange={(e) => setSelectedFlavor(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                         >
                           <option value="">Choose a flavor...</option>
                           {flavorsLoading ? (
@@ -6636,11 +6687,11 @@ export const Vendor = () => {
                       </div>
 
                       {/* Size Selection */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="mb-3 sm:mb-4">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Select Size *
                         </label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-1 sm:gap-2">
                           {['small', 'medium', 'large'].map((size) => {
                             const selectedFlavorData = savedFlavors.find(
                               f => f.flavor_id === parseInt(selectedFlavor)
@@ -6654,7 +6705,7 @@ export const Vendor = () => {
                                 key={size}
                                 onClick={() => hasPrice && setSelectedSize(size)}
                                 disabled={!hasPrice || !selectedFlavor}
-                                className={`px-4 py-3 rounded-lg border-2 transition-all font-medium ${
+                                className={`px-1 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 transition-all font-medium ${
                                   selectedSize === size
                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                                     : hasPrice && selectedFlavor
@@ -6662,9 +6713,9 @@ export const Vendor = () => {
                                     : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                                 }`}
                               >
-                                <div className="text-sm capitalize">{size}</div>
+                                <div className="text-xs capitalize">{size}</div>
                                 {selectedFlavor && (
-                                  <div className="text-xs mt-1">
+                                  <div className="text-xs mt-0.5 sm:mt-1">
                                     {hasPrice ? `₱${price}` : 'N/A'}
                                   </div>
                                 )}
@@ -6675,14 +6726,14 @@ export const Vendor = () => {
                       </div>
 
                       {/* Quantity Selection */}
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div className="mb-3 sm:mb-4">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Quantity *
                         </label>
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-1 sm:space-x-2">
                           <button
                             onClick={() => setWalkInQuantity(Math.max(1, walkInQuantity - 1))}
-                            className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700"
+                            className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm"
                           >
                             -
                           </button>
@@ -6691,11 +6742,11 @@ export const Vendor = () => {
                             min="1"
                             value={walkInQuantity}
                             onChange={(e) => setWalkInQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-20 px-4 py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-12 sm:w-16 px-1 sm:px-2 py-1.5 sm:py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                           />
                           <button
                             onClick={() => setWalkInQuantity(walkInQuantity + 1)}
-                            className="w-10 h-10 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700"
+                            className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm"
                           >
                             +
                           </button>
@@ -6706,9 +6757,9 @@ export const Vendor = () => {
                       <button
                         onClick={addToWalkInCart}
                         disabled={!selectedFlavor || !selectedSize}
-                        className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
+                        className="w-full py-2 sm:py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-md hover:shadow-lg text-xs sm:text-sm"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         <span>Add to Cart</span>
@@ -6716,39 +6767,39 @@ export const Vendor = () => {
                     </div>
 
                     {/* Right Side - Cart */}
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border-l-4 border-blue-400">
-                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                        <svg className="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-3 sm:mb-4 lg:mb-6 flex items-center">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                         Cart ({walkInCart.length} items)
                       </h2>
 
                       {walkInCart.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                          <svg className="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-6 sm:py-8 lg:py-12 text-gray-400">
+                          <svg className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mx-auto mb-2 sm:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
-                          <p>Cart is empty</p>
-                          <p className="text-sm mt-1">Add items to create an order</p>
+                          <p className="text-xs sm:text-sm lg:text-base">Cart is empty</p>
+                          <p className="text-xs mt-1">Add items to create an order</p>
                         </div>
                       ) : (
                         <>
                           {/* Cart Items */}
-                          <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+                          <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4 lg:mb-6 max-h-60 sm:max-h-80 lg:max-h-96 overflow-y-auto">
                             {walkInCart.map((item) => (
-                              <div key={item.id} className="bg-blue-50 p-4 rounded-lg flex justify-between items-center border border-blue-200">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold text-gray-900">{item.flavor_name}</h3>
-                                  <div className="text-sm text-gray-600 mt-1">
+                              <div key={item.id} className="bg-white p-2 sm:p-3 lg:p-4 rounded-lg flex justify-between items-center">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-gray-900 text-xs sm:text-sm lg:text-base truncate">{item.flavor_name}</h3>
+                                  <div className="text-xs text-gray-600 mt-0.5 sm:mt-1">
                                     <span className="capitalize">{item.size}</span> • Qty: {item.quantity} • ₱{item.price} each
                                   </div>
                                 </div>
-                                <div className="text-right ml-4">
-                                  <div className="font-bold text-blue-600">₱{item.subtotal.toFixed(2)}</div>
+                                <div className="text-right ml-1 sm:ml-2 lg:ml-4 flex-shrink-0">
+                                  <div className="font-bold text-blue-600 text-xs sm:text-sm lg:text-base">₱{item.subtotal.toFixed(2)}</div>
                                   <button
                                     onClick={() => removeFromWalkInCart(item.id)}
-                                    className="text-red-500 hover:text-red-700 text-sm mt-1 font-medium"
+                                    className="text-red-500 hover:text-red-700 text-xs mt-0.5 sm:mt-1 font-medium"
                                   >
                                     Remove
                                   </button>
@@ -6758,16 +6809,16 @@ export const Vendor = () => {
                           </div>
 
                           {/* Delivery Date and Time */}
-                          <div className="mb-6 pb-6 border-b border-gray-200 bg-blue-50 p-4 rounded-lg">
-                            <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center">
-                              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="mb-4 sm:mb-5 lg:mb-6 pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200 bg-white p-2 sm:p-3 lg:p-4 rounded-lg">
+                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
                               Schedule to Deliver
                             </h3>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   Date <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -6775,28 +6826,28 @@ export const Vendor = () => {
                                   value={walkInDeliveryDate}
                                   onChange={(e) => setWalkInDeliveryDate(e.target.value)}
                                   min={new Date().toISOString().split('T')[0]}
-                                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-white"
+                                  className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
                                   required
                                   placeholder="mm/dd/yyyy"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   Time <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                   type="time"
                                   value={walkInDeliveryTime}
                                   onChange={(e) => setWalkInDeliveryTime(e.target.value)}
-                                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base bg-white"
+                                  className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
                                   required
                                   placeholder="--:-- --"
                                 />
                               </div>
                             </div>
                             {(!walkInDeliveryDate || !walkInDeliveryTime) && (
-                              <p className="text-red-500 text-sm mt-3 flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <p className="text-red-500 text-xs sm:text-sm mt-2 sm:mt-3 flex items-center">
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>
                                 Please select both date and time to proceed
@@ -6805,45 +6856,45 @@ export const Vendor = () => {
                           </div>
 
                           {/* Payment Method */}
-                          <div className="mb-6 pb-6 border-b border-gray-200">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                          <div className="mb-4 sm:mb-5 lg:mb-6 pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200">
+                            <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sm:mb-3">
                               Payment Method
                             </h3>
                             
                             {/* Payment Method Selection */}
-                            <div className="mb-4">
-                              <div className="grid grid-cols-2 gap-3">
+                            <div className="mb-3 sm:mb-4">
+                              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                 <button
                                   type="button"
                                   onClick={() => setWalkInPaymentMethod('cash')}
-                                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                                  className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg border-2 transition-all ${
                                     walkInPaymentMethod === 'cash'
                                       ? 'border-green-500 bg-green-50 text-green-700'
                                       : 'border-gray-300 hover:border-green-300 text-gray-700'
                                   }`}
                                 >
-                                  <div className="text-sm font-medium">Cash</div>
+                                  <div className="text-xs sm:text-sm font-medium">Cash</div>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setWalkInPaymentMethod('gcash')}
-                                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                                  className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg border-2 transition-all ${
                                     walkInPaymentMethod === 'gcash'
                                       ? 'border-green-500 bg-green-50 text-green-700'
                                       : 'border-gray-300 hover:border-green-300 text-gray-700'
                                   }`}
                                 >
-                                  <div className="text-sm font-medium">GCash</div>
+                                  <div className="text-xs sm:text-sm font-medium">GCash</div>
                                 </button>
                               </div>
                             </div>
 
                             {/* Payment Option */}
-                            <div className="bg-blue-50 p-4 rounded-lg">
-                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                            <div className="bg-blue-50 p-2 sm:p-3 lg:p-4 rounded-lg">
+                              <label className="block text-xs font-medium text-gray-700 mb-1 sm:mb-2">
                                 Payment Option:
                               </label>
-                              <div className="space-y-2">
+                              <div className="space-y-1 sm:space-y-2">
                                 <label className="flex items-center cursor-pointer">
                                   <input
                                     type="radio"
@@ -6851,9 +6902,9 @@ export const Vendor = () => {
                                     value="full"
                                     checked={walkInPaymentOption === 'full'}
                                     onChange={(e) => setWalkInPaymentOption(e.target.value)}
-                                    className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                    className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 focus:ring-green-500"
                                   />
-                                  <span className="ml-2 text-sm text-gray-900">Full Payment</span>
+                                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-gray-900">Full Payment</span>
                                 </label>
                                 <label className="flex items-center cursor-pointer">
                                   <input
@@ -6862,28 +6913,28 @@ export const Vendor = () => {
                                     value="partial"
                                     checked={walkInPaymentOption === 'partial'}
                                     onChange={(e) => setWalkInPaymentOption(e.target.value)}
-                                    className="w-4 h-4 text-green-600 focus:ring-green-500"
+                                    className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 focus:ring-green-500"
                                   />
-                                  <span className="ml-2 text-sm text-gray-900">50% Down Payment</span>
+                                  <span className="ml-1 sm:ml-2 text-xs sm:text-sm text-gray-900">50% Down Payment</span>
                                 </label>
                               </div>
                             </div>
                           </div>
 
                           {/* Total */}
-                          <div className="bg-blue-50 p-4 rounded-lg mb-6 border-2 border-blue-200">
-                            <div className="flex justify-between items-center text-lg font-bold text-gray-900">
+                          <div className="bg-white p-2 sm:p-3 lg:p-4 rounded-lg mb-4 sm:mb-5 lg:mb-6">
+                            <div className="flex justify-between items-center text-sm sm:text-base lg:text-lg font-bold text-gray-900">
                               <span>Total Amount:</span>
-                              <span className="text-2xl text-blue-600">₱{getWalkInCartTotal().toFixed(2)}</span>
+                              <span className="text-lg sm:text-xl lg:text-2xl text-blue-600">₱{getWalkInCartTotal().toFixed(2)}</span>
                             </div>
                           </div>
 
                           {/* Complete Order Button */}
                           <button
                             onClick={submitWalkInOrder}
-                            className="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
+                            className="w-full py-3 sm:py-3.5 lg:py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-lg hover:shadow-xl text-sm sm:text-base"
                           >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span>Complete Order</span>
@@ -6898,7 +6949,7 @@ export const Vendor = () => {
 
             {activeView === "orders" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                <div className="bg-sky-100 rounded-2xl p-8 mx-4 shadow-lg">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
                       <img 
@@ -6920,19 +6971,19 @@ export const Vendor = () => {
 
                   {/* Undo Notification */}
                   {recentStatusChange && (
-                    <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="mb-6 bg-sky-100 rounded-lg p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-yellow-800 font-medium">
+                          <p className="text-blue-800 font-medium">
                             Order #{recentStatusChange.orderId} status changed to "{recentStatusChange.newStatus}"
                           </p>
-                          <p className="text-yellow-700 text-sm">
+                          <p className="text-blue-700 text-sm">
                             You have 30 seconds to undo this action if it was accidental.
                           </p>
                         </div>
                         <button
                           onClick={undoStatusChange}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                         >
                           ↶ Undo
                         </button>
@@ -7801,38 +7852,38 @@ export const Vendor = () => {
 
             {activeView === "payments" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-white rounded-2xl p-8 mx-4 shadow-lg">
+                <div className="bg-sky-100 rounded-2xl p-8 mx-4 shadow-lg">
                   <div className="flex items-center space-x-4 mb-8">
                     <img 
                       src={paymentsIcon} 
                       alt="Payments" 
-                      className="w-10 h-10"
+                      className="w-5 h-5 sm:w-7 sm:h-7 lg:w-10 lg:h-10"
                     />
                     <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                         Delivery & Drum Pricing
                       </h1>
-                      <p className="text-gray-600">
+                      <p className="text-sm sm:text-base text-gray-600">
                         Manage your drum prices and delivery zones
                       </p>
                     </div>
                   </div>
 
                   {/* Drum Pricing Section */}
-                  <div className="mb-12">
-                    <div className="flex items-center justify-between mb-6">
+                  <div className="mb-8 sm:mb-10 lg:mb-12">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
                       <div>
-                        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-1 sm:mb-2">
                           Drum Pricing
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm text-gray-600">
                           Set prices for different drum sizes
                         </p>
                       </div>
                       {!isEditingPrices && (
                         <button
                           onClick={handlePricesEdit}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                         >
                           Edit Prices
                         </button>
@@ -7840,10 +7891,10 @@ export const Vendor = () => {
                     </div>
 
                     {isEditingPrices ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Small Drum Price (₱)
                             </label>
                             <input
@@ -7852,12 +7903,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handlePriceChange("small", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                               min="0"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Medium Drum Price (₱)
                             </label>
                             <input
@@ -7866,12 +7917,12 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handlePriceChange("medium", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                               min="0"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                               Large Drum Price (₱)
                             </label>
                             <input
@@ -7880,55 +7931,55 @@ export const Vendor = () => {
                               onChange={(e) =>
                                 handlePriceChange("large", e.target.value)
                               }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                               min="0"
                             />
                           </div>
                         </div>
-                        <div className="flex space-x-3">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                           <button
                             onClick={handlePricesSave}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium shadow-md hover:shadow-lg"
                           >
                             Save Prices
                           </button>
                           <button
                             onClick={handlePricesCancel}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium"
                           >
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="text-center bg-blue-50 rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.small}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Small Drum
                           </div>
                           <div className="text-xs text-gray-500">
                             {drumCapacity.small} gallons
                           </div>
                         </div>
-                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                        <div className="text-center bg-blue-50 rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.medium}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Medium Drum
                           </div>
                           <div className="text-xs text-gray-500">
                             {drumCapacity.medium} gallons
                           </div>
                         </div>
-                        <div className="text-center bg-blue-50 rounded-lg p-4 shadow-md border-2 border-blue-300">
-                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                        <div className="text-center bg-blue-50 rounded-lg p-3 sm:p-4 shadow-md border-2 border-blue-300">
+                          <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600 mb-1">
                             ₱{drumPrices.large}
                           </div>
-                          <div className="text-sm font-semibold text-gray-800 mb-1">
+                          <div className="text-xs sm:text-sm font-semibold text-gray-800 mb-1">
                             Large Drum
                           </div>
                           <div className="text-xs text-gray-500">
@@ -7941,26 +7992,26 @@ export const Vendor = () => {
 
                   {/* Delivery Pricing Section */}
                   <div>
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
                       <div>
-                        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-1 sm:mb-2">
                           Delivery Zones & Pricing
                         </h2>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm text-gray-600">
                           Set delivery prices for different cities and provinces
                         </p>
                       </div>
                       {!isEditingDelivery && (
-                        <div className="flex space-x-2">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                           <button
-                            onClick={() => setShowAddZoneForm(true)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
+                            onClick={handleAddZoneClick}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                           >
                             Add Zone
                           </button>
                           <button
                             onClick={handleDeliveryEdit}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-200 shadow-md hover:shadow-lg"
                           >
                             Edit Zones
                           </button>
@@ -7970,7 +8021,7 @@ export const Vendor = () => {
 
                     {/* Add New Zone Form */}
                     {showAddZoneForm && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                      <div id="add-zone-form" className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Delivery Zone</h3>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div>
@@ -8053,12 +8104,12 @@ export const Vendor = () => {
 
                     {/* Delivery Zones List */}
                     {isEditingDelivery ? (
-                      <div className="space-y-4">
+                      <div id="edit-zones-form" className="space-y-3 sm:space-y-4">
                         {tempDeliveryZones.map((zone, index) => (
-                          <div key={zone.delivery_pricing_id || index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div key={zone.delivery_pricing_id || index} className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   Region
                                 </label>
                                 <RegionDropdown
@@ -8069,7 +8120,7 @@ export const Vendor = () => {
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   Province
                                 </label>
                                 <ProvinceDropdown
@@ -8085,7 +8136,7 @@ export const Vendor = () => {
                                 )}
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   City/Municipality
                                 </label>
                                 <CityDropdown
@@ -8101,14 +8152,14 @@ export const Vendor = () => {
                                 )}
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                                   Delivery Price (₱)
                                 </label>
                                 <input
                                   type="number"
                                   value={zone.delivery_price}
                                   onChange={(e) => handleDeliveryZoneChange(index, 'delivery_price', parseFloat(e.target.value) || 0)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                                   min="0"
                                   step="0.01"
                                 />
@@ -8116,34 +8167,34 @@ export const Vendor = () => {
                             </div>
                           </div>
                         ))}
-                        <div className="flex space-x-3">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                           <button
                             onClick={handleDeliverySave}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg"
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium shadow-md hover:shadow-lg"
                           >
                             Save Changes
                           </button>
                           <button
                             onClick={handleDeliveryCancel}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium"
                           >
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         {deliveryZones.length > 0 ? (
                           deliveryZones.map((zone) => (
-                            <div key={zone.delivery_pricing_id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                              <div className="flex items-center justify-between">
+                            <div key={zone.delivery_pricing_id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 shadow-sm">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                                 <div className="flex-1">
-                                  <div className="flex items-center space-x-4">
+                                  <div className="flex items-center space-x-2 sm:space-x-3">
                                     <div>
-                                      <h3 className="font-semibold text-gray-800">
+                                      <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
                                         {zone.city}, {zone.province}
                                       </h3>
-                                      <p className="text-sm text-gray-600">
+                                      <p className="text-xs sm:text-sm text-gray-600">
                                         Delivery Price: ₱{parseFloat(zone.delivery_price).toFixed(2)}
                                       </p>
                                     </div>
@@ -8151,7 +8202,7 @@ export const Vendor = () => {
                                 </div>
                                 <button
                                   onClick={() => handleRemoveDeliveryZone(zone.delivery_pricing_id)}
-                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                  className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium"
                                 >
                                   Remove
                                 </button>
@@ -8159,9 +8210,9 @@ export const Vendor = () => {
                             </div>
                           ))
                         ) : (
-                          <div className="text-center py-8 text-gray-500">
-                            <p>No delivery zones configured yet.</p>
-                            <p className="text-sm">Add your first delivery zone to get started.</p>
+                          <div className="text-center py-6 sm:py-8 text-gray-500">
+                            <p className="text-sm sm:text-base">No delivery zones configured yet.</p>
+                            <p className="text-xs sm:text-sm">Add your first delivery zone to get started.</p>
                           </div>
                         )}
                       </div>
@@ -8295,7 +8346,7 @@ export const Vendor = () => {
 
             {activeView === "subscription" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-white rounded-lg p-2 sm:p-3 mx-1 shadow-lg">
+                <div className="bg-sky-100 rounded-lg p-2 sm:p-3 mx-1 shadow-lg">
                   <VendorSubscription />
                 </div>
               </div>
@@ -8303,50 +8354,50 @@ export const Vendor = () => {
 
             {activeView === "feedback" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-white rounded-lg p-2 sm:p-3 mx-1 shadow-lg">
-                  <div className="flex items-center space-x-2 mb-3">
+                <div className="bg-sky-100 rounded-lg p-3 sm:p-4 lg:p-6 mx-1 shadow-lg">
+                  <div className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-6">
                     <img 
                       src={feedbackIcon} 
                       alt="Feedback" 
-                      className="w-4 h-4 sm:w-5 sm:h-5"
+                      className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8"
                     />
                     <div>
-                      <h1 className="text-base sm:text-lg font-bold text-gray-900">
+                      <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                         Customer Feedback
                       </h1>
-                      <p className="text-xs text-gray-600">
-                        Customer reviews
+                      <p className="text-sm sm:text-base text-gray-600">
+                        Customer reviews and ratings
                       </p>
                     </div>
                   </div>
                   
                   {feedbackLoading ? (
-                    <div className="flex flex-col sm:flex-row justify-center items-center py-4 space-y-2 sm:space-y-0">
-                      <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
-                      <span className="ml-0 sm:ml-3 text-xs sm:text-sm text-gray-600">Loading feedback...</span>
+                    <div className="flex flex-col sm:flex-row justify-center items-center py-6 sm:py-8 space-y-2 sm:space-y-0">
+                      <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-0 sm:ml-3 text-sm sm:text-base text-gray-600">Loading feedback...</span>
                     </div>
                   ) : customerFeedback.reviews.length === 0 ? (
-                    <div className="text-center py-6 px-2">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <img src={feedbackIcon} alt="No feedback" className="w-5 h-5 sm:w-6 sm:h-6 opacity-50" />
+                    <div className="text-center py-8 sm:py-12 px-4">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <img src={feedbackIcon} alt="No feedback" className="w-6 h-6 sm:w-8 sm:h-8 opacity-50" />
                       </div>
-                      <h3 className="text-sm sm:text-base font-medium text-gray-900 mb-1">No reviews yet</h3>
-                      <p className="text-xs sm:text-sm text-gray-600">Customer reviews will appear here</p>
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No reviews yet</h3>
+                      <p className="text-sm sm:text-base text-gray-600">Customer reviews will appear here</p>
                     </div>
                   ) : (
                     <>
                       {/* Summary Card */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="text-2xl font-bold text-blue-600">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                          <div className="flex items-center space-x-3 sm:space-x-4">
+                            <div className="text-3xl sm:text-4xl font-bold text-blue-600">
                               {customerFeedback.summary.average_rating}
                             </div>
                             <div>
-                              <div className="flex text-yellow-400 text-lg">
+                              <div className="flex text-yellow-400 text-lg sm:text-xl">
                                 {renderStars(customerFeedback.summary.average_rating)}
                               </div>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm sm:text-base text-gray-600">
                                 {customerFeedback.summary.total_reviews} review{customerFeedback.summary.total_reviews !== 1 ? 's' : ''}
                               </p>
                             </div>
@@ -8355,33 +8406,33 @@ export const Vendor = () => {
                       </div>
 
                       {/* Reviews Grid */}
-                      <div className="space-y-3">
+                      <div className="space-y-3 sm:space-y-4">
                         {customerFeedback.reviews.map((review) => {
                           const initials = getInitials(review.customer_fname, review.customer_lname);
                           const avatarColor = getAvatarColor(initials);
                           
                           return (
-                            <div key={review.review_id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                              <div className="flex items-start space-x-3">
-                                <div className={`w-8 h-8 ${avatarColor.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
-                                  <span className={`${avatarColor.text} font-semibold text-sm`}>{initials}</span>
+                            <div key={review.review_id} className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-sm transition-shadow">
+                              <div className="flex items-start space-x-3 sm:space-x-4">
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${avatarColor.bg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                                  <span className={`${avatarColor.text} font-semibold text-sm sm:text-base`}>{initials}</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <h3 className="font-semibold text-sm text-gray-900">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 space-y-1 sm:space-y-0">
+                                    <h3 className="font-semibold text-sm sm:text-base text-gray-900">
                                       {review.customer_fname} {review.customer_lname}
                                     </h3>
-                                    <div className="flex items-center space-x-1">
-                                      <span className="text-yellow-400 text-sm">{renderStars(review.rating)}</span>
-                                      <span className="text-sm text-gray-600">{review.rating}.0</span>
+                                    <div className="flex items-center space-x-1 sm:space-x-2">
+                                      <span className="text-yellow-400 text-sm sm:text-base">{renderStars(review.rating)}</span>
+                                      <span className="text-sm sm:text-base text-gray-600">{review.rating}.0</span>
                                     </div>
                                   </div>
                                   {review.comment && (
-                                    <p className="text-gray-700 text-sm leading-relaxed mb-2">
+                                    <p className="text-gray-700 text-sm sm:text-base leading-relaxed mb-2 sm:mb-3">
                                       "{review.comment}"
                                     </p>
                                   )}
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs sm:text-sm text-gray-500">
                                     {formatTimeAgo(review.created_at)}
                                   </p>
                                 </div>

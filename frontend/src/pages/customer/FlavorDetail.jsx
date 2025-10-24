@@ -911,7 +911,7 @@ export const FlavorDetail = () => {
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
                   {flavor.profile_image_url ? (
                     <img 
-                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${flavor.profile_image_url}`}
+                      src={getImageUrl(flavor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')}
                       alt={flavor.store_name}
                       className="w-full h-full rounded-full object-cover"
                     />
@@ -971,7 +971,7 @@ export const FlavorDetail = () => {
                 <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
                   {flavor.profile_image_url ? (
                     <img 
-                      src={`${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${flavor.profile_image_url}`}
+                      src={getImageUrl(flavor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')}
                       alt={flavor.store_name}
                       className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover flex-shrink-0"
                     />

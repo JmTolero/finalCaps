@@ -137,7 +137,7 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
       }}
     >
       <div 
-        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto mx-2 sm:mx-4"
         style={{
           backgroundColor: 'white',
           borderRadius: '0.5rem',
@@ -150,12 +150,12 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
         }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-lg">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between rounded-t-lg">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
               {userRole === 'vendor' ? 'Contact Support' : 'Submit Feedback'}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               {userRole === 'vendor' 
                 ? "Need help? Let us know what you need assistance with."
                 : "We'd love to hear from you! Share your thoughts or report issues."}
@@ -164,9 +164,9 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 flex-shrink-0 ml-2"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -174,12 +174,12 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
 
         {/* Success Message */}
         {showSuccess && (
-          <div className="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="mx-4 sm:mx-6 mt-4 sm:mt-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-green-800 font-medium">
+              <span className="text-green-800 font-medium text-sm sm:text-base">
                 {userRole === 'vendor' 
                   ? 'Support request submitted successfully! We\'ll get back to you soon.'
                   : 'Thank you for your feedback! We\'ll review it shortly.'}
@@ -190,30 +190,30 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
 
         {/* Error Message */}
         {error && (
-          <div className="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-4 sm:mx-6 mt-4 sm:mt-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-red-800">{error}</span>
+              <span className="text-red-800 text-sm sm:text-base">{error}</span>
             </div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Category <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               {categories.map((cat) => (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, category: cat.value }))}
-                  className={`p-3 border-2 rounded-lg transition-all duration-200 font-medium ${
+                  className={`p-2 sm:p-3 border-2 rounded-lg transition-all duration-200 font-medium text-xs sm:text-sm ${
                     formData.category === cat.value
                       ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                       : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -239,7 +239,7 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
               placeholder="Brief summary of your feedback"
               maxLength={255}
               disabled={isSubmitting}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">
               {formData.subject.length}/255 characters
@@ -257,10 +257,10 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
               value={formData.description}
               onChange={handleChange}
               placeholder="Please provide details..."
-              rows={6}
+              rows={5}
               maxLength={2000}
               disabled={isSubmitting}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none text-sm sm:text-base"
             />
             <p className="text-xs text-gray-500 mt-1">
               {formData.description.length}/2000 characters (minimum 10)
@@ -268,12 +268,12 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
           </div>
 
           {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
             <div className="flex items-start">
-              <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-sm text-blue-800">
+              <div className="text-xs sm:text-sm text-blue-800">
                 <p className="font-medium mb-1">What happens next?</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>Your feedback will be reviewed by our team</li>
@@ -285,28 +285,28 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !formData.subject.trim() || !formData.description.trim()}
-              className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
                   Submitting...
                 </>
               ) : (
                 <>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                   Submit {userRole === 'vendor' ? 'Request' : 'Feedback'}

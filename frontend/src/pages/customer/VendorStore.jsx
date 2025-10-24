@@ -539,9 +539,7 @@ export const VendorStore = () => {
                 {vendor.profile_image_url ? (
                   <img
                     src={
-                      vendor.profile_image_url.startsWith('http') 
-                        ? vendor.profile_image_url 
-                        : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                      getImageUrl(vendor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')
                     }
                     alt={vendor.store_name}
                     className="w-full h-full object-cover"
@@ -607,9 +605,7 @@ export const VendorStore = () => {
               {vendor.profile_image_url ? (
                 <img
                   src={
-                    vendor.profile_image_url.startsWith('http') 
-                      ? vendor.profile_image_url 
-                      : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                    getImageUrl(vendor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')
                   }
                   alt={vendor.store_name}
                   className="w-full h-full object-cover"
@@ -996,9 +992,7 @@ export const VendorStore = () => {
                   {vendor.profile_image_url ? (
                     <img 
                       src={
-                        vendor.profile_image_url.startsWith('http') 
-                          ? vendor.profile_image_url 
-                          : `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/vendor-documents/${vendor.profile_image_url}`
+                        getImageUrl(vendor.profile_image_url, process.env.REACT_APP_API_URL || "http://localhost:3001", 'vendor-documents')
                       }
                       alt={vendor.store_name}
                       className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover"
