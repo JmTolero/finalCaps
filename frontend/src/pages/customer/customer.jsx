@@ -1813,6 +1813,7 @@ export const Customer = () => {
                 <Link
                   to="/find-vendors"
                   className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm"
+                  title="Find nearby Vendors"
                 >
                   <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
                 </Link>
@@ -1831,6 +1832,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="Products & Flavors"
                   >
                     <img src={productsIcon} alt="Products" className="w-4 h-4" />
                   </button>
@@ -1843,6 +1845,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="All Vendor Stores"
                   >
                     <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
                   </Link>
@@ -1855,6 +1858,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="Notifications"
                   >
                     <img src={notifIcon} alt="Notifications" className="w-4 h-4" />
                     {unreadCount > 0 && (
@@ -1890,6 +1894,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="Feedback"
                   >
                     <img src={feedbackIcon} alt="Feedback" className="w-4 h-4" />
                   </button>
@@ -1900,7 +1905,7 @@ export const Customer = () => {
             {/* Desktop Layout */}
             <div className="hidden sm:flex items-center justify-end mb-3 sm:mb-4 lg:mb-6">
               <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
-                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base">
+                <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base" title="Find nearby Vendors">
                   Find nearby Vendors
                 </Link>
                 
@@ -1931,6 +1936,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="All Vendor Stores"
                   >
                     <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Link>
@@ -1943,6 +1949,7 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
+                    title="Notifications"
                   >
                     <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                     {unreadCount > 0 && (
@@ -2389,7 +2396,7 @@ export const Customer = () => {
           <div className="flex flex-col gap-3 sm:hidden mb-3">
             {/* Top Row: Find nearby Vendors + Icons */}
             <div className="flex items-center justify-between">
-              <Link to="/find-vendors" className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm">
+              <Link to="/find-vendors" className="p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm" title="Find nearby Vendors">
                 <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
               </Link>
               
@@ -2405,7 +2412,7 @@ export const Customer = () => {
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" title="All Vendor Stores">
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
                 </Link>
                 
@@ -2413,6 +2420,7 @@ export const Customer = () => {
                 <button 
                   onClick={() => navigate('/customer/notifications')}
                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  title="Notifications"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-4 h-4" />
                   {unreadCount > 0 && (
@@ -2516,7 +2524,7 @@ export const Customer = () => {
             </div>
             
             <div className="flex items-center space-x-4 lg:space-x-6">
-              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base whitespace-nowrap ml-3">
+              <Link to="/find-vendors" className="text-blue-700 hover:text-blue-800 font-medium text-sm sm:text-base whitespace-nowrap ml-3" title="Find nearby Vendors">
                 Find nearby Vendors
               </Link>
               
@@ -2532,7 +2540,7 @@ export const Customer = () => {
                 </button>
                 
                 {/* Shops Icon */}
-                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2">
+                <Link to="/all-vendor-stores" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors sm:p-2" title="All Vendor Stores">
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
                 
@@ -2540,6 +2548,7 @@ export const Customer = () => {
                 <button 
                   onClick={() => navigate('/customer/notifications')}
                   className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors relative sm:p-2"
+                  title="Notifications"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (

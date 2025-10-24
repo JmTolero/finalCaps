@@ -42,7 +42,7 @@ const CustomerVendorMap = ({
                 <div class="flex items-center gap-1 mt-0.5">
                   <span class="text-[8px] bg-green-100 text-green-800 px-1 py-0.5 rounded-full">📍 Exact</span>
                   <button onclick="selectVendor(1)" 
-                          class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                          class="bg-blue-500 text-white px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-blue-600 transition-colors">
                     View Shop
                   </button>
                 </div>
@@ -68,7 +68,7 @@ const CustomerVendorMap = ({
               </div>
               <div class="flex justify-start">
                 <button onclick="selectVendor(1)" 
-                        class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                        class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 transition-colors">
                   View Shop
                 </button>
               </div>
@@ -97,7 +97,7 @@ const CustomerVendorMap = ({
                 <div class="flex items-center gap-1 mt-0.5">
                   <span class="text-[8px] bg-gray-100 text-gray-800 px-1 py-0.5 rounded-full">📍 Unverified</span>
                   <button onclick="selectVendor(2)" 
-                          class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                          class="bg-blue-500 text-white px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-blue-600 transition-colors">
                     View Shop
                   </button>
                 </div>
@@ -123,7 +123,7 @@ const CustomerVendorMap = ({
               </div>
               <div class="flex justify-start">
                 <button onclick="selectVendor(2)" 
-                        class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                        class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 transition-colors">
                   View Shop
                 </button>
               </div>
@@ -229,7 +229,7 @@ const CustomerVendorMap = ({
                     <div class="flex items-center gap-1 mt-0.5">
                       ${mobileLocationBadge}
                       <button onclick="selectVendor(${vendor.vendor_id})" 
-                              class="bg-orange-300 text-black px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-orange-400 transition-colors">
+                              class="bg-blue-500 text-white px-1.5 py-0.5 rounded text-[8px] font-medium hover:bg-blue-600 transition-colors">
                         View Shop
                       </button>
                     </div>
@@ -254,7 +254,7 @@ const CustomerVendorMap = ({
                   ` : ''}
                   <div class="flex justify-start">
                     <button onclick="selectVendor(${vendor.vendor_id})" 
-                            class="bg-orange-300 text-black px-4 py-2 rounded text-sm font-medium hover:bg-orange-400 transition-colors">
+                            class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 transition-colors">
                       View Shop
                     </button>
                   </div>
@@ -329,8 +329,13 @@ const CustomerVendorMap = ({
     // Add custom click handlers for vendor selection
     window.selectVendor = (vendorId) => {
       const vendor = vendors.find(v => v.id === vendorId);
-      if (onVendorSelect) {
-        onVendorSelect(vendor);
+      if (vendor) {
+        // First show vendor details in the map popup
+        if (onVendorSelect) {
+          onVendorSelect(vendor);
+        }
+        // Then navigate to the vendor store page
+        window.location.href = `/vendor/${vendorId}/store`;
       }
     };
 
@@ -356,21 +361,29 @@ const CustomerVendorMap = ({
       // Use different marker colors based on location accuracy
       icon: vendor.locationType === 'exact' ? {
         path: 'M12 0C7.6 0 4 3.6 4 8c0 5.4 8 13 8 13s8-7.6 8-13c0-4.4-3.6-8-8-8z',
-        fillColor: '#10b981', // Green for exact location
+        fillColor: '#3b82f6', // Blue for exact location
         fillOpacity: 1,
-        strokeColor: '#065f46',
+        strokeColor: '#1e40af',
         strokeWeight: 2,
         scale: 1.5,
         anchor: { x: 12, y: 24 }
       } : vendor.locationType === 'approximate' ? {
         path: 'M12 0C7.6 0 4 3.6 4 8c0 5.4 8 13 8 13s8-7.6 8-13c0-4.4-3.6-8-8-8z',
-        fillColor: '#f59e0b', // Orange for approximate location
+        fillColor: '#60a5fa', // Light blue for approximate location
         fillOpacity: 0.8,
-        strokeColor: '#b45309',
+        strokeColor: '#3b82f6',
         strokeWeight: 2,
         scale: 1.3,
         anchor: { x: 12, y: 24 }
-      } : undefined, // Use default marker for unverified
+      } : {
+        path: 'M12 0C7.6 0 4 3.6 4 8c0 5.4 8 13 8 13s8-7.6 8-13c0-4.4-3.6-8-8-8z',
+        fillColor: '#93c5fd', // Light blue for unverified location
+        fillOpacity: 0.6,
+        strokeColor: '#3b82f6',
+        strokeWeight: 2,
+        scale: 1.1,
+        anchor: { x: 12, y: 24 }
+      },
       vendorData: vendor // Include full vendor data for click handler
     }));
   }, [vendors]); // Only recalculate when vendors change

@@ -498,6 +498,7 @@ export const Notifications = () => {
             <Link 
               to="/find-vendors" 
               className="absolute left-0 top-0 p-1.5 rounded-lg bg-white hover:bg-gray-100 transition-colors shadow-sm sm:hidden z-10"
+              title="Find nearby Vendors"
             >
               <img 
                 src={findNearbyIcon} 
@@ -512,6 +513,7 @@ export const Notifications = () => {
               <Link 
                 to="/find-vendors" 
                 className="hidden sm:inline text-blue-700 hover:text-blue-800 font-medium text-sm whitespace-nowrap sm:text-base"
+                title="Find nearby Vendors"
               >
                 Find nearby Vendors
               </Link>
@@ -524,6 +526,7 @@ export const Notifications = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Products & Flavors"
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -536,6 +539,7 @@ export const Notifications = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="All Vendor Stores"
                 >
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
@@ -548,6 +552,7 @@ export const Notifications = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Notifications"
                 >
                   <img src={notifIcon} alt="Notifications" className="w-4 h-4 sm:w-5 sm:h-5" />
                   {unreadCount > 0 && (

@@ -272,6 +272,7 @@ export const FindNearbyVendors = () => {
                     ? 'bg-blue-100 hover:bg-blue-200' 
                     : 'bg-white hover:bg-gray-100'
                 }`}
+                title="Find nearby Vendors"
               >
                 <img src={findNearbyIcon} alt="Find nearby Vendors" className="w-5 h-5" />
               </Link>
@@ -286,6 +287,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Products & Flavors"
                 >
                   <img src={productsIcon} alt="Products" className="w-4 h-4" />
                 </button>
@@ -298,6 +300,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="All Vendor Stores"
                 >
                   <img src={shopsIcon} alt="Shops" className="w-4 h-4" />
                 </button>
@@ -310,6 +313,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Notifications"
                 >
                   <img
                     src={notifIcon}
@@ -448,6 +452,7 @@ export const FindNearbyVendors = () => {
                     ? 'bg-blue-100 hover:bg-blue-200 text-blue-800' 
                     : 'text-blue-700 hover:text-blue-800 hover:bg-gray-100'
                 }`}
+                title="Find nearby Vendors"
               >
                 Find nearby Vendors
               </Link>
@@ -462,6 +467,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Products & Flavors"
                 >
                   <img src={productsIcon} alt="Products" className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
@@ -474,6 +480,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="All Vendor Stores"
                 >
                   <img src={shopsIcon} alt="Shops" className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
@@ -486,6 +493,7 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200' 
                       : 'hover:bg-gray-100'
                   }`}
+                  title="Notifications"
                 >
                   <img
                     src={notifIcon}
