@@ -64,13 +64,13 @@ export const Nav = () => {
                             </button>
                             <Link 
                                 to="/login"
-                                className="px-4 py-2 text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium"
+                                className="px-3 sm:px-4 py-2 text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium text-sm sm:text-base"
                             >
                                 Login
                             </Link>
                             <Link 
                                 to="/user-register"
-                                className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                                className="px-4 sm:px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 text-sm sm:text-base"
                             >
                                 Get Started
                             </Link>
@@ -118,14 +118,14 @@ export const Nav = () => {
                                 <div className="border-t border-gray-200 my-2"></div>
                                 <Link 
                                     to="/login"
-                                    className="block px-3 py-2 text-gray-700 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors duration-200 font-medium"
+                                    className="block px-3 py-2 text-gray-700 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors duration-200 font-medium text-sm"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
                                     Login
                                 </Link>
                                 <Link 
                                     to="/user-register"
-                                    className="block px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium text-center"
+                                    className="block px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium text-center text-sm"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
                                     Get Started
@@ -225,16 +225,16 @@ export const NavWithLogo = () => {
                 {user && user.role ? (
                     <ProfileDropdown />
                 ) : (
-                    <div className="flex items-center space-x-4 mt-1">
+                    <div className="flex items-center space-x-2 sm:space-x-4 mt-1">
                         <Link
                             to="/login"
-                            className="px-4 py-2 text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium"
+                            className="px-2 sm:px-4 py-2 text-gray-700 hover:text-blue-500 transition-colors duration-200 font-medium text-sm sm:text-base"
                         >
                             Login
                         </Link>
                         <Link
                             to="/user-register"
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium"
+                            className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium text-sm sm:text-base"
                         >
                             Register
                         </Link>
