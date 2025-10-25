@@ -14,8 +14,11 @@ export const AdminDashboard = () => {
   const [totalVendors, setTotalVendor] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0)
   const [orders, setOrders] = useState([])
+  const [filteredOrders, setFilteredOrders] = useState([])
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
 
   useEffect(()=>{
     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -43,15 +46,18 @@ export const AdminDashboard = () => {
         if (res.data.success) {
           console.log('Number of orders:', res.data.orders?.length || 0);
           setOrders(res.data.orders || []);
+          setFilteredOrders(res.data.orders || []);
           setError(null);
         } else {
           setError('Failed to fetch order records: ' + res.data.error);
           setOrders([]);
+          setFilteredOrders([]);
         }
       }catch(err){
         console.log('Error fetching orders:', err);
         setError('Failed to fetch order records: ' + (err.response?.data?.error || err.message));
         setOrders([]);
+        setFilteredOrders([]);
       } finally {
         setLoading(false);
       }
@@ -59,6 +65,36 @@ export const AdminDashboard = () => {
     fetchOrderRecords();
   },[])
 
+  // Filter orders based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredOrders(orders);
+    } else {
+      const filtered = orders.filter(order => 
+        order.order_id.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredOrders(filtered);
+    }
+  }, [searchTerm, orders]);
+
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearch = () => {
+    setSearchTerm(searchInput);
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    setSearchTerm('');
+  };
 
   return (
     <>
@@ -99,11 +135,50 @@ export const AdminDashboard = () => {
 
         {/* table */}
         <div className="bg-[#D4F6FF] p-4 sm:p-6 rounded-xl shadow-md mt-10 sm:mt-16 lg:mt-20">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold">Bookings</h2>
-            <span className="text-sm text-gray-600">
-              {orders.length} {orders.length === 1 ? 'order' : 'orders'}
-            </span>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <h2 className="text-xl sm:text-2xl font-bold">Bookings</h2>
+              <span className="text-sm text-gray-600">
+                {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
+                {searchTerm && ` (filtered from ${orders.length})`}
+              </span>
+            </div>
+            
+             {/* Search Input */}
+             <div className="relative w-full sm:w-auto">
+               <div className="flex items-center bg-white rounded-lg border border-gray-300 shadow-sm">
+                 <input
+                   type="text"
+                   placeholder="Search by Order ID..."
+                   value={searchInput}
+                   onChange={handleSearchInputChange}
+                   onKeyPress={handleSearchKeyPress}
+                   className="w-full sm:w-64 px-4 py-2 bg-white rounded-lg text-sm outline-none focus:outline-none"
+                 />
+                 <div className="flex items-center pr-2">
+                   {(searchInput || searchTerm) && (
+                     <button
+                       onClick={clearSearch}
+                       className="text-gray-400 hover:text-gray-600 transition-colors p-1 mr-1"
+                       title="Clear search"
+                     >
+                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                       </svg>
+                     </button>
+                   )}
+                   <button
+                     onClick={handleSearch}
+                     className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md transition-colors"
+                     title="Search"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                     </svg>
+                   </button>
+                 </div>
+               </div>
+             </div>
           </div>
 
           {/* Loading State */}
@@ -129,7 +204,8 @@ export const AdminDashboard = () => {
           {/* Debug Info */}
           {!loading && !error && (
             <div className="text-sm text-gray-500 mb-4">
-              Found {orders.length} booking records
+              Found {filteredOrders.length} booking records
+              {searchTerm && ` matching "${searchTerm}"`}
             </div>
           )}
 
@@ -152,7 +228,7 @@ export const AdminDashboard = () => {
               </thead>
               <tbody className="bg-white">
                 {
-                  orders.map((order) => {
+                  filteredOrders.map((order) => {
                     return (
                       <tr className="hover:bg-blue-100" key={order.order_id}>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
@@ -220,7 +296,7 @@ export const AdminDashboard = () => {
           {/* Mobile Card View */}
           {!loading && !error && (
           <div className="md:hidden max-h-96 overflow-y-auto space-y-4 pr-2">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <div key={order.order_id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -312,9 +388,9 @@ export const AdminDashboard = () => {
           )}
 
           {/* Empty State */}
-          {!loading && !error && orders.length === 0 && (
+          {!loading && !error && filteredOrders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No bookings found.
+              {searchTerm ? `No bookings found matching "${searchTerm}".` : 'No bookings found.'}
             </div>
           )}
         </div>
