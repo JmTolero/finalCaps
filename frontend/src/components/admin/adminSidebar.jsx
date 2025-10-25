@@ -61,116 +61,116 @@ export const Sidebar = () => {
   return (
     <div
       className={`bg-[#BBDEF8] h-[calc(100vh-4rem)] fixed top-16 z-50 transition-all duration-300 overflow-y-auto shadow-2xl ${
-        isOpen ? "w-64 left-0" : "w-64 -left-64 lg:w-20 lg:left-0"
+        isOpen ? "w-64 sm:w-72 left-0" : "w-64 sm:w-72 -left-64 sm:-left-72 lg:w-20 lg:left-0"
       }`}
     >
-      <div className="p-4 pt-8">
+      <div className="p-3 sm:p-4 pt-6 sm:pt-8">
         {/* Menu items */}
-        <ul className="flex flex-col space-y-3">
+        <ul className="flex flex-col space-y-2 sm:space-y-3">
 
         <Link to="/admin/dashboard" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/dashboard')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={adminIcon} alt="admin" className={`w-8 h-8 flex-shrink-0 object-contain ${
+            <img src={adminIcon} alt="admin" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
               isActiveLink('/admin/dashboard') ? 'brightness-0 invert' : ''
             }`}/>
-            {isOpen && <span className="font-medium text-sm">Dashboard</span>}
+            {isOpen && <span className="font-medium text-xs">Dashboard</span>}
           </li>
         </Link>
         
         <Link to="/admin/vendor-approval" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/vendor-approval')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={vendorApproval} alt="vendorApproval" className={`w-8 h-8 flex-shrink-0 object-contain ${
+            <img src={vendorApproval} alt="vendorApproval" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
               isActiveLink('/admin/vendor-approval') ? 'brightness-0 invert' : ''
             }`}/>
-            {isOpen && <span className="font-medium text-sm">Vendor Approval</span>}
+            {isOpen && <span className="font-medium text-xs">Vendor Approval</span>}
           </li>
         </Link>
         
         <Link to="/admin/vendor-locations" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/vendor-locations')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={vendorLocationManagerIcon} alt="vendor locations" className={`w-8 h-8 flex-shrink-0 object-contain ${
+            <img src={vendorLocationManagerIcon} alt="vendor locations" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
               isActiveLink('/admin/vendor-locations') ? 'brightness-0 invert' : ''
             }`}/>
-            {isOpen && <span className="font-medium text-sm">Vendor Locations</span>}
+            {isOpen && <span className="font-medium text-xs">Vendor Locations</span>}
           </li>
         </Link>
         
         <Link to="/admin/user-management" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/user-management')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={usermanagement} alt="usermanagement" className={`w-8 h-8 flex-shrink-0 object-contain ${
+            <img src={usermanagement} alt="usermanagement" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
               isActiveLink('/admin/user-management') ? 'brightness-0 invert' : ''
             }`}/>
-            {isOpen && <span className="font-medium text-sm">User Management</span>}
+            {isOpen && <span className="font-medium text-xs">User Management</span>}
           </li>
         </Link>
         
         <Link to="/admin/feedback" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/feedback')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={feedback} alt="feedback" className={`w-8 h-8 flex-shrink-0 object-contain ${
+            <img src={feedback} alt="feedback" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
               isActiveLink('/admin/feedback') ? 'brightness-0 invert' : ''
             }`}/>
-            {isOpen && <span className="font-medium text-sm">Feedback</span>}
+            {isOpen && <span className="font-medium text-xs">Feedback</span>}
           </li>
         </Link>
 
         <Link to="/admin/subscriptions" onClick={handleLinkClick}>
           <li className={`w-full flex ${
             isOpen
-              ? "items-center gap-3 px-4 py-3"
-              : "items-center justify-center p-3"
+              ? "items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+              : "items-center justify-center p-2 sm:p-3"
           } rounded-lg transition-all duration-200 ${
             isActiveLink('/admin/subscriptions')
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <div className={`w-8 h-8 flex-shrink-0 flex items-center justify-center ${
+            <div className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center ${
               isActiveLink('/admin/subscriptions') ? 'text-white' : 'text-gray-700'
             }`}>
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"/>
               </svg>
             </div>
-            {isOpen && <span className="font-medium text-sm">Subscriptions</span>}
+            {isOpen && <span className="font-medium text-xs">Subscriptions</span>}
           </li>
         </Link>
 

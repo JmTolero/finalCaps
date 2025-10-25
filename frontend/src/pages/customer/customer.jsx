@@ -129,7 +129,7 @@ export const Customer = () => {
     setSearchInput('');
     setSearchTerm('');
   }, []);
-
+  
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
     setShowFeedbackDropdown(false);
@@ -431,8 +431,8 @@ export const Customer = () => {
     
     // Fetch notifications only if not already loaded
     if (!dataLoaded.notifications) {
-      fetchNotifications();
-      fetchUnreadCount();
+    fetchNotifications();
+    fetchUnreadCount();
       setDataLoaded(prev => ({ ...prev, notifications: true }));
     }
   }, [activeView, fetchNotifications, fetchUnreadCount, dataLoaded]);
@@ -2088,8 +2088,8 @@ export const Customer = () => {
               <div 
                 id="status-message"
                 className={`p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 text-sm sm:text-base ${
-                  status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
-                  'bg-red-50 text-red-700 border border-red-200'
+                status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
+                'bg-red-50 text-red-700 border border-red-200'
                 }`}
               >
                 {status.message}
@@ -2241,12 +2241,12 @@ export const Customer = () => {
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                                     <h3 className="font-semibold text-base sm:text-lg">{address.address_label}</h3>
                                     <div className="flex flex-wrap gap-1 sm:gap-2">
-                                      {address.is_default && (
-                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                          Default
-                                        </span>
-                                      )}
-                                    </div>
+                                    {address.is_default && (
+                                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
                                   </div>
                                   <p className="text-gray-600 text-sm sm:text-base break-words">
                                     {address.unit_number && `${address.unit_number}, `}
@@ -2804,11 +2804,11 @@ export const Customer = () => {
                           className="w-3 h-3 flex-shrink-0" 
                         />
                         <span className="text-xs text-gray-600 truncate" title={flavor.location && flavor.location !== 'Location not specified' ? flavor.location : 'Location not specified'}>
-                          {flavor.location && flavor.location !== 'Location not specified' 
-                            ? flavor.location 
-                            : 'Location not specified'
-                          }
-                        </span>
+                        {flavor.location && flavor.location !== 'Location not specified' 
+                          ? flavor.location 
+                          : 'Location not specified'
+                        }
+                      </span>
                       </div>
                     </div>
 

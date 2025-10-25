@@ -201,16 +201,16 @@ const VendorLocationManager = () => {
   }
 
   return (
-    <div className="space-y-6 h-full overflow-hidden flex flex-col">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6 h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm p-6 flex-shrink-0">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Vendor Location Management</h2>
-        <p className="text-gray-600">Manage and update all vendor store locations</p>
+      <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3 lg:p-4 xl:p-6 flex-shrink-0">
+        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Vendor Location Management</h2>
+        <p className="text-sm sm:text-base text-gray-600">Manage and update all vendor store locations</p>
       </div>
 
       {/* Status Messages */}
       {status.type && (
-        <div className={`p-4 rounded-lg flex-shrink-0 ${
+        <div className={`p-2 sm:p-3 lg:p-4 rounded-lg flex-shrink-0 ${
           status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 
           status.type === 'warning' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
           'bg-red-50 text-red-700 border border-red-200'
@@ -222,25 +222,26 @@ const VendorLocationManager = () => {
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow-sm flex flex-col flex-1 min-h-0">
         <div className="border-b border-gray-200 flex-shrink-0">
-          <nav className="flex space-x-8 px-6 overflow-x-auto">
+          <nav className="flex space-x-1 sm:space-x-2 lg:space-x-4 px-2 sm:px-4 lg:px-6 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                className={`py-2 sm:py-3 lg:py-4 px-1 sm:px-2 lg:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                <span className="mr-1 sm:mr-2 text-xs sm:text-sm">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             ))}
           </nav>
         </div>
 
-        <div className="p-6 flex-1 overflow-hidden">
+        <div className="p-3 sm:p-4 lg:p-6 flex-1 overflow-hidden">
           {/* All Locations Tab */}
           {activeTab === 'all' && (
             <div className="h-full overflow-y-auto">
@@ -250,9 +251,9 @@ const VendorLocationManager = () => {
                   <p className="text-lg">No vendor locations found</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                   {vendors.map((vendor) => (
-                  <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-4 md:p-6">
+                  <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
                     {/* Vendor Header */}
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4 space-y-2 md:space-y-0">
                       <div className="flex-1">
@@ -320,44 +321,44 @@ const VendorLocationManager = () => {
 
           {/* Statistics Tab */}
           {activeTab === 'stats' && (
-            <div className="h-full overflow-y-auto space-y-6">
+            <div className="h-full overflow-y-auto space-y-3 sm:space-y-4 lg:space-y-6">
               {stats && (
                 <>
                   {/* Overall Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4 md:p-6">
-                      <h3 className="text-sm md:text-lg font-semibold text-blue-900">Total Vendors</h3>
-                      <p className="text-xl md:text-3xl font-bold text-blue-600">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+                    <div className="bg-blue-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                      <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-blue-900">Total Vendors</h3>
+                      <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-blue-600">
                         {stats.stats?.total_vendors || 0}
                       </p>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-4 md:p-6">
-                      <h3 className="text-sm md:text-lg font-semibold text-green-900">With Locations</h3>
-                      <p className="text-xl md:text-3xl font-bold text-green-600">
+                    <div className="bg-green-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                      <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-green-900">With Locations</h3>
+                      <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-green-600">
                         {stats.stats?.vendors_with_locations || 0}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-4 md:p-6">
-                      <h3 className="text-sm md:text-lg font-semibold text-yellow-900">Without Locations</h3>
-                      <p className="text-xl md:text-3xl font-bold text-yellow-600">
+                    <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                      <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-yellow-900">Without Locations</h3>
+                      <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-yellow-600">
                         {stats.stats?.vendors_without_locations || 0}
                       </p>
                     </div>
                   </div>
 
                   {/* Simple Info */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Location Overview</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-700">Coverage</span>
-                        <span className="text-sm text-gray-500">
+                  <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6">
+                    <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">Location Overview</h3>
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                        <span className="text-xs sm:text-sm text-gray-700">Coverage</span>
+                        <span className="text-xs text-gray-500">
                           {stats.stats?.vendors_with_locations || 0} out of {stats.stats?.total_vendors || 0} vendors have business locations set
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-blue-600 h-1.5 sm:h-2 rounded-full" 
                           style={{ 
                             width: `${stats.stats?.total_vendors > 0 
                               ? (stats.stats.vendors_with_locations / stats.stats.total_vendors) * 100 
@@ -443,9 +444,9 @@ const VendorLocationManager = () => {
                     <p>No locations found matching your search criteria</p>
                   </div>
                 ) : (
-                  <div className="space-y-4 overflow-y-auto max-h-full">
+                  <div className="space-y-2 sm:space-y-3 lg:space-y-4 overflow-y-auto max-h-full">
                     {vendors.map((vendor) => (
-                      <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-3 md:p-4">
+                      <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4">
                         <h4 className="font-semibold text-gray-900 text-sm md:text-base">{vendor.store_name}</h4>
                         <p className="text-xs md:text-sm text-gray-600 mb-3 break-words">
                           <span className="block md:inline">{vendor.vendor_name}</span>

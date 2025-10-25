@@ -251,15 +251,15 @@ export const AdminVendorApproval = () => {
   }
 
   return (
-    <main className="w-full py-6 sm:py-10 min-h-screen overflow-x-hidden">
-      <div className="px-4 sm:px-6 lg:px-8 max-w-full mt-10">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Vendor Approval</h1>
+    <main className="w-full py-3 sm:py-6 lg:py-10 min-h-screen overflow-x-hidden">
+      <div className="px-2 sm:px-4 lg:px-6 xl:px-8 max-w-full mt-6 sm:mt-8 lg:mt-10">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 lg:mb-6">Vendor Approval</h1>
       
       {/* Tabs */}
-      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1 mb-6">
+      <div className="flex flex-row space-x-1 mb-3 sm:mb-4 lg:mb-6">
         <button
           onClick={() => handleTabChange('allVendors')}
-          className={`px-4 sm:px-6 py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 ${
+          className={`px-3 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-sm sm:text-base ${
             activeTab === 'allVendors'
               ? 'bg-[#FFDDAE] text-gray-600'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -269,7 +269,7 @@ export const AdminVendorApproval = () => {
         </button>
         <button
           onClick={() => handleTabChange('requestedApproval')}
-          className={`px-4 sm:px-6 py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 ${
+          className={`px-3 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-sm sm:text-base ${
             activeTab === 'requestedApproval'
               ? 'bg-[#FFDDAE] text-gray-600'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -280,17 +280,17 @@ export const AdminVendorApproval = () => {
       </div>
 
       {/* Search Bar and Status Filter */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+      <div className="mb-3 sm:mb-4 lg:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center sm:justify-between">
         <div className="relative max-w-md flex-1">
           <input
             type="text"
             placeholder={activeTab === 'allVendors' ? 'Search Vendor Name' : 'Search Vendor ID'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            className="w-full px-3 sm:px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm sm:text-base"
           />
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
@@ -298,11 +298,11 @@ export const AdminVendorApproval = () => {
         
         {/* Status Filter */}
         <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Status:</label>
+          <label className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Filter by Status:</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-w-[120px]"
+            className="px-2 sm:px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-w-[100px] sm:min-w-[120px] text-sm sm:text-base"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -314,10 +314,10 @@ export const AdminVendorApproval = () => {
       </div>
 
       {/* Content Area */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <h2 className="text-lg sm:text-xl font-semibold">
+      <div className="bg-white rounded-lg shadow-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 sm:mb-3 lg:mb-4 space-y-1 sm:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
+            <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
               {activeTab === 'allVendors' ? 'All Vendors' : 'Registration Pending Approval'}
             </h2>
             {lastUpdated && (
@@ -326,25 +326,25 @@ export const AdminVendorApproval = () => {
               </span>
             )}
           </div>
-          <span className="text-sm text-gray-500">
+          <span className="text-xs sm:text-sm text-gray-500">
             {filteredVendors.length} {filteredVendors.length === 1 ? 'vendor' : 'vendors'}
           </span>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-8">
-            <div className="text-lg text-gray-500">Loading vendors...</div>
+          <div className="text-center py-6 sm:py-8">
+            <div className="text-base sm:text-lg text-gray-500">Loading vendors...</div>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="text-center py-8">
-            <div className="text-red-500">{error}</div>
+          <div className="text-center py-6 sm:py-8">
+            <div className="text-red-500 text-sm sm:text-base">{error}</div>
             <button 
               onClick={fetchVendors}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="mt-2 px-3 sm:px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm sm:text-base"
             >
               Retry
             </button>
@@ -428,28 +428,28 @@ export const AdminVendorApproval = () => {
             </div>
 
             {/* Mobile Card View - Shows on screens below 768px */}
-            <div className="md:hidden max-h-96 overflow-y-auto overflow-x-hidden space-y-4 pr-2 max-w-full">
+            <div className="md:hidden max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 pr-1 sm:pr-2 max-w-full">
               {filteredVendors.map((vendor) => (
-                <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-3 sm:space-y-0">
+                <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:bg-gray-50">
+                  <div className="flex flex-col space-y-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{vendor.store_name || 'N/A'}</h3>
-                      <p className="text-gray-600 text-sm">Owner: {(vendor.fname || '') + ' ' + (vendor.lname || '')}</p>
-                      <p className="text-gray-600 text-sm">{vendor.email || 'N/A'}</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(vendor.status)}`}>
+                      <h3 className="font-semibold text-base sm:text-lg">{vendor.store_name || 'N/A'}</h3>
+                      <p className="text-gray-600 text-xs sm:text-sm">Owner: {(vendor.fname || '') + ' ' + (vendor.lname || '')}</p>
+                      <p className="text-gray-600 text-xs sm:text-sm">{vendor.email || 'N/A'}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mt-2">
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(vendor.status)}`}>
                           {getStatusDisplayName(vendor.status)}
                         </span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs sm:text-sm text-gray-500">
                           {vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A'}
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-row sm:flex-col space-x-2 sm:space-x-0 sm:space-y-2">
+                    <div className="flex flex-row space-x-2">
                       {(!vendor.status || vendor.status.toLowerCase() !== 'approved') && (
                         <button
                           onClick={() => showConfirmDialog(vendor, 'approved')}
-                          className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 flex-1 sm:flex-none"
+                          className="px-2 sm:px-3 py-1 bg-green-500 text-white text-xs sm:text-sm rounded hover:bg-green-600 flex-1"
                         >
                           Approve
                         </button>
@@ -457,7 +457,7 @@ export const AdminVendorApproval = () => {
                       {(!vendor.status || vendor.status.toLowerCase() !== 'rejected') && (
                         <button
                           onClick={() => showConfirmDialog(vendor, 'rejected')}
-                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 flex-1 sm:flex-none"
+                          className="px-2 sm:px-3 py-1 bg-red-500 text-white text-xs sm:text-sm rounded hover:bg-red-600 flex-1"
                         >
                           Reject
                         </button>
@@ -465,7 +465,7 @@ export const AdminVendorApproval = () => {
                       {vendor.status && vendor.status.toLowerCase() === 'approved' && (
                         <button
                           onClick={() => showConfirmDialog(vendor, 'suspended')}
-                          className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 flex-1 sm:flex-none"
+                          className="px-2 sm:px-3 py-1 bg-orange-500 text-white text-xs sm:text-sm rounded hover:bg-orange-600 flex-1"
                         >
                           Suspend
                         </button>
@@ -480,20 +480,20 @@ export const AdminVendorApproval = () => {
 
         {/* Requested Approval Tab Content */}
         {!loading && !error && activeTab === 'requestedApproval' && (
-          <div className="max-h-96 overflow-y-auto overflow-x-hidden space-y-4 pr-2 max-w-full">
+          <div className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 pr-1 sm:pr-2 max-w-full">
             {filteredVendors.map((vendor) => (
               <div 
                 key={vendor.vendor_id} 
-                className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:bg-gray-50 cursor-pointer transition-colors"
+                className="border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 hover:bg-gray-50 cursor-pointer transition-colors"
                 onClick={() => handleViewDetails(vendor.vendor_id)}
               >
                 <div>
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-lg sm:text-xl">{vendor.store_name || 'N/A'}</h3>
-                      <span className="text-sm text-blue-600 font-medium">(click to view full details)</span>
+                      <h3 className="font-medium text-base sm:text-lg lg:text-xl">{vendor.store_name || 'N/A'}</h3>
+                      <span className="text-xs sm:text-sm text-blue-600 font-medium">(click to view full details)</span>
                     </div>
-                    <div className="space-y-1 mt-2 text-sm sm:text-base">
+                    <div className="space-y-1 mt-2 text-xs sm:text-sm lg:text-base">
                       <p className="text-gray-600">Owner: {(vendor.fname || '') + ' ' + (vendor.lname || '')}</p>
                       <p className="text-gray-600">Email: {vendor.email || 'N/A'}</p>
                       <p className="text-gray-500">
@@ -502,19 +502,19 @@ export const AdminVendorApproval = () => {
                     </div>
                     
                     {/* Document Status */}
-                    <div className="mt-3 flex flex-wrap gap-3">
+                    <div className="mt-3 flex flex-wrap gap-2 sm:gap-3">
                       {vendor.valid_id_url && (
-                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           📄 Valid ID Uploaded
                         </span>
                       )}
                       {vendor.business_permit_url && (
-                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           📄 Business Permit Uploaded
                         </span>
                       )}
                       {vendor.proof_image_url && (
-                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                        <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           📄 Proof Image Uploaded
                         </span>
                       )}
@@ -528,8 +528,10 @@ export const AdminVendorApproval = () => {
 
         {/* Empty State */}
         {!loading && !error && filteredVendors.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No {activeTab === 'allVendors' ? 'vendors' : 'pending requests'} found.
+          <div className="text-center py-6 sm:py-8 text-gray-500">
+            <div className="text-sm sm:text-base">
+              No {activeTab === 'allVendors' ? 'vendors' : 'pending requests'} found.
+            </div>
           </div>
         )}
       </div>
