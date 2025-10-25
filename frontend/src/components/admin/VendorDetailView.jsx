@@ -216,12 +216,12 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
           <div className="mb-2 sm:mb-3">
             <button
               onClick={onBack}
-              className="flex items-center text-gray-600 hover:text-gray-800"
+              className="flex items-center bg-white text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 transition-colors duration-200 shadow-sm hover:shadow-md"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-sm sm:text-base">Back</span>
+              <span className="text-sm sm:text-base font-medium">Back</span>
             </button>
           </div>
           <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold">Vendor Details</h1>
@@ -429,16 +429,16 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
         {/* Action Buttons - Outside the flex container, positioned at bottom right */}
         <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
           <button
-            onClick={() => showConfirmDialog('rejected')}
-            className="px-4 sm:px-6 py-2 sm:py-3 bg-red-500 text-white font-medium rounded-full hover:bg-red-600 transition-colors text-sm sm:text-base"
-          >
-            Reject
-          </button>
-          <button
             onClick={() => showConfirmDialog('approved')}
             className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white font-medium rounded-full hover:bg-blue-600 transition-colors text-sm sm:text-base"
           >
             Approve
+          </button>
+          <button
+            onClick={() => showConfirmDialog('rejected')}
+            className="px-4 sm:px-6 py-2 sm:py-3 bg-red-500 text-white font-medium rounded-full hover:bg-red-600 transition-colors text-sm sm:text-base"
+          >
+            Reject
           </button>
         </div>
       </div>

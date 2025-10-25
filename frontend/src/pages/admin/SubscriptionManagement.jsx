@@ -116,52 +116,52 @@ const SubscriptionManagement = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold mt-12">Subscription Management</h1>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mt-6 sm:mt-8 lg:mt-12">Subscription Management</h1>
       </div>
 
       {/* Revenue Overview */}
       {revenue && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p className="text-2xl font-bold">₱{revenue.total_monthly_revenue.toLocaleString()}</p>
+              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600" />
+              <div className="ml-2 sm:ml-3 lg:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly Revenue</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold">₱{revenue.total_monthly_revenue.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
             <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Vendors</p>
-                <p className="text-2xl font-bold">{revenue.total_vendors}</p>
+              <Users className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600" />
+              <div className="ml-2 sm:ml-3 lg:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Vendors</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{revenue.total_vendors}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
             <div className="flex items-center">
-              <Star className="h-8 w-8 text-yellow-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Professional</p>
-                <p className="text-2xl font-bold">
+              <Star className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-yellow-600" />
+              <div className="ml-2 sm:ml-3 lg:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Professional</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold">
                   {revenue.plans.find(p => p.subscription_plan === 'professional')?.vendor_count || 0}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
             <div className="flex items-center">
-              <Crown className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Premium</p>
-                <p className="text-2xl font-bold">
+              <Crown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-purple-600" />
+              <div className="ml-2 sm:ml-3 lg:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Premium</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold">
                   {revenue.plans.find(p => p.subscription_plan === 'premium')?.vendor_count || 0}
                 </p>
               </div>
@@ -171,61 +171,61 @@ const SubscriptionManagement = () => {
       )}
 
       {/* Tabs */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveTab('vendors')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
                 activeTab === 'vendors'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Vendor Subscriptions
+              <span className="hidden sm:inline">Vendor Subscriptions</span>
+              <span className="sm:hidden">Vendors</span>
             </button>
             <button
               onClick={() => setActiveTab('plans')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
                 activeTab === 'plans'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Subscription Plans
+              <span className="hidden sm:inline">Subscription Plans</span>
+              <span className="sm:hidden">Plans</span>
             </button>
           </nav>
         </div>
 
         {activeTab === 'vendors' && (
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold">Vendor Subscriptions</h2>
+            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold">Vendor Subscriptions</h2>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
+            <div className="p-3 sm:p-4 lg:p-6">
+              <div className="space-y-3 sm:space-y-4">
                 {vendors.map((vendor) => (
-                  <div key={vendor.vendor_id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <h3 className="font-semibold">{vendor.store_name || 'Unnamed Store'}</h3>
-                          <p className="text-sm text-gray-600">{vendor.fname} {vendor.lname}</p>
-                          <p className="text-sm text-gray-500">{vendor.email}</p>
-                        </div>
+                  <div key={vendor.vendor_id} className="border rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm sm:text-base truncate">{vendor.store_name || 'Unnamed Store'}</h3>
+                        <p className="text-xs sm:text-sm text-gray-600">{vendor.fname} {vendor.lname}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{vendor.email}</p>
                       </div>
 
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                           <div className="flex items-center space-x-2">
                             {getPlanIcon(vendor.subscription_plan)}
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPlanColor(vendor.subscription_plan)}`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPlanColor(vendor.subscription_plan)}`}>
                               {vendor.subscription_plan}
                             </span>
                           </div>
                           
-                          <div className="text-sm text-gray-600 mt-1">
-                            <div className="flex items-center space-x-4">
+                          <div className="text-xs sm:text-sm text-gray-600">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                               <span className={getUsageColor(vendor.current_usage.flavors, vendor.flavor_limit)}>
                                 Flavors: {vendor.current_usage.flavors}/{vendor.flavor_limit === -1 ? '∞' : vendor.flavor_limit}
                               </span>
@@ -240,7 +240,7 @@ const SubscriptionManagement = () => {
                           value={vendor.subscription_plan}
                           onChange={(e) => updateVendorSubscription(vendor.vendor_id, e.target.value)}
                           disabled={updating === vendor.vendor_id}
-                          className="block w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="block w-full sm:w-32 px-2 sm:px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="free">Free</option>
                           <option value="professional">Professional</option>
@@ -256,33 +256,33 @@ const SubscriptionManagement = () => {
         )}
 
         {activeTab === 'plans' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Free Plan */}
               <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold flex items-center space-x-2">
-                    <Gift className="h-5 w-5" />
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
+                    <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
                     <span>Free Plan</span>
                   </h3>
                 </div>
-                <div className="p-6">
-                  <div className="text-3xl font-bold mb-4">₱0<span className="text-lg font-normal">/month</span></div>
-                  <ul className="space-y-2 text-sm">
+                <div className="p-4 sm:p-6">
+                  <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">₱0<span className="text-sm sm:text-lg font-normal">/month</span></div>
+                  <ul className="space-y-2 text-xs sm:text-sm">
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Up to 5 flavors</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Up to 5 drums</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>50 orders/month</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Basic analytics</span>
                     </li>
                   </ul>
@@ -291,33 +291,33 @@ const SubscriptionManagement = () => {
 
               {/* Professional Plan */}
               <div className="bg-white rounded-lg shadow border-blue-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold flex items-center space-x-2">
-                    <Star className="h-5 w-5 text-blue-600" />
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
+                    <Star className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     <span>Professional Plan</span>
                   </h3>
                 </div>
-                <div className="p-6">
-                  <div className="text-3xl font-bold mb-4">₱999<span className="text-lg font-normal">/month</span></div>
-                  <ul className="space-y-2 text-sm">
+                <div className="p-4 sm:p-6">
+                  <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">₱999<span className="text-sm sm:text-lg font-normal">/month</span></div>
+                  <ul className="space-y-2 text-xs sm:text-sm">
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Up to 15 flavors</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Up to 15 drums</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>200 orders/month</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Advanced analytics</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Priority support</span>
                     </li>
                   </ul>
@@ -326,33 +326,33 @@ const SubscriptionManagement = () => {
 
               {/* Premium Plan */}
               <div className="bg-white rounded-lg shadow border-purple-200">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold flex items-center space-x-2">
-                    <Crown className="h-5 w-5 text-purple-600" />
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
+                    <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                     <span>Premium Plan</span>
                   </h3>
                 </div>
-                <div className="p-6">
-                  <div className="text-3xl font-bold mb-4">₱1,999<span className="text-lg font-normal">/month</span></div>
-                  <ul className="space-y-2 text-sm">
+                <div className="p-4 sm:p-6">
+                  <div className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">₱1,999<span className="text-sm sm:text-lg font-normal">/month</span></div>
+                  <ul className="space-y-2 text-xs sm:text-sm">
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Unlimited flavors</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Unlimited drums</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Unlimited orders</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>All Professional features</span>
                     </li>
                     <li className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       <span>Dedicated account manager</span>
                     </li>
                   </ul>
