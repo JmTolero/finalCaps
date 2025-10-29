@@ -28,6 +28,7 @@ const passwordResetRoutes = require('./routes/shared/passwordResetRoutes');
 const testEmailRoutes = require('./routes/testEmailRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const vendorQRRoutes = require('./routes/vendorQRRoutes');
+const availabilityRoutes = require('./routes/shared/availabilityRoutes');
 const { validateRequiredFields, trimObjectStrings } = require('./utils/validation');
 
 const app = express();
@@ -138,6 +139,7 @@ app.use('/api/test', testEmailRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/vendor', vendorQRRoutes);
 app.use('/api/subscription', require('./routes/vendor/subscriptionRoutes'));
+app.use('/api/availability', availabilityRoutes);
 
 // app.get('/users', async (req, res) => {
 //     try {
@@ -168,6 +170,26 @@ app.get('/db/health', async (req, res) => {
         });
     }
 });
+
+// Test endpoint for reservation release (development only)
+if (process.env.NODE_ENV === 'development') {
+    app.post('/api/test/release-reservations', async (req, res) => {
+        try {
+            const { releaseExpiredReservations } = require('./services/reservationReleaseJob');
+            await releaseExpiredReservations();
+            res.json({
+                success: true,
+                message: 'Reservation release job executed manually'
+            });
+        } catch (error) {
+            console.error('Error in test endpoint:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    });
+}
 
 // app.post('/login', async (req, res) => {
 //     try {

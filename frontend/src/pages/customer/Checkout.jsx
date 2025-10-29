@@ -459,13 +459,15 @@ export const Checkout = () => {
       setIsConfirmingOrder(true);
       
       // Only save order to database if not already saved
+      let orderIds;
       if (!savedOrderId) {
         console.log('💾 Saving order to database...');
-        const orderId = await saveOrderToDatabase();
-        setSavedOrderId(orderId);
-        console.log('✅ Order saved successfully:', orderId);
+        orderIds = await saveOrderToDatabase();
+        setSavedOrderId(orderIds);
+        console.log('✅ Order saved successfully:', orderIds);
       } else {
-        console.log('⚠️ Order already saved, skipping save operation');
+        console.log('⚠️ Order already saved, using existing savedOrderId');
+        orderIds = savedOrderId;
       }
       
       // Clear cart if this was a cart checkout
@@ -475,26 +477,33 @@ export const Checkout = () => {
       
       setShowReceipt(false);
       
-      // Prepare order details for confirmation page
-      const orderDetails = {
-        vendorName: orderData.vendorName,
-        totalAmount: getTotalAmount(),
-        deliveryAddress: deliveryAddress || userAddress,
-        deliveryDateTime: deliveryDateTime,
-        orderId: Array.isArray(savedOrderId) ? savedOrderId[0] : savedOrderId
-      };
+      // Extract order ID for navigation
+      let firstOrderId;
+      if (Array.isArray(orderIds) && orderIds.length > 0) {
+        firstOrderId = orderIds[0]?.order_id;
+      } else if (orderIds && typeof orderIds === 'object') {
+        firstOrderId = orderIds.order_id;
+      } else {
+        firstOrderId = orderIds;
+      }
       
-      // Save order details to session storage for confirmation page
-      sessionStorage.setItem('lastOrder', JSON.stringify(orderDetails));
+      console.log('🔍 Extracted order ID:', firstOrderId, 'from orderIds:', orderIds);
       
-      // Navigate to order confirmation page
-      navigate('/order-confirmation', { 
-        state: { orderDetails } 
-      });
+      if (!firstOrderId) {
+        console.error('❌ No order ID found! orderIds:', orderIds);
+        alert('Failed to get order ID. Please try again.');
+        return;
+      }
+      
+      // Navigate to GCash payment page
+      navigate(`/customer/gcash-account/${firstOrderId}`);
     } catch (error) {
       console.error('Error saving order:', error);
       setShowReceipt(false);
-      alert('Failed to save order. Please try again.');
+      
+      // Show the actual error message from backend
+      const errorMessage = error.message || 'Failed to save order. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsConfirmingOrder(false);
     }
@@ -581,18 +590,29 @@ export const Checkout = () => {
           
           console.log(`📦 Creating order for ${vendor.vendor_name}:`, vendorOrderPayload);
           
-          const response = await axios.post(`${apiBase}/api/orders`, vendorOrderPayload);
-          
-          if (response.data.success) {
-            console.log(`✅ Order created for ${vendor.vendor_name}:`, response.data.order_id);
-            orderIds.push({
-              order_id: response.data.order_id,
-              vendor_id: vendor.vendor_id,
-              vendor_name: vendor.vendor_name,
-              total_amount: vendorTotal
-            });
-          } else {
-            throw new Error(`Failed to create order for ${vendor.vendor_name}: ${response.data.error}`);
+          try {
+            const response = await axios.post(`${apiBase}/api/orders`, vendorOrderPayload);
+            
+            if (response.data.success) {
+              console.log(`✅ Order created for ${vendor.vendor_name}:`, response.data.order_id);
+              orderIds.push({
+                order_id: response.data.order_id,
+                vendor_id: vendor.vendor_id,
+                vendor_name: vendor.vendor_name,
+                total_amount: vendorTotal
+              });
+            } else {
+              throw new Error(`Failed to create order for ${vendor.vendor_name}: ${response.data.error}`);
+            }
+          } catch (axiosError) {
+            // Extract error message from axios error
+            let errorMsg = `Failed to create order for ${vendor.vendor_name}`;
+            if (axiosError.response && axiosError.response.data) {
+              errorMsg = `${vendor.vendor_name}: ${axiosError.response.data.error || axiosError.response.data.message || errorMsg}`;
+            } else if (axiosError.message) {
+              errorMsg = `${vendor.vendor_name}: ${axiosError.message}`;
+            }
+            throw new Error(errorMsg);
           }
         }
         
@@ -634,7 +654,20 @@ export const Checkout = () => {
       }
     } catch (error) {
       console.error('Error in saveOrderToDatabase:', error);
-      throw error;
+      
+      // Extract error message from axios error response
+      let errorMessage = 'Failed to save order. Please try again.';
+      
+      if (error.response && error.response.data) {
+        // Backend returned an error
+        errorMessage = error.response.data.error || error.response.data.message || errorMessage;
+        console.error('Backend error:', errorMessage);
+      } else if (error.message) {
+        // JavaScript error
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -683,13 +716,13 @@ export const Checkout = () => {
 
 Date: ${new Date().toLocaleDateString()}
 Time: ${new Date().toLocaleTimeString()}
-Status: PENDING VENDOR APPROVAL
+Status: PENDING PAYMENT
 
 ---------------------------------
 PAYMENT INFORMATION
 ---------------------------------
-GCash Payment (After Vendor Approval)
-Note: Payment required after vendor approval
+GCash Payment Required
+Note: Please proceed with payment to confirm your order
 
 ---------------------------------
 ORDER BREAKDOWN BY VENDOR
@@ -732,9 +765,9 @@ Date & Time: ${deliveryDateTime}
 ---------------------------------
 NEXT STEPS
 ---------------------------------
-• Your orders have been sent to ${savedOrderId.length} vendors for approval
-• You will receive separate notifications from each vendor
-• Payment via GCash will be required after each vendor approval
+• Your orders have been placed successfully with ${savedOrderId.length} vendor(s)
+• Please proceed with payment via GCash for each order
+• You will receive notifications when payment is received
 • Track each order separately in your order history
 • Keep this confirmation for your records
 
@@ -754,13 +787,13 @@ NEXT STEPS
 Date: ${new Date().toLocaleDateString()}
 Time: ${new Date().toLocaleTimeString()}
 Order ID: #${orderId || 'N/A'}
-Status: PENDING VENDOR APPROVAL
+Status: PENDING PAYMENT
 
 ---------------------------------
 PAYMENT INFORMATION
 ---------------------------------
-GCash Payment (After Vendor Approval)
-Note: Payment required after vendor approval
+GCash Payment Required
+Note: Please proceed with payment to confirm your order
 
 ---------------------------------
 ORDER SUMMARY
@@ -788,9 +821,10 @@ Date & Time: ${deliveryDateTime}
 ---------------------------------
 NEXT STEPS
 ---------------------------------
-• Your order has been sent to the vendor for approval
-• You will receive a notification once the vendor responds
-• Payment via GCash will be required after order approval
+• Your order has been placed successfully
+• Please proceed with payment via GCash to confirm your order
+• You will receive a notification once payment is received
+• The vendor will start preparing your order after payment confirmation
 • Keep this confirmation for your records
 
 =================================
@@ -1034,11 +1068,11 @@ NEXT STEPS
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-blue-800">Payment After Approval</h3>
+                    <h3 className="text-sm font-medium text-blue-800">Payment Required</h3>
                     <div className="mt-2 text-sm text-blue-700">
-                      <p>• Payment will be required after the vendor approves your order</p>
-                      <p>• You can pay via GCash when your order is approved</p>
-                      <p>• You'll receive a notification when payment is needed</p>
+                      <p>• Please proceed with payment via GCash to confirm your order</p>
+                      <p>• Payment can be made immediately after placing your order</p>
+                      <p>• You'll receive a notification once payment is received</p>
                     </div>
                   </div>
                 </div>
@@ -1150,7 +1184,7 @@ NEXT STEPS
                     </div>
                     <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mt-3">
                       <p className="text-sm text-yellow-800">
-                        <strong>Note:</strong> Payment will be required after vendor approves your order
+                        <strong>Note:</strong> Please proceed with payment via GCash to confirm your order. The vendor will start preparing once payment is received.
                       </p>
                     </div>
                   </div>
@@ -1209,9 +1243,10 @@ NEXT STEPS
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="font-semibold text-green-800 mb-2">Next Steps</h3>
                   <div className="text-sm text-green-700 space-y-1">
-                    <p>• Your order has been sent to the vendor for approval</p>
-                    <p>• You will receive a notification once the vendor responds</p>
-                    <p>• Payment via GCash will be required after order approval</p>
+                    <p>• Your order has been placed successfully</p>
+                    <p>• Please proceed with payment via GCash to confirm your order</p>
+                    <p>• You will receive a notification once payment is received</p>
+                    <p>• The vendor will start preparing your order after payment confirmation</p>
                     <p>• Keep this confirmation for your records</p>
                   </div>
                 </div>

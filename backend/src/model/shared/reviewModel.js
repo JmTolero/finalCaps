@@ -42,7 +42,7 @@ const reviewModel = {
     const query = `
       SELECT 
         vr.*,
-        v.vendor_name,
+        v.store_name as vendor_name,
         o.order_id
       FROM vendor_reviews vr
       JOIN vendors v ON vr.vendor_id = v.vendor_id

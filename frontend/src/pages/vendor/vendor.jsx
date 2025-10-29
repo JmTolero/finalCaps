@@ -274,8 +274,7 @@ export const Vendor = () => {
   const [showDrumSetupModal, setShowDrumSetupModal] = useState(false);
   
   // Order action modal states
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+
   const [showDeclineReasonModal, setShowDeclineReasonModal] = useState(false);
   const [showPrepareModal, setShowPrepareModal] = useState(false);
   const [showReadyModal, setShowReadyModal] = useState(false);
@@ -1184,34 +1183,7 @@ export const Vendor = () => {
     }
   };
 
-  // Handle approve order action
-  const handleApproveOrder = (order) => {
-    setSelectedOrder(order);
-    setShowApproveModal(true);
-  };
 
-  // Handle reject order action
-  const handleRejectOrder = (order) => {
-    setSelectedOrder(order);
-    setShowRejectModal(true);
-  };
-
-  // Confirm approve order
-  const confirmApproveOrder = () => {
-    if (selectedOrder) {
-      updateOrderStatus(selectedOrder.order_id, 'confirmed');
-      setShowApproveModal(false);
-      setSelectedOrder(null);
-    }
-  };
-
-  // Confirm reject order
-  const confirmRejectOrder = () => {
-    if (selectedOrder) {
-      declineOrderWithReason(selectedOrder.order_id);
-      setShowRejectModal(false);
-    }
-  };
 
   // Handle prepare order
   const handlePrepareOrder = (order) => {
@@ -7044,8 +7016,8 @@ export const Vendor = () => {
                        {/* Desktop Layout - Wrap */}
                        <div className="hidden sm:flex flex-wrap gap-1">
                       {[
-                        { value: 'all', label: 'All Orders', count: vendorOrders.length },
-                        { value: 'pending', label: 'Pending Approval', count: vendorOrders.filter(o => o.status === 'pending').length },
+                                                  { value: 'all', label: 'All Orders', count: vendorOrders.length },
+                          { value: 'pending', label: 'Pending Payment', count: vendorOrders.filter(o => o.status === 'pending').length },
                         { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
                         { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'paid').length },
                         { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
@@ -7630,18 +7602,12 @@ export const Vendor = () => {
                           {/* Action Buttons */}
                           {order.status === 'pending' && (
                             <div className="flex space-x-4">
-                              <button
-                                onClick={() => handleApproveOrder(order)}
-                                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-                              >
-                                ✅ Approve Order
-                              </button>
-                              <button
-                                onClick={() => handleRejectOrder(order)}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-                              >
-                                ❌ Decline Order
-                              </button>
+                              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-blue-800 font-medium">Order Auto-Confirmed</p>
+                                <p className="text-blue-700 text-sm">
+                                  This order was automatically confirmed because drums were available for the selected date. Waiting for payment to start preparation.
+                                </p>
+                              </div>
                             </div>
                           )}
 
@@ -7652,11 +7618,11 @@ export const Vendor = () => {
                             
                             return (
                               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <p className="text-green-800 font-medium mb-2">Order Approved!</p>
+                                <p className="text-green-800 font-medium mb-2">Order Confirmed!</p>
                                 <p className="text-green-700 text-sm mb-3">
                                   {isWalkInOrder 
                                     ? `Walk-in order - ${order.payment_status === 'partial' ? '50% down payment received' : 'Waiting for payment'}. Mark as paid to start preparation.`
-                                    : 'This order has been approved. Waiting for customer payment to start preparation.'
+                                    : 'Order automatically confirmed. Waiting for customer payment to start preparation.'
                                   }
                                 </p>
                                 {isWalkInOrder && (
@@ -8664,89 +8630,7 @@ export const Vendor = () => {
         </div>
       )}
 
-      {/* Approve Order Modal */}
-      {showApproveModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Approve Order #{selectedOrder.order_id}
-              </h3>
-              <div className="text-left text-sm text-gray-600 mb-6 space-y-2">
-                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
-                <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
-                <p className="text-gray-500 mt-3">
-                  This will allow the customer to proceed with payment.
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    setShowApproveModal(false);
-                    setSelectedOrder(null);
-                  }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmApproveOrder}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Approve Order
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Reject Order Modal */}
-      {showRejectModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Decline Order #{selectedOrder.order_id}
-              </h3>
-              <div className="text-left text-sm text-gray-600 mb-6 space-y-2">
-                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
-                <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
-                <p className="text-red-600 mt-3 font-medium">
-                  This action cannot be easily undone. The customer will be notified.
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    setShowRejectModal(false);
-                    setSelectedOrder(null);
-                  }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmRejectOrder}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  Decline Order
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Decline Reason Modal */}
       {showDeclineReasonModal && selectedOrder && (

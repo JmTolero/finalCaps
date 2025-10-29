@@ -139,6 +139,120 @@ const createOrder = async (req, res) => {
             });
         }
 
+        // VALIDATION: 24-hour minimum advance notice
+        const deliveryDateTime = new Date(delivery_datetime);
+        const now = new Date();
+        
+        // Validate delivery_datetime is valid
+        if (isNaN(deliveryDateTime.getTime())) {
+            console.error('Invalid delivery_datetime:', delivery_datetime);
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid delivery date/time format'
+            });
+        }
+        
+        const hoursUntilDelivery = (deliveryDateTime - now) / (1000 * 60 * 60);
+
+        if (hoursUntilDelivery < 24) {
+            return res.status(400).json({
+                success: false,
+                error: `Orders must be placed at least 24 hours before delivery time. Ice cream preparation requires 24 hours. You tried to order for ${hoursUntilDelivery.toFixed(1)} hours from now. Please select a delivery time at least 24 hours in the future.`
+            });
+        }
+
+        // Calculate reservation expiry: 24 hours before delivery
+        const reservationExpiry = new Date(deliveryDateTime);
+        reservationExpiry.setHours(reservationExpiry.getHours() - 24);
+
+        // RESERVE INVENTORY for each item (before creating order)
+        if (items && items.length > 0) {
+            for (const item of items) {
+                try {
+                    const deliveryDate = deliveryDateTime.toISOString().split('T')[0];
+                    
+                    // Get drum size from item or query it
+                    let drumSize = item.size;
+                    
+                    if (!drumSize && item.flavor_id) {
+                        // Get size from container_drum if not provided
+                        const [drums] = await pool.query(`
+                            SELECT cd.size 
+                            FROM container_drum cd
+                            JOIN products p ON cd.drum_id = p.drum_id
+                            JOIN flavors f ON p.flavor_id = f.flavor_id
+                            WHERE p.vendor_id = ? AND f.flavor_id = ?
+                            LIMIT 1
+                        `, [vendor_id, item.flavor_id]);
+                        
+                        if (drums.length > 0) {
+                            drumSize = drums[0].size;
+                        }
+                    }
+                    
+                    if (!drumSize) {
+                        return res.status(400).json({
+                            success: false,
+                            error: `Could not determine drum size for ${item.name}. Please contact support.`
+                        });
+                    }
+                    
+                    // Check/create availability record
+                    const [availability] = await pool.query(`
+                        SELECT availability_id, available_count, reserved_count, booked_count, total_capacity
+                        FROM daily_drum_availability
+                        WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                    `, [vendor_id, deliveryDate, drumSize]);
+                    
+                    if (availability.length === 0) {
+                        // Create from base capacity
+                        const [capacity] = await pool.query(`
+                            SELECT stock FROM vendor_drum_pricing
+                            WHERE vendor_id = ? AND drum_size = ?
+                        `, [vendor_id, drumSize]);
+                        
+                        const totalCapacity = capacity[0]?.stock || 0;
+                        
+                        if (totalCapacity < item.quantity) {
+                            return res.status(400).json({
+                                success: false,
+                                error: `Insufficient capacity: Only ${totalCapacity} ${drumSize} drums available`
+                            });
+                        }
+                        
+                        await pool.query(`
+                            INSERT INTO daily_drum_availability (
+                                vendor_id, delivery_date, drum_size,
+                                total_capacity, reserved_count, booked_count, available_count
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `, [vendor_id, deliveryDate, drumSize, totalCapacity, item.quantity, 0, totalCapacity - item.quantity]);
+                    } else {
+                        // Check if enough available
+                        const avail = availability[0];
+                        
+                        if (avail.available_count < item.quantity) {
+                            return res.status(400).json({
+                                success: false,
+                                error: `Only ${avail.available_count} ${drumSize} drums available for ${deliveryDate}. Another customer may have reserved them.`
+                            });
+                        }
+                        
+                        // Reserve drums
+                        await pool.query(`
+                            UPDATE daily_drum_availability
+                            SET reserved_count = reserved_count + ?,
+                                available_count = available_count - ?
+                            WHERE availability_id = ?
+                        `, [item.quantity, item.quantity, avail.availability_id]);
+                    }
+                } catch (reservationError) {
+                    console.error('Error reserving inventory for item:', reservationError);
+                    // Don't fail the entire order - log error and continue
+                    // The verification step later will catch and fix missing reservations
+                }
+            }
+        }
+
         // Insert order into database
         const [orderResult] = await pool.query(`
             INSERT INTO orders (
@@ -150,8 +264,9 @@ const createOrder = async (req, res) => {
                 status, 
                 payment_status,
                 payment_method,
+                reservation_expires_at,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             customer_id,
             vendor_id,
@@ -160,7 +275,8 @@ const createOrder = async (req, res) => {
             total_amount,
             status,
             payment_status,
-            payment_method
+            payment_method,
+            reservationExpiry
         ]);
 
         const orderId = orderResult.insertId;
@@ -168,58 +284,42 @@ const createOrder = async (req, res) => {
 
         // Create notifications for both customer and vendor
         try {
-            console.log(`📬 Creating notifications for new order #${orderId}`);
-            
             // Notification for customer
-            console.log(`📤 Creating customer notification for customer_id: ${customer_id}`);
             await createNotification({
                 user_id: customer_id,
                 user_type: 'customer',
                 title: 'Order Placed Successfully',
-                message: `Your order #${orderId} has been placed and is waiting for vendor approval. Once approved, you'll need to pay first before the vendor starts preparing your order.`,
+                message: `Your order #${orderId} has been placed successfully. Please proceed with payment via GCash to confirm your order. The vendor will start preparing your ice cream on your scheduled delivery date once payment is received.`,
                 notification_type: 'order_placed',
                 related_order_id: orderId,
                 related_vendor_id: vendor_id,
                 related_customer_id: customer_id
             });
-            console.log(`✅ Customer notification created for order #${orderId}`);
 
             // Notification for vendor - get vendor's user_id first
-            console.log(`🔍 Looking up vendor user_id for vendor_id: ${vendor_id}`);
             const [vendorUser] = await pool.query(`
                 SELECT user_id FROM vendors WHERE vendor_id = ?
             `, [vendor_id]);
             
-            console.log(`🔍 Vendor user lookup result:`, vendorUser);
-            
             if (vendorUser.length > 0) {
-                console.log(`📤 Creating vendor notification for user_id: ${vendorUser[0].user_id}`);
                 await createNotification({
                     user_id: vendorUser[0].user_id,
                     user_type: 'vendor',
                     title: 'New Order Received',
-                    message: `You have received a new order #${orderId} from a customer. Please review and respond.`,
+                    message: `You have received a new order #${orderId} from a customer. The order will be confirmed once payment is received.`,
                     notification_type: 'order_placed',
                     related_order_id: orderId,
                     related_vendor_id: vendor_id,
                     related_customer_id: customer_id
                 });
-                console.log(`✅ Vendor notification created for order #${orderId}`);
-            } else {
-                console.error(`❌ No vendor found with vendor_id: ${vendor_id}`);
             }
-
-            console.log(`📬 All notifications created successfully for order #${orderId}`);
         } catch (notificationError) {
-            console.error('❌ Failed to create notifications for order:', orderId, notificationError);
-            console.error('❌ Notification error details:', notificationError.message);
-            console.error('❌ Notification error stack:', notificationError.stack);
+            console.error('Failed to create notifications for order:', orderId, notificationError);
             // Don't fail the order creation if notification creation fails
         }
 
         // Insert order items if provided
         if (items && items.length > 0) {
-            console.log('Inserting order items:', items);
             
             for (const item of items) {
                 // Get the product_id for this flavor and size, or create a basic one
@@ -259,9 +359,7 @@ const createOrder = async (req, res) => {
                         ]);
                         
                         productId = productResult.insertId;
-                        console.log(`Created product: ${item.name} - ${item.size} with ID: ${productId}`);
                     } else {
-                        console.warn(`No drum found for size: ${item.size}`);
                         continue;
                     }
                 }
@@ -284,7 +382,85 @@ const createOrder = async (req, res) => {
                     item.price
                 ]);
                 
-                console.log(`Inserted order item: ${item.name} (${item.size}) x${item.quantity}`);
+            }
+            
+            // VERIFICATION: Ensure reservations happened (fallback if size wasn't available earlier)
+            const [orderItemsForVerification] = await pool.query(`
+                SELECT oi.quantity, cd.size, o.delivery_datetime
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+                WHERE oi.order_id = ?
+            `, [orderId]);
+            
+            for (const orderItem of orderItemsForVerification) {
+                const deliveryDate = new Date(orderItem.delivery_datetime).toISOString().split('T')[0];
+                
+                // Check if reservation exists
+                const [existingReservation] = await pool.query(`
+                    SELECT availability_id, available_count, reserved_count, booked_count, total_capacity
+                    FROM daily_drum_availability
+                    WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                `, [vendor_id, deliveryDate, orderItem.size]);
+                
+                if (existingReservation.length === 0) {
+                    // Reservation wasn't created - create it now from order_items data
+                    const [capacity] = await pool.query(`
+                        SELECT stock FROM vendor_drum_pricing
+                        WHERE vendor_id = ? AND drum_size = ?
+                    `, [vendor_id, orderItem.size]);
+                    
+                    const totalCapacity = capacity[0]?.stock || 0;
+                    
+                    if (totalCapacity >= orderItem.quantity) {
+                        await pool.query(`
+                            INSERT INTO daily_drum_availability (
+                                vendor_id, delivery_date, drum_size,
+                                total_capacity, reserved_count, booked_count, available_count
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `, [vendor_id, deliveryDate, orderItem.size, totalCapacity, orderItem.quantity, 0, totalCapacity - orderItem.quantity]);
+                    }
+                } else {
+                    // Reservation record exists - verify if this order was properly reserved
+                    const currentState = existingReservation[0];
+                    
+                    // Convert to numbers and handle null/undefined
+                    const totalCapacity = Number(currentState.total_capacity) || 0;
+                    const reservedCount = Number(currentState.reserved_count) || 0;
+                    const bookedCount = Number(currentState.booked_count) || 0;
+                    const availableCount = Number(currentState.available_count) || 0;
+                    
+                    // Verify consistency: total should equal reserved + booked + available
+                    const calculatedTotal = reservedCount + bookedCount + availableCount;
+                    
+                    if (totalCapacity > 0 && calculatedTotal !== totalCapacity) {
+                        const correctAvailable = totalCapacity - reservedCount - bookedCount;
+                        
+                        if (!isNaN(correctAvailable) && isFinite(correctAvailable)) {
+                            await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET available_count = ?
+                                WHERE availability_id = ?
+                            `, [Math.max(0, correctAvailable), currentState.availability_id]);
+                        }
+                    }
+                    
+                    // Check if reservation was likely missed: if available = total_capacity and reserved = 0,
+                    // it means no reservations were made yet, so we should reserve this order
+                    if (totalCapacity > 0 && 
+                        availableCount === totalCapacity && 
+                        reservedCount === 0 && 
+                        bookedCount === 0) {
+                        
+                        // No reservations exist yet - this order should be reserved
+                        await pool.query(`
+                            UPDATE daily_drum_availability
+                            SET reserved_count = reserved_count + ?,
+                                available_count = available_count - ?
+                            WHERE availability_id = ? AND available_count >= ?
+                        `, [orderItem.quantity, orderItem.quantity, currentState.availability_id, orderItem.quantity]);
+                    }
+                }
             }
         }
 
@@ -821,6 +997,48 @@ const updateQRPaymentStatus = async (req, res) => {
             SET payment_status = ?, status = 'confirmed'
             WHERE order_id = ?
         `, ['paid', order_id]);
+
+        // CONVERT RESERVED TO BOOKED IN INVENTORY
+        console.log('Converting reserved drums to booked for order #' + order_id);
+        
+        const [orderItems] = await pool.query(`
+            SELECT oi.quantity, cd.size, o.delivery_datetime, o.vendor_id, o.reservation_expires_at
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.order_id
+            JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+            WHERE oi.order_id = ?
+        `, [order_id]);
+
+        if (orderItems.length > 0) {
+            // Check if reservation expired
+            const now = new Date();
+            
+            for (const item of orderItems) {
+                if (item.reservation_expires_at && new Date(item.reservation_expires_at) < now) {
+                    // Rollback payment confirmation
+                    await pool.query(`
+                        UPDATE orders 
+                        SET payment_status = 'unpaid', status = 'pending'
+                        WHERE order_id = ?
+                    `, [order_id]);
+                    
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Reservation expired. Your payment was received too late - the reservation expired 24 hours before delivery time. Please place a new order.'
+                    });
+                }
+                
+                const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                
+                // Convert reserved to booked
+                await pool.query(`
+                    UPDATE daily_drum_availability
+                    SET reserved_count = reserved_count - ?,
+                        booked_count = booked_count + ?
+                    WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                `, [item.quantity, item.quantity, item.vendor_id, deliveryDate, item.size]);
+            }
+        }
         
         // Create QR payment transaction record
         await pool.query(`
@@ -849,7 +1067,6 @@ const updateQRPaymentStatus = async (req, res) => {
         // Create notifications
         try {
             // Notification for customer
-            console.log(`📤 Creating customer notification for customer_id: ${order.customer_id}`);
             await pool.query(`
                 INSERT INTO notifications (
                     user_id, user_type, title, message, notification_type, is_read, created_at,
@@ -866,19 +1083,14 @@ const updateQRPaymentStatus = async (req, res) => {
                 order.vendor_id,
                 order.customer_id
             ]);
-            console.log(`✅ Customer notification created successfully`);
             
             // Notification for vendor - get vendor's user_id first
-            console.log(`🔍 Looking up vendor user_id for vendor_id: ${order.vendor_id}`);
             const [vendorUser] = await pool.query(`
                 SELECT user_id FROM vendors WHERE vendor_id = ?
             `, [order.vendor_id]);
             
-            console.log(`🔍 Vendor user lookup result:`, vendorUser);
-            
             if (vendorUser.length > 0) {
-                console.log(`📤 Creating vendor notification for user_id: ${vendorUser[0].user_id}`);
-                const [result] = await pool.query(`
+                await pool.query(`
                     INSERT INTO notifications (
                         user_id, user_type, title, message, notification_type, is_read, created_at,
                         related_order_id, related_vendor_id, related_customer_id
@@ -894,18 +1106,7 @@ const updateQRPaymentStatus = async (req, res) => {
                     order.vendor_id,
                     order.customer_id
                 ]);
-                console.log(`✅ Vendor notification created successfully with ID: ${result.insertId}`);
-                
-                // Verify the notification was created
-                const [verifyNotification] = await pool.query(`
-                    SELECT * FROM notifications WHERE notification_id = ?
-                `, [result.insertId]);
-                console.log(`🔍 Verification - Notification created:`, verifyNotification[0]);
-            } else {
-                console.error(`❌ No vendor found with vendor_id: ${order.vendor_id}`);
             }
-            
-            console.log(`📬 QR payment notifications created for order ${order_id}`);
         } catch (notificationError) {
             console.error('Failed to create QR payment notifications:', notificationError);
         }

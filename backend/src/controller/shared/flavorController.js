@@ -39,6 +39,9 @@ const getAllPublishedFlavors = async (req, res) => {
             COALESCE(NULLIF(a2.province, ''), NULL)
           )
         END as location,
+        -- Prioritize exact coordinates (GPS) over geocoded coordinates
+        COALESCE(a.exact_latitude, a2.exact_latitude, a.latitude, a2.latitude) as vendor_latitude,
+        COALESCE(a.exact_longitude, a2.exact_longitude, a.longitude, a2.longitude) as vendor_longitude,
         COALESCE(SUM(CASE WHEN o.status = 'delivered' THEN oi.quantity ELSE 0 END), 0) as calculated_sold_count,
         COALESCE(MIN(CASE WHEN vdp.drum_size = 'small' THEN vdp.price END), 0) as small_price,
         COALESCE(MIN(CASE WHEN vdp.drum_size = 'medium' THEN vdp.price END), 0) as medium_price,
@@ -53,7 +56,7 @@ const getAllPublishedFlavors = async (req, res) => {
       LEFT JOIN order_items oi ON p.product_id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.order_id
       WHERE f.store_status = 'published' AND v.status = 'approved'
-      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, f.average_rating, f.total_ratings, v.store_name, v.profile_image_url, a.address_id, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a2.address_id, a2.unit_number, a2.street_name, a2.barangay, a2.cityVillage, a2.province, a2.region, a2.postal_code
+      GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, f.average_rating, f.total_ratings, v.store_name, v.profile_image_url, a.address_id, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude, a.exact_latitude, a.exact_longitude, a2.address_id, a2.unit_number, a2.street_name, a2.barangay, a2.cityVillage, a2.province, a2.region, a2.postal_code, a2.latitude, a2.longitude, a2.exact_latitude, a2.exact_longitude
       ORDER BY f.created_at DESC
     `);
 

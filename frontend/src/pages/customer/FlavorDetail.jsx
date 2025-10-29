@@ -7,6 +7,7 @@ import { useCart } from '../../contexts/CartContext';
 import { getImageUrl } from '../../utils/imageUtils';
 import FeedbackModal from '../../components/shared/FeedbackModal';
 import ContactNumberModal from '../../components/shared/ContactNumberModal';
+import { getAvailabilityByDate } from '../../services/availabilityService';
 
 // Import customer icons
 import cartIcon from '../../assets/images/customerIcon/cart.png';
@@ -24,7 +25,7 @@ export const FlavorDetail = () => {
   const [flavor, setFlavor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedSize, setSelectedSize] = useState('large');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -56,6 +57,10 @@ export const FlavorDetail = () => {
   
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+  
+  // Date-based availability state
+  const [dateAvailability, setDateAvailability] = useState(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
@@ -164,6 +169,44 @@ export const FlavorDetail = () => {
     fetchNotifications();
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
+
+  // Fetch date-specific availability when delivery date changes
+  useEffect(() => {
+    const fetchDateAvailability = async () => {
+      if (!flavor?.vendor_id) {
+        setDateAvailability(null);
+        return;
+      }
+
+      // If no date selected, use today as default
+      const dateToCheck = deliveryDate || new Date().toISOString().split('T')[0];
+
+      try {
+        setAvailabilityLoading(true);
+        console.log('📅 Fetching availability for date:', dateToCheck);
+        const response = await getAvailabilityByDate(flavor.vendor_id, dateToCheck);
+        console.log('📅 Availability response:', response);
+        
+        // Extract just the counts from the nested structure
+        if (response.success && response.availability) {
+          const simplifiedAvailability = {
+            small: response.availability.small?.available_count || 0,
+            medium: response.availability.medium?.available_count || 0,
+            large: response.availability.large?.available_count || 0
+          };
+          console.log('📅 Simplified availability:', simplifiedAvailability);
+          setDateAvailability(simplifiedAvailability);
+        }
+      } catch (error) {
+        console.error('Error fetching date availability:', error);
+        setDateAvailability(null);
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    };
+
+    fetchDateAvailability();
+  }, [deliveryDate, flavor?.vendor_id, flavor]); // Add flavor to dependencies
 
   const fetchFlavorDetails = async () => {
     try {
@@ -289,7 +332,18 @@ export const FlavorDetail = () => {
     }
   };
 
-  const handleBookNow = () => {
+  // Check if delivery time is at least 24 hours away
+  const isDeliveryTimeValid = () => {
+    if (!deliveryDate || !deliveryTime) return false;
+    
+    const deliveryDateTime = new Date(`${deliveryDate}T${deliveryTime}:00`);
+    const now = new Date();
+    const hoursUntilDelivery = (deliveryDateTime - now) / (1000 * 60 * 60);
+    
+    return hoursUntilDelivery >= 24;
+  };
+
+  const handleReserveNow = () => {
     if (!flavor) return;
     
     // Check if user has contact number
@@ -300,6 +354,13 @@ export const FlavorDetail = () => {
         setShowContactNumberModal(true);
         return;
       }
+    }
+    
+    // Validate size selection
+    if (!selectedSize || selectedSize.trim() === '') {
+      setValidationMessage('Please select a size to proceed with booking.');
+      setShowValidationModal(true);
+      return;
     }
     
     // Validate required fields
@@ -317,6 +378,49 @@ export const FlavorDetail = () => {
     
     if (!deliveryTime) {
       setValidationMessage('Please select a delivery time to proceed with booking.');
+      setShowValidationModal(true);
+      return;
+    }
+    
+    // Check if drums are available for the selected date and size
+    const availableDrums = getAvailableDrums();
+    if (availableDrums === 0) {
+      const dateDisplay = deliveryDate 
+        ? new Date(deliveryDate).toLocaleDateString() 
+        : 'this date';
+      setValidationMessage(
+        `No ${selectedSize} drums available for ${dateDisplay}. Please select a different date or size.`
+      );
+      setShowValidationModal(true);
+      return;
+    }
+    
+    // Check if requested quantity exceeds available
+    if (quantity > availableDrums) {
+      setValidationMessage(
+        `Only ${availableDrums} ${selectedSize} drum(s) available for ${new Date(deliveryDate).toLocaleDateString()}. Please reduce quantity.`
+      );
+      setShowValidationModal(true);
+      return;
+    }
+    
+    // Validate: Orders must be placed at least 24 hours before delivery time
+    const deliveryDateTime = new Date(`${deliveryDate}T${deliveryTime}:00`);
+    const now = new Date();
+    const hoursUntilDelivery = (deliveryDateTime - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilDelivery < 24) {
+      const formattedDateTime = deliveryDateTime.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      setValidationMessage(
+        `Orders must be placed at least 24 hours before delivery time. Ice cream preparation requires 24 hours. You selected ${formattedDateTime}, which is ${hoursUntilDelivery.toFixed(1)} hours from now. Please select a delivery time at least 24 hours in the future.`
+      );
       setShowValidationModal(true);
       return;
     }
@@ -345,7 +449,7 @@ export const FlavorDetail = () => {
     navigate('/checkout', { state: orderData });
   };
 
-  const handleReserve = async () => {
+  const handleAddToFavorites = async () => {
     if (!flavor) return;
 
     console.log('🔍 Debug flavor object:', flavor);
@@ -354,12 +458,33 @@ export const FlavorDetail = () => {
     console.log('🔍 selectedImages:', selectedImages);
     console.log('🔍 selectedImages[0]:', selectedImages[0]);
 
+    // For favorites, use first available size as default if no size selected
+    const defaultSize = selectedSize || (flavor.available_sizes && flavor.available_sizes.length > 0 ? flavor.available_sizes[0] : 'large');
+    
+    // Get price for the default size (or use first available size price)
+    let favoritePrice = 0;
+    if (selectedSize) {
+      favoritePrice = parseFloat(getPrice().replace('₱', ''));
+    } else {
+      // Use price from first available size
+      if (flavor.available_sizes && flavor.available_sizes.length > 0) {
+        const firstSize = flavor.available_sizes[0].toLowerCase();
+        if (firstSize === 'small' && flavor.small_price) {
+          favoritePrice = parseFloat(flavor.small_price);
+        } else if (firstSize === 'medium' && flavor.medium_price) {
+          favoritePrice = parseFloat(flavor.medium_price);
+        } else if (firstSize === 'large' && flavor.large_price) {
+          favoritePrice = parseFloat(flavor.large_price);
+        }
+      }
+    }
+
     const cartItem = {
       flavor_id: flavor.flavor_id,
       name: flavor.flavor_name,
-      size: selectedSize,
-      quantity: quantity,
-      price: parseFloat(getPrice().replace('₱', '')),
+      size: defaultSize,
+      quantity: 1, // Favorites always start with quantity 1
+      price: favoritePrice,
       vendor_id: flavor.vendor_id,
       vendor_name: flavor.store_name,
       image_url: selectedImages[0] || null,
@@ -370,10 +495,10 @@ export const FlavorDetail = () => {
     console.log('🔍 Flavor data vendor_id:', flavor.vendor_id);
     console.log('🔍 Flavor data store_name:', flavor.store_name);
     
-    // Validate vendor_id before adding to cart
+    // Validate vendor_id before adding to favorites
     if (!flavor.vendor_id || flavor.vendor_id === null || flavor.vendor_id === undefined) {
       console.error('❌ Flavor has no vendor_id:', flavor);
-      alert('This product has missing vendor information and cannot be added to cart. Please contact support.');
+      alert('This product has missing vendor information and cannot be added to favorites. Please contact support.');
       return;
     }
 
@@ -396,7 +521,52 @@ export const FlavorDetail = () => {
     }
   };
 
+  const getPriceRange = () => {
+    if (!flavor || !flavor.available_sizes || flavor.available_sizes.length === 0) {
+      return 'Price not available';
+    }
+
+    const prices = [];
+    
+    // Get prices for all available sizes
+    if (flavor.available_sizes.includes('small') && flavor.small_price) {
+      prices.push(parseInt(flavor.small_price));
+    }
+    if (flavor.available_sizes.includes('medium') && flavor.medium_price) {
+      prices.push(parseInt(flavor.medium_price));
+    }
+    if (flavor.available_sizes.includes('large') && flavor.large_price) {
+      prices.push(parseInt(flavor.large_price));
+    }
+
+    if (prices.length === 0) {
+      return 'Price not available';
+    }
+
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    // If all sizes have the same price, show single price
+    if (minPrice === maxPrice) {
+      return `₱${minPrice}`;
+    }
+
+    // Otherwise show range
+    return `₱${minPrice} - ₱${maxPrice}`;
+  };
+
   const getAvailableDrums = () => {
+    // If no size is selected, return 0
+    if (!selectedSize || selectedSize.trim() === '') {
+      return 0;
+    }
+    
+    // If we have date-specific availability, use that
+    if (dateAvailability && dateAvailability[selectedSize] !== undefined) {
+      return dateAvailability[selectedSize];
+    }
+    
+    // Fallback to flavor's general availability
     if (!flavor || !flavor.drum_availability) {
       return 0;
     }
@@ -785,7 +955,7 @@ export const FlavorDetail = () => {
 
                    {/* Price */}
                   <div className="text-2xl sm:text-3xl font-bold text-blue-600">
-                    {getPrice()}
+                    {selectedSize ? getPrice() : getPriceRange()}
                   </div>
 
                    {/* Quantity Selector */}
@@ -793,9 +963,9 @@ export const FlavorDetail = () => {
                      <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 self-start sm:self-auto">
                        <button 
                          onClick={() => handleQuantityChange(-1)}
-                         disabled={quantity <= 1}
+                         disabled={!selectedSize || quantity <= 1}
                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${
-                           quantity <= 1 
+                           !selectedSize || quantity <= 1 
                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
                          }`}
@@ -805,9 +975,9 @@ export const FlavorDetail = () => {
                        <span className="text-base sm:text-lg font-medium w-7 sm:w-8 text-center">{quantity}</span>
                        <button 
                          onClick={() => handleQuantityChange(1)}
-                         disabled={quantity >= getAvailableDrums()}
+                         disabled={!selectedSize || quantity >= getAvailableDrums()}
                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${
-                           quantity >= getAvailableDrums()
+                           !selectedSize || quantity >= getAvailableDrums()
                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
                          }`}
@@ -815,7 +985,15 @@ export const FlavorDetail = () => {
                          +
                        </button>
                      </div>
-                     <span className="text-sm sm:text-base text-gray-600">{getAvailableDrums()} drums available</span>
+                     {selectedSize && (
+                       <div className="flex items-center gap-2">
+                         <span className="text-sm sm:text-base text-gray-600">
+                           {getAvailableDrums()} drums available
+                           {deliveryDate && ` for ${new Date(deliveryDate).toLocaleDateString()}`}
+                         </span>
+                         {availabilityLoading && <span className="text-xs text-gray-400">(loading...)</span>}
+                       </div>
+                     )}
                    </div>
 
                   {/* Size Selection */}
@@ -846,6 +1024,19 @@ export const FlavorDetail = () => {
                        </svg>
                        <span className="text-sm sm:text-base">Schedule to Deliver <span className="text-red-500">*</span></span>
                      </div>
+                     
+                     {/* Preparation Time Notice */}
+                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                       <div className="flex items-start space-x-2">
+                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                         </svg>
+                         <p className="text-xs sm:text-sm text-blue-800">
+                           <strong className="font-semibold"> Preparation Time Required:</strong> Orders must be placed at least <strong>24 hours</strong> before your selected delivery time. The vendor needs this time to prepare your ice cream order.
+                         </p>
+                       </div>
+                     </div>
+                     
                      <div className="flex space-x-2 sm:space-x-3">
                        <div className="flex-1">
                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -882,21 +1073,45 @@ export const FlavorDetail = () => {
                          Please select both date and time to proceed with booking
                        </p>
                      )}
+                     
+                     {/* Date-specific availability display */}
+                     {deliveryDate && dateAvailability && (
+                       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                         <p className="text-xs sm:text-sm font-medium text-blue-900 mb-2">
+                           📅 Availability for {new Date(deliveryDate).toLocaleDateString()}:
+                         </p>
+                         <div className="grid grid-cols-3 gap-2">
+                           {['small', 'medium', 'large'].map((size) => {
+                             const count = dateAvailability[size] || 0;
+                             return (
+                               <div key={size} className="text-center p-2 bg-white rounded">
+                                 <p className="text-xs text-gray-600 capitalize">{size}</p>
+                                 <p className={`text-sm font-semibold ${count > 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                                   {count} {count !== 1 ? 'drums' : 'drum'}
+                                 </p>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
+                     )}
                    </div>
 
                    {/* Action Buttons */}
                    <div className="flex justify-end space-x-3 sm:space-x-4 pt-8 sm:pt-12 lg:pt-16">
                      <button 
-                       onClick={handleReserve}
-                         className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                       onClick={handleAddToFavorites}
+                       className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
                      >
-                       Reserve
+                       Add to Favorites
                      </button>
                      <button 
-                       onClick={handleBookNow}
-                       className="px-4 py-2 sm:px-8 sm:py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                       onClick={handleReserveNow}
+                       disabled={!selectedSize || !deliveryDate || !deliveryTime || !isDeliveryTimeValid()}
+                       className="px-4 py-2 sm:px-8 sm:py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                       title={!selectedSize ? 'Please select a size' : !deliveryDate || !deliveryTime ? 'Please select delivery date and time' : !isDeliveryTimeValid() ? 'Orders must be placed at least 24 hours before delivery time' : ''}
                      >
-                       Book now
+                       Reserve
                      </button>
                    </div>
                 </div>
@@ -1222,7 +1437,7 @@ export const FlavorDetail = () => {
             <div className="p-4 sm:p-5 md:p-6">
               {/* Header */}
               <div className="flex justify-between items-center mb-4 sm:mb-5 md:mb-6">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Item Reserved!</h2>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Added to Favorites!</h2>
                 <button 
                   onClick={() => setShowReserveModal(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
@@ -1241,10 +1456,10 @@ export const FlavorDetail = () => {
                   </svg>
                 </div>
                 <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
-                  Successfully Added to Cart
+                  Successfully Added to Favorites
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-500">
-                  Added {quantity} {selectedSize} {flavor.flavor_name} to your cart!
+                  Added {flavor.flavor_name} to your favorites!
                 </p>
               </div>
 
@@ -1263,7 +1478,7 @@ export const FlavorDetail = () => {
                   }}
                   className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium border-2 border-blue-200 hover:bg-blue-100 transition-colors text-sm sm:text-base"
                 >
-                  Go to Cart
+                  View Favorites
                 </button>
               </div>
             </div>

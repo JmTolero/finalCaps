@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
@@ -72,7 +72,10 @@ export const Customer = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Separate input state for non-refreshing input
-  
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+      
   // Orders data
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -329,6 +332,74 @@ export const Customer = () => {
       </div>
     );
   };
+
+  // Get user's current location
+  const getUserLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.log('Geolocation is not supported by this browser');
+      setLocationError('Location services are not supported by your browser');
+      setLocationPermissionGranted(false);
+      return;
+    }
+
+    console.log('📍 Requesting user location...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userPos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        setUserLocation(userPos);
+        setLocationPermissionGranted(true);
+        setLocationError(null); // Clear any previous errors
+        console.log('✅ User location obtained:', userPos);
+      },
+      (error) => {
+        console.error('Error getting user location:', error);
+        setLocationPermissionGranted(false);
+        // Set specific error messages for better UX
+        let errorMessage = 'Unable to get your location';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location access denied. Enable location to see nearest vendors.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information unavailable';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out';
+            break;
+          default:
+            errorMessage = 'Unable to get your location';
+        }
+        setLocationError(errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // Cache location for 5 minutes
+      }
+    );
+  }, []);
+
+  // Calculate distance between two coordinates (in kilometers)
+  const calculateDistance = useCallback((lat1, lng1, lat2, lng2) => {
+    if (!lat1 || !lng1 || !lat2 || !lng2) return null;
+    
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }, []);
+
+  // Get user location on component mount for nearest vendor sorting
+  useEffect(() => {
+    getUserLocation();
+  }, [getUserLocation]);
 
   // Check URL parameters for view
   useEffect(() => {
@@ -684,8 +755,8 @@ export const Customer = () => {
   const handlePayment = (order) => {
     console.log('💳 Payment button clicked for order:', order.order_id);
     
-    // Navigate to dedicated payment page
-    navigateOptimized(`/customer/payment/${order.order_id}`);
+    // Navigate to GCash payment page
+    navigateOptimized(`/customer/gcash-account/${order.order_id}`);
   };
 
   // Handle cancel order
@@ -976,11 +1047,48 @@ export const Customer = () => {
   };
 
 
-  const filteredFlavors = allFlavors.filter(flavor => 
-    flavor.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    flavor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (flavor.location && flavor.location.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Calculate distance for each flavor and sort by nearest vendors
+  const filteredFlavors = useMemo(() => {
+    let filtered = allFlavors.filter(flavor => 
+      !searchTerm || (
+        flavor.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        flavor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (flavor.location && flavor.location.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+    );
+
+    // If user location is available, calculate distances and sort by nearest
+    if (userLocation && locationPermissionGranted) {
+      const MAX_DISTANCE = 20; // 20km radius
+      
+      filtered = filtered.map(flavor => {
+        const vendorLat = parseFloat(flavor.vendor_latitude);
+        const vendorLng = parseFloat(flavor.vendor_longitude);
+        
+        if (!isNaN(vendorLat) && !isNaN(vendorLng)) {
+          const distance = calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            vendorLat,
+            vendorLng
+          );
+          return { ...flavor, distance };
+        }
+        return { ...flavor, distance: null };
+      })
+      .filter(flavor => {
+        // Filter out flavors beyond 20km or without valid coordinates
+        if (flavor.distance === null) return false; // Hide flavors without coordinates
+        return flavor.distance <= MAX_DISTANCE; // Only show within 20km
+      })
+      .sort((a, b) => {
+        // Sort by distance: nearest first
+        return a.distance - b.distance;
+      });
+    }
+
+    return filtered;
+  }, [allFlavors, searchTerm, userLocation, locationPermissionGranted, calculateDistance]);
 
   const settingsTabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
@@ -1204,7 +1312,7 @@ export const Customer = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                           <span className={`inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full w-fit ${
                             order.status === 'pending' 
-                              ? 'bg-yellow-100 text-yellow-800' 
+                              ? 'bg-green-100 text-green-800' 
                               : order.status === 'confirmed'
                               ? 'bg-green-100 text-green-800'
                               : order.status === 'preparing'
@@ -1217,7 +1325,7 @@ export const Customer = () => {
                               ? 'bg-red-100 text-red-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
+                            {order.status === 'pending' ? 'Confirmed' : (order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' '))}
                           </span>
                           <button
                             onClick={() => {
@@ -1670,9 +1778,9 @@ export const Customer = () => {
                       
                 {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'awaiting_payment') && selectedOrder.payment_status === 'unpaid' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
-                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Order Approved! Payment Required</p>
+                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Payment Required</p>
                     <p className="text-green-700 text-xs sm:text-sm mb-3">
-                      Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
+                      Please proceed with payment via GCash to confirm your order. The vendor will start preparing your ice cream once payment is received.
                     </p>
                     <button 
                       onClick={() => handlePayment(selectedOrder)}
@@ -1687,24 +1795,35 @@ export const Customer = () => {
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-3 sm:space-y-0">
                       <div className="flex-1">
-                        <p className="text-yellow-800 font-medium mb-1 text-sm sm:text-base">⏳ Order Pending Approval</p>
-                        <p className="text-yellow-700 text-xs sm:text-sm">
-                          Your order is waiting for vendor approval. You can cancel it if needed.
+                        <p className="text-green-800 font-medium mb-1 text-sm sm:text-base">✅ Order Confirmed</p>
+                        <p className="text-green-700 text-xs sm:text-sm">
+                          Your order has been confirmed! Please pay now to start preparation.
                         </p>
                       </div>
-                      <button 
-                        onClick={() => {
-                          console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
-                          handleCancelOrder(selectedOrder.order_id);
-                        }}
-                        className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
-                      >
-                        <span>❌</span>
-                        <span>Cancel Order</span>
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        {selectedOrder.payment_status === 'unpaid' && (
+                          <button 
+                            onClick={() => handlePayment(selectedOrder)}
+                            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                          >
+                            <span>💳</span>
+                            <span>Pay via GCash</span>
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => {
+                            console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
+                            handleCancelOrder(selectedOrder.order_id);
+                          }}
+                          className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                        >
+                          <span>❌</span>
+                          <span>Cancel Order</span>
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-yellow-600 text-xs sm:text-sm">
-                      The vendor will review your order and notify you once it's approved or if any changes are needed.
+                    <p className="text-green-600 text-xs sm:text-sm">
+                      Order was automatically confirmed because drums were available. Pay now to proceed.
                     </p>
                   </div>
                 )}
@@ -2716,8 +2835,38 @@ export const Customer = () => {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">DISCOVER FLAVORS</h1>
-          <p className="text-xs sm:text-sm lg:text-base text-gray-600">Explore delicious ice cream from local vendors</p>
+          <div className="flex items-center justify-between mb-1 sm:mb-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">DISCOVER FLAVORS</h1>
+            {userLocation && locationPermissionGranted && (
+              <span className="text-xs sm:text-sm text-blue-600 font-medium flex items-center gap-1">
+                <img src={locationIcon} alt="Location" className="w-4 h-4" />
+                Sorted by nearest
+              </span>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600">
+            {userLocation && locationPermissionGranted 
+              ? "Explore delicious ice cream from nearest vendors" 
+              : "Explore delicious ice cream from local vendors"}
+          </p>
+          {/* Show helpful message if location is not available */}
+          {!userLocation && locationError && (
+            <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-blue-600">📍</span>
+                <span className="text-xs text-blue-700">{locationError}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setLocationError(null);
+                  getUserLocation();
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -2795,8 +2944,8 @@ export const Customer = () => {
                       </span>
                     </div>
 
-                    {/* Location */}
-                    <div className="text-left">
+                    {/* Location and Distance */}
+                    <div className="text-left space-y-1">
                       <div className="flex items-center space-x-1">
                         <img 
                           src={locationIcon} 
@@ -2804,12 +2953,22 @@ export const Customer = () => {
                           className="w-3 h-3 flex-shrink-0" 
                         />
                         <span className="text-xs text-gray-600 truncate" title={flavor.location && flavor.location !== 'Location not specified' ? flavor.location : 'Location not specified'}>
-                        {flavor.location && flavor.location !== 'Location not specified' 
-                          ? flavor.location 
-                          : 'Location not specified'
-                        }
-                      </span>
+                          {flavor.location && flavor.location !== 'Location not specified' 
+                            ? flavor.location 
+                            : 'Location not specified'
+                          }
+                        </span>
                       </div>
+                      {/* Distance display */}
+                      {flavor.distance !== null && flavor.distance !== undefined && userLocation && (
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs font-semibold text-blue-600">
+                            {flavor.distance < 1 
+                              ? `${Math.round(flavor.distance * 1000)}m away` 
+                              : `${flavor.distance.toFixed(1)}km away`}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Rating and Sold Count */}

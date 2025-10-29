@@ -323,13 +323,22 @@ const CustomerGCashAccount = () => {
                         />
                       </div>
 
-                      <button
-                        onClick={handlePaymentConfirmation}
-                        disabled={submitting || !paymentImage || isPaymentConfirmed}
-                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 text-sm sm:text-base"
-                      >
-                        {submitting ? 'Confirming Payment...' : isPaymentConfirmed ? 'Payment Already Confirmed' : 'Confirm Payment'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigate('/customer?view=orders')}
+                          disabled={submitting || isPaymentConfirmed}
+                          className="flex-1 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white font-medium py-2 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 text-sm sm:text-base"
+                        >
+                          Pay Later
+                        </button>
+                        <button
+                          onClick={handlePaymentConfirmation}
+                          disabled={submitting || !paymentImage || isPaymentConfirmed}
+                          className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 text-sm sm:text-base"
+                        >
+                          {submitting ? 'Confirming Payment...' : isPaymentConfirmed ? 'Payment Already Confirmed' : 'Confirm Payment'}
+                        </button>
+                      </div>
                     </div>
                   )}
 

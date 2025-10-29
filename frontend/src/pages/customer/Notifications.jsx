@@ -1147,9 +1147,9 @@ export const Notifications = () => {
                 {/* Payment Button for Unpaid Confirmed Orders */}
                 {selectedOrder.status === 'confirmed' && selectedOrder.payment_status === 'unpaid' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                    <p className="text-sm sm:text-base text-green-800 font-medium mb-2">Order Approved! Payment Required</p>
+                    <p className="text-sm sm:text-base text-green-800 font-medium mb-2">Payment Required</p>
                     <p className="text-xs sm:text-sm text-green-700 mb-3">
-                      Your order has been approved by the vendor. Please proceed with payment to start ice cream production.
+                      Please proceed with payment via GCash to confirm your order. The vendor will start preparing your ice cream once payment is received.
                     </p>
                     <button 
                       onClick={() => handlePayment(selectedOrder)}

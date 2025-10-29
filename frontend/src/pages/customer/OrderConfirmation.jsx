@@ -48,7 +48,7 @@ export const OrderConfirmation = () => {
             </h1>
             
             <p className="text-lg text-gray-600 mb-6">
-              Your order has been successfully placed and is waiting for vendor approval.
+              Your order has been successfully placed. Please proceed with payment to confirm your order.
             </p>
 
             {/* Order Details */}
@@ -96,9 +96,10 @@ export const OrderConfirmation = () => {
               </div>
               
               <div className="text-sm text-orange-700 space-y-2">
-                <p>• Your order is being reviewed by the vendor</p>
-                <p>• You will receive a notification once the vendor responds</p>
-                <p>• Payment will be required after order approval</p>
+                <p>• Your order has been placed successfully</p>
+                <p>• Please proceed with payment via GCash to confirm your order</p>
+                <p>• You will receive a notification once payment is received</p>
+                <p>• The vendor will start preparing your order after payment confirmation</p>
                 <p>• You can track your order status in "My Orders"</p>
               </div>
             </div>

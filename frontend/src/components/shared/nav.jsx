@@ -35,10 +35,11 @@ export const Nav = () => {
                         {/* Logo and Brand */}
                         <div className="flex items-center">
                             <Link to="/" className="flex items-center">
-                                <span className="text-2xl font-bold">
-                                    <span className="text-pink-500 italic">Chill</span>
-                                    <span className="text-gray-700">Net</span>
-                                </span>
+                                <img
+                                    src={logoImage}
+                                    alt="ChillNet Logo"
+                                    className="ChillNet-Logo h-6 sm:h-7 rounded-full object-cover"
+                                />
                             </Link>
                         </div>
 

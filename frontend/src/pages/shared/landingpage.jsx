@@ -17,7 +17,7 @@ export const LandingPage = () => {
             <p className="text-lg sm:text-xl text-sky-100 italic font-medium max-w-2xl">The easiest way to order and sell dirty ice cream online!</p>
             <div className="flex flex-col sm:flex-row items-center gap-4 mt-6 w-full sm:w-auto">
                 <Link to="/login" className="bg-[#ffddae] font-semibold px-8 py-4 rounded-full border border-gray-400 shadow-lg flex items-center justify-center transition hover:bg-[#ffe7c4] w-full sm:w-auto transform hover:scale-105 text-amber-800 text-lg">
-                Book now
+                Reserve now
                 <img src="/images/arrow.png" alt="toArrow" className="ml-3 w-6 h-6" />
                 </Link>
                 <Link to="/vendor-register" className="text-yellow-100 font-semibold hover:underline transition text-lg">Become a Vendor</Link>
