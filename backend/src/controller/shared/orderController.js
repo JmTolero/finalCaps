@@ -100,6 +100,7 @@ const createOrder = async (req, res) => {
             subtotal,
             delivery_fee,
             total_amount,
+            payment_amount, // Amount being paid (for partial payments)
             status = 'pending',
             payment_status = 'unpaid',
             items = []
@@ -164,6 +165,19 @@ const createOrder = async (req, res) => {
         // Calculate reservation expiry: 24 hours before delivery
         const reservationExpiry = new Date(deliveryDateTime);
         reservationExpiry.setHours(reservationExpiry.getHours() - 24);
+
+        // Calculate payment_amount and remaining_balance for partial payments
+        const totalAmountNum = parseFloat(total_amount) || 0;
+        const paymentAmountNum = payment_amount ? parseFloat(payment_amount) : totalAmountNum;
+        const remainingBalance = totalAmountNum - paymentAmountNum;
+
+        // Validate payment amounts
+        if (paymentAmountNum < 0 || paymentAmountNum > totalAmountNum) {
+            return res.status(400).json({
+                success: false,
+                error: `Invalid payment amount. Must be between 0 and ${totalAmountNum}`
+            });
+        }
 
         // RESERVE INVENTORY for each item (before creating order)
         if (items && items.length > 0) {
@@ -261,18 +275,22 @@ const createOrder = async (req, res) => {
                 delivery_datetime, 
                 delivery_address, 
                 total_amount, 
+                payment_amount,
+                remaining_balance,
                 status, 
                 payment_status,
                 payment_method,
                 reservation_expires_at,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             customer_id,
             vendor_id,
             delivery_datetime,
             delivery_address,
             total_amount,
+            paymentAmountNum,
+            remainingBalance,
             status,
             payment_status,
             payment_method,
@@ -933,7 +951,7 @@ const updateQRPaymentStatus = async (req, res) => {
         
         // Get order details
         const [orderDetails] = await pool.query(`
-            SELECT customer_id, vendor_id, total_amount, status, payment_status 
+            SELECT customer_id, vendor_id, total_amount, status, payment_status, payment_amount, remaining_balance 
             FROM orders 
             WHERE order_id = ?
         `, [order_id]);
@@ -991,12 +1009,20 @@ const updateQRPaymentStatus = async (req, res) => {
             }
         }
         
-        // Update order payment status
+        // Determine payment status: keep 'partial' if it's a partial payment, otherwise set to 'paid'
+        // Check if payment_amount exists and is less than total_amount (indicating partial payment)
+        const isPartialPayment = order.payment_amount && 
+                                parseFloat(order.payment_amount) > 0 && 
+                                parseFloat(order.payment_amount) < parseFloat(order.total_amount);
+        
+        const newPaymentStatus = isPartialPayment ? 'partial' : 'paid';
+        
+        // Update order payment status and set order status to 'confirmed' when payment is confirmed
         await pool.query(`
             UPDATE orders 
             SET payment_status = ?, status = 'confirmed'
             WHERE order_id = ?
-        `, ['paid', order_id]);
+        `, [newPaymentStatus, order_id]);
 
         // CONVERT RESERVED TO BOOKED IN INVENTORY
         console.log('Converting reserved drums to booked for order #' + order_id);
@@ -1041,6 +1067,11 @@ const updateQRPaymentStatus = async (req, res) => {
         }
         
         // Create QR payment transaction record
+        // Use payment_amount if it's a partial payment, otherwise use total_amount
+        const transactionAmount = (order.payment_status === 'partial' && order.payment_amount) 
+            ? order.payment_amount 
+            : order.total_amount;
+        
         await pool.query(`
             INSERT INTO qr_payment_transactions (
                 order_id,
@@ -1057,7 +1088,7 @@ const updateQRPaymentStatus = async (req, res) => {
             order_id,
             order.customer_id,
             order.vendor_id,
-            order.total_amount,
+            transactionAmount,
             payment_method || 'gcash_qr',
             'completed',
             paymentConfirmationImageUrl,
@@ -1066,6 +1097,15 @@ const updateQRPaymentStatus = async (req, res) => {
         
         // Create notifications
         try {
+            // Determine notification messages based on payment type
+            const isPartialPayment = (newPaymentStatus === 'partial' && order.payment_amount);
+            const customerMessage = isPartialPayment 
+                ? `Your 50% payment (₱${parseFloat(order.payment_amount).toFixed(2)}) for order #${order_id} has been confirmed. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery. The vendor will now start preparing your order.`
+                : `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`;
+            const vendorMessage = isPartialPayment
+                ? `Customer has paid 50% (₱${parseFloat(order.payment_amount).toFixed(2)}) for order #${order_id}. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery. You can now start preparing the order.`
+                : `Customer has paid for order #${order_id}. You can now start preparing the order.`;
+            
             // Notification for customer
             await pool.query(`
                 INSERT INTO notifications (
@@ -1075,8 +1115,8 @@ const updateQRPaymentStatus = async (req, res) => {
             `, [
                 order.customer_id,
                 'customer',
-                'Payment Confirmed',
-                `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`,
+                isPartialPayment ? 'Partial Payment Confirmed' : 'Payment Confirmed',
+                customerMessage,
                 'payment_confirmed',
                 false,
                 order_id,
@@ -1098,8 +1138,8 @@ const updateQRPaymentStatus = async (req, res) => {
                 `, [
                     vendorUser[0].user_id,
                     'vendor',
-                    'Payment Received',
-                    `Customer has paid for order #${order_id}. You can now start preparing the order.`,
+                    isPartialPayment ? 'Partial Payment Received' : 'Payment Received',
+                    vendorMessage,
                     'payment_confirmed',
                     false,
                     order_id,
@@ -1493,6 +1533,407 @@ const getVendorTransactions = async (req, res) => {
     }
 };
 
+// Customer selects payment method for remaining balance (GCash or COD)
+const selectRemainingPaymentMethod = async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        const { payment_method } = req.body; // 'gcash' or 'cod'
+
+        // Validate payment method
+        if (!payment_method || !['gcash', 'cod'].includes(payment_method.toLowerCase())) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid payment method. Must be "gcash" or "cod"'
+            });
+        }
+
+        // Get order details
+        const [orderDetails] = await pool.query(`
+            SELECT order_id, customer_id, vendor_id, total_amount, payment_amount, remaining_balance, 
+                   payment_status, status
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderDetails.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        const order = orderDetails[0];
+
+        // Check if order has remaining balance
+        if (!order.remaining_balance || parseFloat(order.remaining_balance) <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'This order has no remaining balance'
+            });
+        }
+
+        // Check if already fully paid
+        if (order.payment_status === 'paid') {
+            return res.status(400).json({
+                success: false,
+                error: 'Order is already fully paid'
+            });
+        }
+
+        // Update order with payment method selection
+        await pool.query(`
+            UPDATE orders 
+            SET remaining_payment_method = ?,
+                remaining_payment_method_selected_at = NOW()
+            WHERE order_id = ?
+        `, [payment_method.toLowerCase(), order_id]);
+
+        // Create notifications
+        try {
+            // Notify customer
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, 'customer', ?, ?, 'payment_method_selected', 0, NOW(), ?, ?, ?)
+            `, [
+                order.customer_id,
+                'Payment Method Selected',
+                `You selected ${payment_method.toUpperCase()} payment for remaining balance of ₱${parseFloat(order.remaining_balance).toFixed(2)}. ${payment_method.toLowerCase() === 'gcash' ? 'Please proceed with payment.' : 'Please prepare cash on delivery.'}`,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+
+            // Notify vendor
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, 'vendor', ?, ?, 'payment_method_selected', 0, NOW(), ?, ?, ?)
+            `, [
+                order.vendor_id,
+                'Customer Selected Payment Method',
+                `Customer selected ${payment_method.toUpperCase()} for remaining balance of ₱${parseFloat(order.remaining_balance).toFixed(2)} for order #${order_id}`,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+        } catch (notificationError) {
+            console.error('Failed to create notifications:', notificationError);
+            // Don't fail the request if notification fails
+        }
+
+        res.json({
+            success: true,
+            message: `Payment method selected: ${payment_method.toUpperCase()}`,
+            order_id: order_id,
+            remaining_balance: parseFloat(order.remaining_balance),
+            payment_method: payment_method.toLowerCase()
+        });
+
+    } catch (error) {
+        console.error('Error selecting payment method:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to select payment method',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+// Customer pays remaining balance via GCash
+const payRemainingBalanceGCash = async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        const { payment_confirmation_image } = req.body; // Base64 or URL
+
+        // This is similar to updateQRPaymentStatus but for remaining balance
+        // Get order details
+        const [orderDetails] = await pool.query(`
+            SELECT order_id, customer_id, vendor_id, total_amount, payment_amount, remaining_balance, 
+                   payment_status, remaining_payment_method, status
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderDetails.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        const order = orderDetails[0];
+
+        // Check if remaining balance exists
+        const remainingBalance = parseFloat(order.remaining_balance) || 0;
+        if (remainingBalance <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No remaining balance to pay'
+            });
+        }
+
+        // Check if payment method is GCash
+        if (order.remaining_payment_method !== 'gcash') {
+            return res.status(400).json({
+                success: false,
+                error: 'Payment method for remaining balance is not GCash. Please select GCash payment method first.'
+            });
+        }
+
+        // Check if already fully paid
+        if (order.payment_status === 'paid') {
+            return res.status(400).json({
+                success: false,
+                error: 'Order is already fully paid'
+            });
+        }
+
+        // Handle payment confirmation image upload to Cloudinary
+        let paymentConfirmationImageUrl = null;
+        if (req.file || payment_confirmation_image) {
+            try {
+                const cloudinary = require('cloudinary').v2;
+                
+                if (req.file) {
+                    const cloudinaryResult = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_stream(
+                            {
+                                resource_type: 'image',
+                                folder: 'payment_confirmations'
+                            },
+                            (error, result) => {
+                                if (error) reject(error);
+                                else resolve(result);
+                            }
+                        ).end(req.file.buffer);
+                    });
+                    paymentConfirmationImageUrl = cloudinaryResult.secure_url;
+                } else if (payment_confirmation_image) {
+                    // If base64 or URL provided directly
+                    paymentConfirmationImageUrl = payment_confirmation_image;
+                }
+            } catch (cloudinaryError) {
+                console.error('Cloudinary upload error:', cloudinaryError);
+                // Continue without image if upload fails
+            }
+        }
+
+        // Update order: mark as fully paid and clear remaining balance
+        await pool.query(`
+            UPDATE orders 
+            SET payment_status = 'paid',
+                remaining_balance = 0,
+                remaining_payment_confirmed_at = NOW(),
+                remaining_payment_confirmed_by = 'customer',
+                payment_method = 'gcash'
+            WHERE order_id = ?
+        `, [order_id]);
+
+        // Create QR payment transaction record for remaining balance
+        await pool.query(`
+            INSERT INTO qr_payment_transactions (
+                order_id,
+                customer_id,
+                vendor_id,
+                payment_amount,
+                payment_method,
+                payment_status,
+                payment_confirmation_image,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        `, [
+            order_id,
+            order.customer_id,
+            order.vendor_id,
+            remainingBalance,
+            'gcash_qr',
+            'completed',
+            paymentConfirmationImageUrl
+        ]);
+
+        // Create notifications
+        try {
+            // Notify customer
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, 'customer', ?, ?, 'payment_received', 0, NOW(), ?, ?, ?)
+            `, [
+                order.customer_id,
+                'Remaining Balance Paid',
+                `Your remaining balance of ₱${remainingBalance.toFixed(2)} for order #${order_id} has been paid successfully.`,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+
+            // Notify vendor
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, 'vendor', ?, ?, 'payment_received', 0, NOW(), ?, ?, ?)
+            `, [
+                order.vendor_id,
+                'Remaining Balance Received',
+                `Customer paid remaining balance of ₱${remainingBalance.toFixed(2)} for order #${order_id} via GCash.`,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+        } catch (notificationError) {
+            console.error('Failed to create notifications:', notificationError);
+        }
+
+        res.json({
+            success: true,
+            message: 'Remaining balance paid successfully',
+            order_id: order_id,
+            remaining_balance_paid: remainingBalance,
+            payment_status: 'paid'
+        });
+
+    } catch (error) {
+        console.error('Error paying remaining balance:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to process remaining balance payment',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
+// Vendor confirms COD payment collection
+const confirmCODPayment = async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        const { amount_collected } = req.body;
+
+        // Get order details
+        const [orderDetails] = await pool.query(`
+            SELECT order_id, customer_id, vendor_id, total_amount, payment_amount, remaining_balance, 
+                   payment_status, remaining_payment_method, status
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderDetails.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        const order = orderDetails[0];
+        const expectedAmount = parseFloat(order.remaining_balance) || 0;
+        const collectedAmount = parseFloat(amount_collected) || 0;
+
+        // Check if remaining balance exists
+        if (expectedAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No remaining balance to collect'
+            });
+        }
+
+        // Check if payment method is COD
+        if (order.remaining_payment_method !== 'cod') {
+            return res.status(400).json({
+                success: false,
+                error: 'Payment method for remaining balance is not COD'
+            });
+        }
+
+        // Validate amount (allow small rounding differences)
+        const difference = Math.abs(collectedAmount - expectedAmount);
+        if (difference > 0.01) {
+            return res.status(400).json({
+                success: false,
+                error: `Amount mismatch. Expected ₱${expectedAmount.toFixed(2)}, received ₱${collectedAmount.toFixed(2)}`,
+                expected_amount: expectedAmount,
+                collected_amount: collectedAmount
+            });
+        }
+
+        // Update order: mark as fully paid and clear remaining balance
+        await pool.query(`
+            UPDATE orders 
+            SET payment_status = 'paid',
+                remaining_balance = 0,
+                remaining_payment_confirmed_at = NOW(),
+                remaining_payment_confirmed_by = 'vendor',
+                payment_method = CASE 
+                    WHEN payment_method IS NULL THEN 'cod'
+                    WHEN payment_method = 'gcash' THEN 'gcash_cod'
+                    ELSE 'cod'
+                END
+            WHERE order_id = ?
+        `, [order_id]);
+
+        // Create payment transaction record
+        await pool.query(`
+            INSERT INTO qr_payment_transactions (
+                order_id,
+                customer_id,
+                vendor_id,
+                payment_amount,
+                payment_method,
+                payment_status,
+                vendor_notes,
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        `, [
+            order_id,
+            order.customer_id,
+            order.vendor_id,
+            collectedAmount,
+            'cod',
+            'completed',
+            `COD payment collected by vendor`
+        ]);
+
+        // Create notifications
+        try {
+            // Notify customer
+            await pool.query(`
+                INSERT INTO notifications (
+                    user_id, user_type, title, message, notification_type, is_read, created_at,
+                    related_order_id, related_vendor_id, related_customer_id
+                ) VALUES (?, 'customer', ?, ?, 'payment_received', 0, NOW(), ?, ?, ?)
+            `, [
+                order.customer_id,
+                'Remaining Balance Collected',
+                `Remaining balance of ₱${collectedAmount.toFixed(2)} for order #${order_id} has been collected via Cash on Delivery.`,
+                order_id,
+                order.vendor_id,
+                order.customer_id
+            ]);
+        } catch (notificationError) {
+            console.error('Failed to create notifications:', notificationError);
+        }
+
+        res.json({
+            success: true,
+            message: 'COD payment confirmed successfully',
+            order_id: order_id,
+            amount_collected: collectedAmount,
+            payment_status: 'paid'
+        });
+
+    } catch (error) {
+        console.error('Error confirming COD payment:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to confirm COD payment',
+            message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+};
+
 module.exports = {
     getOrderRecord,
     getOrderById,
@@ -1504,5 +1945,8 @@ module.exports = {
     updateQRPaymentStatus,
     getAllOrdersAdmin,
     updateDrumReturnStatus,
-    getVendorTransactions
+    getVendorTransactions,
+    selectRemainingPaymentMethod,
+    payRemainingBalanceGCash,
+    confirmCODPayment
 };

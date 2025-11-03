@@ -75,7 +75,7 @@ export const Customer = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   const [locationError, setLocationError] = useState(null);
-      
+  
   // Orders data
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -759,6 +759,42 @@ export const Customer = () => {
     navigateOptimized(`/customer/gcash-account/${order.order_id}`);
   };
 
+  // Handle selecting payment method for remaining balance (GCash or COD)
+  const handleSelectRemainingPaymentMethod = async (orderId, paymentMethod) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      const response = await axios.post(`${apiBase}/api/orders/${orderId}/select-remaining-payment-method`, {
+        payment_method: paymentMethod
+      });
+
+      if (response.data.success) {
+        // Refresh orders to show updated payment method
+        fetchCustomerOrders();
+        
+        // If GCash selected, navigate to payment page
+        if (paymentMethod === 'gcash') {
+          // Close modal and navigate to GCash payment for remaining balance
+          setShowOrderModal(false);
+          navigateOptimized(`/customer/gcash-account/${orderId}?remaining=true`);
+        } else {
+          // Show success message for COD
+          alert(`Payment method selected: Cash on Delivery. Please prepare ₱${response.data.remaining_balance.toFixed(2)} cash when your order arrives.`);
+        }
+      } else {
+        alert(response.data.error || 'Failed to select payment method');
+      }
+    } catch (error) {
+      console.error('Error selecting payment method:', error);
+      alert(error.response?.data?.error || 'Failed to select payment method. Please try again.');
+    }
+  };
+
+  // Handle paying remaining balance via GCash
+  const handlePayRemainingBalance = (order) => {
+    navigateOptimized(`/customer/gcash-account/${order.order_id}?remaining=true`);
+  };
+
   // Handle cancel order
   const handleCancelOrder = async (orderId) => {
     console.log('🚫 Cancel order button clicked for order:', orderId);
@@ -865,14 +901,26 @@ export const Customer = () => {
       });
       
       if (response.data.success) {
-        // Update local state
+        const updatedOrder = {
+          ...selectedOrderForReturn,
+          drum_status: 'return_requested',
+          return_requested_at: new Date().toISOString()
+        };
+        
+        // Update local state - orders list
         setOrders(prevOrders => 
           prevOrders.map(o => 
             o.order_id === selectedOrderForReturn.order_id 
-              ? { ...o, drum_status: 'return_requested', return_requested_at: new Date().toISOString() }
+              ? updatedOrder
               : o
           )
         );
+        
+        // Update selectedOrder if it's the same order currently being viewed
+        if (selectedOrder && selectedOrder.order_id === selectedOrderForReturn.order_id) {
+          setSelectedOrder(updatedOrder);
+        }
+        
         setShowDrumReturnSuccessModal(true);
       } else {
         showError('Failed to request drum return. Please try again.');
@@ -1051,9 +1099,9 @@ export const Customer = () => {
   const filteredFlavors = useMemo(() => {
     let filtered = allFlavors.filter(flavor => 
       !searchTerm || (
-        flavor.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        flavor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (flavor.location && flavor.location.toLowerCase().includes(searchTerm.toLowerCase()))
+    flavor.flavor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    flavor.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (flavor.location && flavor.location.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     );
 
@@ -1350,7 +1398,7 @@ export const Customer = () => {
 
         {/* Drum Return Confirmation Modal */}
         {showDrumReturnModal && selectedOrderForReturn && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
@@ -1391,7 +1439,7 @@ export const Customer = () => {
 
         {/* Drum Return Success Modal */}
         {showDrumReturnSuccessModal && selectedOrderForReturn && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
@@ -1425,7 +1473,7 @@ export const Customer = () => {
 
         {/* Review Modal */}
         {showReviewModal && selectedOrderForReview && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
             <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
               <div>
                 <div className="flex items-center justify-between mb-6">
@@ -1750,32 +1798,123 @@ export const Customer = () => {
                       
                 <div className="mb-4">
                   <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Payment</h4>
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
                     <div className="flex items-center space-x-2">
-                      <span className="text-gray-600 text-sm sm:text-base">Method:</span>
-                      <span className="font-medium text-sm sm:text-base">{selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' ? 'GCash' : selectedOrder.payment_method?.toUpperCase() || 'N/A'}</span>
+                      <span className="text-gray-600 text-sm sm:text-base">Initial Payment Method:</span>
+                      <span className="font-medium text-sm sm:text-base">
+                        {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
+                          ? 'GCash' 
+                          : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
+                      </span>
                     </div>
-                    {selectedOrder.payment_type && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-400 hidden sm:inline">•</span>
-                        <span className="text-xs sm:text-sm text-gray-600">
-                          {selectedOrder.payment_type === 'downpayment' ? '50% Down Payment' : 'Full Payment'}
-                        </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-600 text-sm sm:text-base">Status:</span>
+                      <span className={`font-medium text-sm sm:text-base ${
+                        selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
+                        selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
+                        selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
+                      }`}>
+                        {selectedOrder.payment_status?.charAt(0).toUpperCase() + selectedOrder.payment_status?.slice(1) || 'N/A'}
+                      </span>
+                    </div>
+                    {selectedOrder.payment_status === 'partial' && selectedOrder.payment_amount && (
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-gray-600 text-sm sm:text-base">Amount Paid (50%):</span>
+                          <span className="font-medium text-green-600 text-sm sm:text-base">₱{parseFloat(selectedOrder.payment_amount).toFixed(2)}</span>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-gray-600 text-sm sm:text-base">Status:</span>
-                    <span className={`font-medium text-sm sm:text-base ${
-                      selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
-                      selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
-                      selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
-                    }`}>
-                      {selectedOrder.payment_status?.charAt(0).toUpperCase() + selectedOrder.payment_status?.slice(1) || 'N/A'}
-                    </span>
-                  </div>
+                  {/* Show remaining balance if partial payment */}
+                  {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0 && (
+                    <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-orange-800 font-medium text-sm sm:text-base">Remaining Balance:</span>
+                        <span className="text-orange-900 font-bold text-base sm:text-lg">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-orange-700 text-xs sm:text-sm font-medium">Remaining Payment Method:</span>
+                        <span className="text-orange-800 text-xs sm:text-sm font-semibold ml-2">
+                          {selectedOrder.remaining_payment_method 
+                            ? selectedOrder.remaining_payment_method.toUpperCase() 
+                            : 'Not Selected'}
+                        </span>
+                      </div>
+                      {selectedOrder.status === 'delivered' && !selectedOrder.remaining_payment_method && (
+                        <p className="text-xs sm:text-sm text-orange-700 mt-2 italic">
+                          Payment method was not selected. If you haven't paid yet, please contact the vendor.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
                       
+                {/* Payment Method Selection for Remaining Balance */}
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery') && 
+                 selectedOrder.payment_status === 'partial' && 
+                 selectedOrder.remaining_balance > 0 && 
+                 !selectedOrder.remaining_payment_method && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4">
+                    <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">Choose Payment Method for Remaining Balance</p>
+                    <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                      {selectedOrder.status === 'out_for_delivery' 
+                        ? `Your order is on the way! Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)}:`
+                        : `Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)} when your order is delivered:`}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'gcash')}
+                        className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base flex flex-col items-center space-y-1"
+                      >
+                        <span className="text-lg">📱</span>
+                        <span>Pay via GCash</span>
+                        <span className="text-xs opacity-90">Pay Now</span>
+                      </button>
+                      <button 
+                        onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'cod')}
+                        className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base flex flex-col items-center space-y-1"
+                      >
+                        <span className="text-lg">💰</span>
+                        <span>Cash on Delivery</span>
+                        <span className="text-xs opacity-90">Pay when arrives</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Remaining Balance Payment Actions (If payment method already selected) */}
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery') && 
+                 selectedOrder.payment_status === 'partial' && 
+                 selectedOrder.remaining_balance > 0 && 
+                 selectedOrder.remaining_payment_method === 'gcash' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4">
+                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Remaining Balance Due</p>
+                    <p className="text-green-700 text-xs sm:text-sm mb-3">
+                      Payment method: GCash<br/>
+                      Amount: <span className="font-bold">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
+                    </p>
+                    <button 
+                      onClick={() => handlePayRemainingBalance(selectedOrder)}
+                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      💳 Pay Remaining Balance via GCash
+                    </button>
+                  </div>
+                )}
+
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery') && 
+                 selectedOrder.payment_status === 'partial' && 
+                 selectedOrder.remaining_balance > 0 && 
+                 selectedOrder.remaining_payment_method === 'cod' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4">
+                    <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">Cash on Delivery Selected</p>
+                    <p className="text-blue-700 text-xs sm:text-sm">
+                      You've selected Cash on Delivery. Please prepare ₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)} cash when your order arrives. The delivery person will collect the payment.
+                    </p>
+                  </div>
+                )}
+
                 {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'awaiting_payment') && selectedOrder.payment_status === 'unpaid' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
                     <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Payment Required</p>
@@ -2049,9 +2188,9 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
-                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                   >
-                    <img src={cartIcon} alt="Cart" className="w-4 h-4" />
+                    <img src={cartIcon} alt="Favorites" className="w-4 h-4" />
                     {totalItems > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                         {totalItems > 9 ? '9+' : totalItems}
@@ -2140,11 +2279,11 @@ export const Customer = () => {
                         ? 'bg-blue-100 hover:bg-blue-200' 
                         : 'hover:bg-gray-100'
                     }`}
-                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                    title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                   >
                     <img 
                       src={cartIcon} 
-                      alt="Cart" 
+                      alt="Favorites" 
                       className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5`} 
                     />
                     {totalItems > 0 && (
@@ -2607,11 +2746,11 @@ export const Customer = () => {
                 <button 
                   onClick={() => navigate('/cart')}
                   className="p-1.5 rounded-lg transition-all duration-200 relative hover:bg-gray-100"
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className={`w-4 h-4 transition-transform duration-200`} 
                   />
                   {totalItems > 0 && (
@@ -2777,11 +2916,11 @@ export const Customer = () => {
                 <button 
                   onClick={() => navigate('/cart')}
                   className="p-1.5 rounded-lg transition-all duration-200 relative sm:p-2 hover:bg-gray-100"
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className={`w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5 `} 
                   />
                   {totalItems > 0 && (
@@ -2953,11 +3092,11 @@ export const Customer = () => {
                           className="w-3 h-3 flex-shrink-0" 
                         />
                         <span className="text-xs text-gray-600 truncate" title={flavor.location && flavor.location !== 'Location not specified' ? flavor.location : 'Location not specified'}>
-                          {flavor.location && flavor.location !== 'Location not specified' 
-                            ? flavor.location 
-                            : 'Location not specified'
-                          }
-                        </span>
+                        {flavor.location && flavor.location !== 'Location not specified' 
+                          ? flavor.location 
+                          : 'Location not specified'
+                        }
+                      </span>
                       </div>
                       {/* Distance display */}
                       {flavor.distance !== null && flavor.distance !== undefined && userLocation && (
@@ -3006,7 +3145,7 @@ export const Customer = () => {
 
       {/* Drum Return Confirmation Modal */}
       {showDrumReturnModal && selectedOrderForReturn && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">

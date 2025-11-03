@@ -1230,6 +1230,34 @@ export const Vendor = () => {
     }
   };
 
+  // Handle COD payment confirmation for remaining balance
+  const handleConfirmCODPayment = async (orderId, remainingBalance) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      
+      // Show confirmation prompt with amount
+      const confirmed = window.confirm(
+        `Confirm COD payment collection?\n\nAmount: ₱${parseFloat(remainingBalance).toFixed(2)}\n\nThis will mark the order as fully paid.`
+      );
+      
+      if (!confirmed) return;
+
+      const response = await axios.post(`${apiBase}/api/orders/${orderId}/confirm-cod-payment`, {
+        amount_collected: remainingBalance
+      });
+
+      if (response.data.success) {
+        updateStatus("success", `COD payment of ₱${parseFloat(remainingBalance).toFixed(2)} confirmed successfully!`);
+        fetchVendorOrders(); // Refresh orders
+      } else {
+        updateStatus("error", response.data.error || "Failed to confirm COD payment");
+      }
+    } catch (error) {
+      console.error('Error confirming COD payment:', error);
+      updateStatus("error", error.response?.data?.error || "Failed to confirm COD payment. Please try again.");
+    }
+  };
+
    // Update order status (approve/decline)
    const updateOrderStatus = async (orderId, newStatus, previousStatus = null, declineReason = null) => {
      try {
@@ -6979,7 +7007,7 @@ export const Vendor = () => {
                            { value: 'all', label: 'All Orders', count: vendorOrders.length },
                            { value: 'pending', label: 'Pending', count: vendorOrders.filter(o => o.status === 'pending').length },
                            { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
-                           { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'paid').length },
+                           { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && (o.payment_status === 'paid' || o.payment_status === 'partial')).length },
                            { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
                            { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
                            { value: 'delivered', label: 'Delivered', count: vendorOrders.filter(o => o.status === 'delivered').length },
@@ -7019,7 +7047,7 @@ export const Vendor = () => {
                                                   { value: 'all', label: 'All Orders', count: vendorOrders.length },
                           { value: 'pending', label: 'Pending Payment', count: vendorOrders.filter(o => o.status === 'pending').length },
                         { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
-                        { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'paid').length },
+                        { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && (o.payment_status === 'paid' || o.payment_status === 'partial')).length },
                         { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
                         { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
                         { value: 'delivered', label: 'Delivered', count: vendorOrders.filter(o => o.status === 'delivered').length },
@@ -7163,7 +7191,7 @@ export const Vendor = () => {
                         : orderFilter === 'confirmed'
                         ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'unpaid')
                         : orderFilter === 'paid'
-                        ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'paid')
+                        ? vendorOrders.filter(order => order.status === 'confirmed' && (order.payment_status === 'paid' || order.payment_status === 'partial'))
                         : orderFilter === 'drum_return'
                         ? vendorOrders.filter(order => order.drum_status === 'not returned' || order.drum_status === 'return_requested')
                         : vendorOrders.filter(order => order.status === orderFilter);
@@ -7262,8 +7290,16 @@ export const Vendor = () => {
                                   </p>
                                 </div>
                                 <div className="text-right ml-2">
-                                  <p className="text-sm font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
-                                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                  {order.payment_status === 'partial' && order.payment_amount ? (
+                                    <div>
+                                      <p className="text-xs text-gray-500">Total: ₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                      <p className="text-sm font-bold text-green-600">Paid: ₱{parseFloat(order.payment_amount || 0).toFixed(2)}</p>
+                                      <p className="text-xs text-orange-600">Remaining: ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                  )}
+                                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full mt-1 ${
                                     order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                     order.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                                     order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
@@ -7274,6 +7310,11 @@ export const Vendor = () => {
                                   }`}>
                                     {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ') : 'N/A'}
                                   </span>
+                                  {order.payment_status === 'partial' && (
+                                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full mt-1 bg-orange-100 text-orange-800">
+                                      Partial
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               
@@ -7414,10 +7455,23 @@ export const Vendor = () => {
                                     )}
                                   </div>
                                   <div className="text-right">
-                                    <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
-                                    <p className="text-xs text-gray-500">
-                                      Payment: {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
-                                    </p>
+                                    {order.payment_status === 'partial' && order.payment_amount ? (
+                                      <div>
+                                        <p className="text-xs text-gray-500">Total: ₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                        <p className="text-lg font-bold text-green-600">Paid: ₱{parseFloat(order.payment_amount || 0).toFixed(2)}</p>
+                                        <p className="text-xs text-orange-600">Remaining: ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</p>
+                                        <p className="text-xs text-orange-600 font-medium mt-1">
+                                          Partial (50% Paid)
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <p className="text-lg font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</p>
+                                        <p className="text-xs text-gray-500">
+                                          Payment: {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
+                                        </p>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -7492,16 +7546,31 @@ export const Vendor = () => {
                             <div className="space-y-3">
                               <h4 className="font-medium text-gray-900">Order Details</h4>
                               <div className="bg-white rounded-lg p-4 space-y-2">
-                                <p className="text-sm"><strong>Total Amount:</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
-                                <p className="text-sm"><strong>Payment Status:</strong> 
-                                  <span className={`ml-1 font-medium ${
-                                    order.payment_status === 'unpaid' ? 'text-yellow-600' :
-                                    order.payment_status === 'paid' ? 'text-green-600' :
-                                    order.payment_status === 'partial' ? 'text-orange-600' : 'text-gray-600'
-                                  }`}>
-                                    {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
-                                  </span>
-                                </p>
+                                {order.payment_status === 'partial' && order.payment_amount ? (
+                                  <>
+                                    <p className="text-sm"><strong>Total Order Amount:</strong> <span className="font-medium">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-sm border-t pt-2"><strong>Amount Paid (50%):</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-sm text-gray-600"><strong>Remaining Balance:</strong> <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span></p>
+                                    <p className="text-sm"><strong>Payment Status:</strong> 
+                                      <span className="ml-1 font-medium text-orange-600">
+                                        Partial (50% Paid)
+                                      </span>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-sm"><strong>Total Amount:</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-sm"><strong>Payment Status:</strong> 
+                                      <span className={`ml-1 font-medium ${
+                                        order.payment_status === 'unpaid' ? 'text-yellow-600' :
+                                        order.payment_status === 'paid' ? 'text-green-600' :
+                                        order.payment_status === 'partial' ? 'text-orange-600' : 'text-gray-600'
+                                      }`}>
+                                        {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'N/A'}
+                                      </span>
+                                    </p>
+                                  </>
+                                )}
                                 <div className="text-sm">
                                   <strong>Delivery Date:</strong>
                                   {order.delivery_datetime ? (() => {
@@ -7611,7 +7680,7 @@ export const Vendor = () => {
                             </div>
                           )}
 
-                          {order.status === 'confirmed' && (order.payment_status === 'unpaid' || order.payment_status === 'partial') && (() => {
+                          {order.status === 'confirmed' && order.payment_status === 'unpaid' && (() => {
                             // Check if this is a walk-in order
                             const fullAddress = order.delivery_address || '';
                             const isWalkInOrder = fullAddress.includes('Customer: ') && fullAddress.includes('Contact: ');
@@ -7621,7 +7690,7 @@ export const Vendor = () => {
                                 <p className="text-green-800 font-medium mb-2">Order Confirmed!</p>
                                 <p className="text-green-700 text-sm mb-3">
                                   {isWalkInOrder 
-                                    ? `Walk-in order - ${order.payment_status === 'partial' ? '50% down payment received' : 'Waiting for payment'}. Mark as paid to start preparation.`
+                                    ? 'Walk-in order - Waiting for payment. Mark as paid to start preparation.'
                                     : 'Order automatically confirmed. Waiting for customer payment to start preparation.'
                                   }
                                 </p>
@@ -7654,12 +7723,24 @@ export const Vendor = () => {
                             );
                           })()}
 
-                          {order.status === 'confirmed' && order.payment_status === 'paid' && (
+                          {order.status === 'confirmed' && (order.payment_status === 'paid' || order.payment_status === 'partial') && (
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                              <p className="text-blue-800 font-medium mb-2">Payment Received!</p>
-                              <p className="text-blue-700 text-sm mb-3">
-                                Customer has paid. You can now start preparing the ice cream.
+                              <p className="text-blue-800 font-medium mb-2">
+                                {order.payment_status === 'partial' ? 'Partial Payment Received!' : 'Payment Received!'}
                               </p>
+                              <p className="text-blue-700 text-sm mb-3">
+                                {order.payment_status === 'partial' && order.payment_amount
+                                  ? `Customer has paid 50% (₱${parseFloat(order.payment_amount).toFixed(2)}) of the total amount. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} will be collected on delivery. You can now start preparing the ice cream.`
+                                  : 'Customer has paid. You can now start preparing the ice cream.'}
+                              </p>
+                              {order.payment_status === 'partial' && order.payment_amount && (
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                                  <p className="text-orange-800 text-sm font-medium">
+                                    Amount Paid: ₱{parseFloat(order.payment_amount).toFixed(2)} | 
+                                    Remaining: ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}
+                                  </p>
+                                </div>
+                              )}
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                   onClick={() => handlePrepareOrder(order)}
@@ -7700,6 +7781,31 @@ export const Vendor = () => {
                               <p className="text-purple-700 text-sm mb-3">
                                 Order is on the way to customer. Mark as delivered when completed.
                               </p>
+                              
+                              {/* Show remaining balance info if partial payment */}
+                              {order.payment_status === 'partial' && order.remaining_balance > 0 && (
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                                  <p className="text-orange-800 font-medium mb-1 text-sm">Remaining Balance: ₱{parseFloat(order.remaining_balance).toFixed(2)}</p>
+                                  {order.remaining_payment_method === 'cod' && (
+                                    <>
+                                      <p className="text-orange-700 text-xs mb-2">Customer selected: Cash on Delivery</p>
+                                      <button
+                                        onClick={() => handleConfirmCODPayment(order.order_id, order.remaining_balance)}
+                                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm w-full sm:w-auto"
+                                      >
+                                        💰 Mark Remaining Balance as Paid (COD)
+                                      </button>
+                                    </>
+                                  )}
+                                  {order.remaining_payment_method === 'gcash' && (
+                                    <p className="text-orange-700 text-xs">Customer will pay via GCash</p>
+                                  )}
+                                  {!order.remaining_payment_method && (
+                                    <p className="text-orange-700 text-xs">Customer hasn't selected payment method yet</p>
+                                  )}
+                                </div>
+                              )}
+                              
                               <button
                                 onClick={() => handleDeliveredOrder(order)}
                                 className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"

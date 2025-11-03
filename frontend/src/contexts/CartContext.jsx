@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-// Cart context for managing cart state across the application
+// Cart context for managing favorites/cart state across the application
 const CartContext = createContext();
 
 // Cart action types
@@ -129,7 +129,7 @@ export const CartProvider = ({ children }) => {
   const loadCartFromDatabase = async () => {
     const user = getCurrentUser();
     if (!user || !user.id) {
-      console.log('🛒 CartContext: No user logged in, skipping database cart load');
+      console.log('🛒 CartContext: No user logged in, skipping database favorites load');
       return;
     }
 
@@ -140,7 +140,7 @@ export const CartProvider = ({ children }) => {
     }
 
     try {
-      console.log('🛒 CartContext: Loading cart from database for user:', user.id);
+      console.log('🛒 CartContext: Loading favorites from database for user:', user.id);
       isLoadingCart.current = true;
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: true });
       
@@ -167,7 +167,7 @@ export const CartProvider = ({ children }) => {
         
         dispatch({ type: CART_ACTIONS.LOAD_CART, payload: cartItems });
         hasLoadedCart.current = true;
-        console.log('🛒 CartContext: Cart loaded from database with', cartItems.length, 'items');
+        console.log('🛒 CartContext: Favorites loaded from database with', cartItems.length, 'items');
         
         // Also save to localStorage as backup
         localStorage.setItem('chillnet_cart', JSON.stringify(cartItems));
@@ -289,13 +289,13 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (item) => {
     const user = getCurrentUser();
     if (!user || !user.id) {
-      console.log('🛒 CartContext: No user logged in, adding to local cart only');
+      console.log('🛒 CartContext: No user logged in, adding to local favorites only');
       dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: item });
       return;
     }
 
     try {
-      console.log('🛒 CartContext: Adding item to database cart:', item);
+      console.log('🛒 CartContext: Adding item to database favorites:', item);
       dispatch({ type: CART_ACTIONS.SET_SYNCING, payload: true });
       
       const apiBase = getApiBase();
@@ -321,7 +321,7 @@ export const CartProvider = ({ children }) => {
         }));
         
         dispatch({ type: CART_ACTIONS.SYNC_CART, payload: cartItems });
-        console.log('🛒 CartContext: Item added to database cart successfully');
+        console.log('🛒 CartContext: Item added to database favorites successfully');
       }
     } catch (error) {
       console.error('🛒 CartContext: Error adding to database cart:', error);
@@ -335,7 +335,7 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (flavorId, size) => {
     const user = getCurrentUser();
     if (!user || !user.id) {
-      console.log('🛒 CartContext: No user logged in, removing from local cart only');
+      console.log('🛒 CartContext: No user logged in, removing from local favorites only');
       dispatch({ type: CART_ACTIONS.REMOVE_ITEM, payload: { flavor_id: flavorId, size } });
       return;
     }
@@ -391,7 +391,7 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = async (flavorId, size, quantity) => {
     const user = getCurrentUser();
     if (!user || !user.id) {
-      console.log('🛒 CartContext: No user logged in, updating local cart only');
+      console.log('🛒 CartContext: No user logged in, updating local favorites only');
       dispatch({ type: CART_ACTIONS.UPDATE_QUANTITY, payload: { flavor_id: flavorId, size, quantity } });
       return;
     }
@@ -453,7 +453,7 @@ export const CartProvider = ({ children }) => {
     
     const user = getCurrentUser();
     if (!user || !user.id) {
-      console.log('🛒 CartContext: No user logged in, clearing local cart only');
+      console.log('🛒 CartContext: No user logged in, clearing local favorites only');
       dispatch({ type: CART_ACTIONS.CLEAR_CART });
       return;
     }

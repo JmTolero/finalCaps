@@ -107,14 +107,44 @@ const PaymentSuccess = () => {
       yPosition += 20;
       
       // Payment details
-      const paymentDetails = [
-        'Payment Status: Paid',
-        'Payment Method: GCash QR'
-      ];
+      const paymentDetails = [];
+      if (order.payment_status === 'partial' && order.payment_amount) {
+        paymentDetails.push(
+          'Payment Status: Partial (50% Paid)',
+          `Amount Paid: ₱${parseFloat(order.payment_amount).toFixed(2)}`,
+          `Remaining Balance: ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}`,
+          'Payment Method: GCash QR'
+        );
+      } else {
+        paymentDetails.push(
+          'Payment Status: Paid',
+          'Payment Method: GCash QR'
+        );
+      }
       
       paymentDetails.forEach(detail => {
-        ctx.fillText(detail, 50, yPosition);
-        yPosition += 25;
+        // Handle long text wrapping
+        const words = detail.split(' ');
+        let line = '';
+        const maxWidth = canvas.width - 100;
+        
+        words.forEach(word => {
+          const testLine = line + word + ' ';
+          const metrics = ctx.measureText(testLine);
+          
+          if (metrics.width > maxWidth && line !== '') {
+            ctx.fillText(line, 50, yPosition);
+            line = word + ' ';
+            yPosition += 20;
+          } else {
+            line = testLine;
+          }
+        });
+        
+        if (line) {
+          ctx.fillText(line, 50, yPosition);
+          yPosition += 25;
+        }
       });
       
       yPosition += 30;
@@ -195,7 +225,18 @@ const PaymentSuccess = () => {
       ctx.font = headerFont;
       ctx.fillStyle = '#1f2937';
       ctx.textAlign = 'center';
-      ctx.fillText(`Total Amount: ₱${parseFloat(order.total_amount || 0).toFixed(2)}`, canvas.width / 2, yPosition);
+      
+      if (order.payment_status === 'partial' && order.payment_amount) {
+        ctx.fillText(`Total Amount: ₱${parseFloat(order.total_amount || 0).toFixed(2)}`, canvas.width / 2, yPosition);
+        yPosition += 25;
+        ctx.fillText(`Amount Paid (50%): ₱${parseFloat(order.payment_amount).toFixed(2)}`, canvas.width / 2, yPosition);
+        yPosition += 25;
+        ctx.font = normalFont;
+        ctx.fillText(`Remaining Balance: ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}`, canvas.width / 2, yPosition);
+        ctx.font = headerFont;
+      } else {
+        ctx.fillText(`Total Amount: ₱${parseFloat(order.total_amount || 0).toFixed(2)}`, canvas.width / 2, yPosition);
+      }
       
       yPosition += 40;
       
@@ -279,16 +320,41 @@ const PaymentSuccess = () => {
                   <span className="font-medium text-gray-600">Vendor ID:</span>
                   <span className="font-bold text-gray-900">#{order.vendor_id}</span>
                 </div>
-                <div className="flex justify-between text-sm sm:text-base">
-                  <span className="font-medium text-gray-600">Total Amount:</span>
-                  <span className="font-bold text-green-600 text-base sm:text-lg">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm sm:text-base">
-                  <span className="font-medium text-gray-600">Payment Status:</span>
-                  <span className="font-bold text-green-600 bg-green-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">
-                    {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Paid'}
-                  </span>
-                </div>
+                {order.payment_status === 'partial' && order.payment_amount ? (
+                  <>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="font-medium text-gray-600">Total Order Amount:</span>
+                      <span className="font-medium text-gray-900">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm sm:text-base border-t pt-2">
+                      <span className="font-medium text-gray-600">Amount Paid (50%):</span>
+                      <span className="font-bold text-green-600 text-base sm:text-lg">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>Remaining Balance:</span>
+                      <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="font-medium text-gray-600">Payment Status:</span>
+                      <span className="font-bold text-orange-600 bg-orange-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">
+                        Partial
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="font-medium text-gray-600">Total Amount:</span>
+                      <span className="font-bold text-green-600 text-base sm:text-lg">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm sm:text-base">
+                      <span className="font-medium text-gray-600">Payment Status:</span>
+                      <span className="font-bold text-green-600 bg-green-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm">
+                        {order.payment_status ? order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1) : 'Paid'}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

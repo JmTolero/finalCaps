@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav';
 
 const CustomerGCashAccount = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRemainingPayment = new URLSearchParams(location.search).get('remaining') === 'true';
   const [order, setOrder] = useState(null);
   const [vendorQR, setVendorQR] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -90,11 +92,22 @@ const CustomerGCashAccount = () => {
         formData.append('payment_confirmation_image', blob, 'payment-proof.jpg');
       }
 
-      await axios.put(`${apiBase}/api/orders/${orderId}/payment`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      // Use different endpoint for remaining balance payment
+      if (isRemainingPayment) {
+        // Pay remaining balance
+        await axios.post(`${apiBase}/api/orders/${orderId}/pay-remaining-balance-gcash`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } else {
+        // Regular payment
+        await axios.put(`${apiBase}/api/orders/${orderId}/payment`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      }
       
       setPaymentStatus('completed');
       setIsPaymentConfirmed(true);
@@ -141,6 +154,24 @@ const CustomerGCashAccount = () => {
     }
   };
 
+  // Helper function to get the amount to pay
+  const getAmountToPay = () => {
+    if (!order) return 0;
+    
+    // If paying remaining balance
+    if (isRemainingPayment && order.remaining_balance > 0) {
+      return parseFloat(order.remaining_balance);
+    }
+    
+    // If partial payment (50% option), use payment_amount
+    if (order.payment_status === 'partial' && order.payment_amount) {
+      return parseFloat(order.payment_amount);
+    }
+    
+    // Otherwise use total amount
+    return parseFloat(order.total_amount);
+  };
+
   if (loading) {
     return (
       <>
@@ -168,10 +199,10 @@ const CustomerGCashAccount = () => {
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Payment Error</h2>
               <p className="text-gray-600 mb-6 text-sm sm:text-base">{error}</p>
               <button
-                onClick={() => navigate('/customer')}
+                onClick={() => navigate(-1)}
                 className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
-                Back to Dashboard
+                Back
               </button>
             </div>
           </div>
@@ -192,10 +223,10 @@ const CustomerGCashAccount = () => {
               <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Invalid Order</h2>
               <p className="text-gray-600 mb-6 text-sm sm:text-base">No order ID provided</p>
               <button
-                onClick={() => navigate('/customer')}
+                onClick={() => navigate(-1)}
                 className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
-                Back to Dashboard
+                Back
               </button>
             </div>
           </div>
@@ -213,13 +244,13 @@ const CustomerGCashAccount = () => {
           <div className="mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
-                onClick={() => navigate('/customer')}
+                onClick={() => navigate(-1)}
                 className="flex items-center space-x-1 sm:space-x-2 text-blue-600 hover:text-blue-700 transition-colors text-sm sm:text-base"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                <span className="font-medium">Back to Dashboard</span>
+                <span className="font-medium">Back</span>
               </button>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">GCash QR Payment</h1>
@@ -241,10 +272,42 @@ const CustomerGCashAccount = () => {
                     <span className="text-gray-600">Vendor:</span>
                     <span className="font-medium">{order.business_name || order.vendor_name}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Amount:</span>
-                    <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.total_amount).toFixed(2)}</span>
-                  </div>
+                  {isRemainingPayment && order.remaining_balance > 0 ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Order Amount:</span>
+                        <span className="font-medium">₱{parseFloat(order.total_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Already Paid:</span>
+                        <span className="font-medium">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-800 font-semibold">Remaining Balance:</span>
+                        <span className="font-bold text-orange-600 text-xl">₱{parseFloat(order.remaining_balance).toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : order.payment_status === 'partial' && order.payment_amount ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Order Amount:</span>
+                        <span className="font-medium">₱{parseFloat(order.total_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-gray-800 font-semibold">Amount to Pay (50%):</span>
+                        <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.payment_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-500">
+                        <span>Remaining Balance:</span>
+                        <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Amount:</span>
+                      <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.total_amount).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Delivery Fee:</span>
                     <span className="font-medium">₱{parseFloat(order.delivery_fee || 0).toFixed(2)}</span>
@@ -269,7 +332,19 @@ const CustomerGCashAccount = () => {
                       />
                     </div>
                     <p className="text-xs sm:text-sm text-gray-600 mb-2">Scan this QR code with your GCash app</p>
-                    <p className="text-lg sm:text-xl font-bold text-green-600 mb-3 sm:mb-4">₱{order ? parseFloat(order.total_amount).toFixed(2) : '0.00'}</p>
+                    <p className="text-lg sm:text-xl font-bold text-green-600 mb-3 sm:mb-4">
+                      ₱{getAmountToPay().toFixed(2)}
+                    </p>
+                    {isRemainingPayment && order.remaining_balance > 0 && (
+                      <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                        Remaining balance payment
+                      </p>
+                    )}
+                    {order.payment_status === 'partial' && order.payment_amount && !isRemainingPayment && (
+                      <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                        50% payment (₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery)
+                      </p>
+                    )}
                     
                     {/* View Full Image Button */}
                     <button
@@ -287,7 +362,7 @@ const CustomerGCashAccount = () => {
                       <li>1. Open your GCash app</li>
                       <li>2. Tap "Scan QR"</li>
                       <li>3. Scan the QR code above</li>
-                      <li>4. Enter the exact amount: ₱{order ? parseFloat(order.total_amount).toFixed(2) : '0.00'}</li>
+                      <li>4. Enter the exact amount: ₱{getAmountToPay().toFixed(2)}</li>
                       <li>5. Complete the payment</li>
                       <li>6. Take a screenshot of payment confirmation</li>
                     </ol>
@@ -423,7 +498,7 @@ const CustomerGCashAccount = () => {
                     <span className="font-medium">Shop Name:</span> {vendorQR.business_name}
                   </p>
                   <p className="text-xs sm:text-sm text-gray-600">
-                    <span className="font-medium">Amount to Pay:</span> ₱{order ? parseFloat(order.total_amount).toFixed(2) : '0.00'}
+                    <span className="font-medium">Amount to Pay:</span> ₱{getAmountToPay().toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -495,7 +570,7 @@ const CustomerGCashAccount = () => {
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <span className="text-xs sm:text-sm text-gray-700">Correct amount: ₱{order ? parseFloat(order.total_amount).toFixed(2) : '0.00'}</span>
+                    <span className="text-xs sm:text-sm text-gray-700">Correct amount: ₱{getAmountToPay().toFixed(2)}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">

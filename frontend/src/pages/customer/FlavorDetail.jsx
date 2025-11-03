@@ -678,7 +678,7 @@ export const FlavorDetail = () => {
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-4 h-4 transition-transform duration-200"
                   />
                   {totalItems > 0 && (
@@ -797,7 +797,7 @@ export const FlavorDetail = () => {
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200"
                   />
                   {totalItems > 0 && (
@@ -986,13 +986,13 @@ export const FlavorDetail = () => {
                        </button>
                      </div>
                      {selectedSize && (
-                       <div className="flex items-center gap-2">
-                         <span className="text-sm sm:text-base text-gray-600">
-                           {getAvailableDrums()} drums available
-                           {deliveryDate && ` for ${new Date(deliveryDate).toLocaleDateString()}`}
-                         </span>
-                         {availabilityLoading && <span className="text-xs text-gray-400">(loading...)</span>}
-                       </div>
+                     <div className="flex items-center gap-2">
+                       <span className="text-sm sm:text-base text-gray-600">
+                         {getAvailableDrums()} drums available
+                         {deliveryDate && ` for ${new Date(deliveryDate).toLocaleDateString()}`}
+                       </span>
+                       {availabilityLoading && <span className="text-xs text-gray-400">(loading...)</span>}
+                     </div>
                      )}
                    </div>
 
@@ -1101,7 +1101,7 @@ export const FlavorDetail = () => {
                    <div className="flex justify-end space-x-3 sm:space-x-4 pt-8 sm:pt-12 lg:pt-16">
                      <button 
                        onClick={handleAddToFavorites}
-                       className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                         className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-400 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
                      >
                        Add to Favorites
                      </button>

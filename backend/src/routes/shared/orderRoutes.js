@@ -53,4 +53,13 @@ router.put('/:order_id/payment', upload.single('payment_confirmation_image'), or
 // Update drum return status
 router.post('/:order_id/drum-return', orderController.updateDrumReturnStatus);
 
+// Customer selects payment method for remaining balance (GCash or COD)
+router.post('/:order_id/select-remaining-payment-method', orderController.selectRemainingPaymentMethod);
+
+// Customer pays remaining balance via GCash
+router.post('/:order_id/pay-remaining-balance-gcash', upload.single('payment_confirmation_image'), orderController.payRemainingBalanceGCash);
+
+// Vendor confirms COD payment collection
+router.post('/:order_id/confirm-cod-payment', orderController.confirmCODPayment);
+
 module.exports = router;

@@ -48,7 +48,7 @@ export const CartView = () => {
       navigate('/customer/my-feedback');
     }
   };
-
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -267,7 +267,7 @@ export const CartView = () => {
                   >
                     <img 
                       src={cartIcon} 
-                      alt="Cart" 
+                      alt="Favorites" 
                       className="w-4 h-4 sm:w-5 sm:h-5" 
                     />
                     {totalItems > 0 && (
@@ -514,50 +514,50 @@ export const CartView = () => {
                 <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 min-w-0">
                   {/* Item Image */}
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    {(() => {
-                      // Check multiple possible field names for the image
-                      const imageField = item.image_url || flavorImages[item.flavor_id] || item.flavor_image_url || item.image || item.flavor_image;
-                      
-                      console.log('🔍 Cart item:', item.name || item.flavor_name);
-                      console.log('🔍 Image field found:', imageField);
-                      
-                      if (!imageField) {
-                        return (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100">
-                            🍦
-                          </div>
-                        );
-                      }
-                      
-                      // Use getImageUrl utility which handles both Cloudinary and local paths
-                      const imagePath = getImageUrl(imageField, process.env.REACT_APP_API_URL || "http://localhost:3001");
-                      
-                      console.log('🔍 Resolved image path:', imagePath);
-                      
-                      return (
-                        <img
-                          src={imagePath}
-                          alt={item.flavor_name || item.name || 'Flavor'}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error('🔍 Image failed to load:', imagePath);
-                            // Try fallback to local upload path
-                            const fallbackPath = `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageField}`;
-                            console.log('🔍 Trying fallback path:', fallbackPath);
-                            if (e.target.src !== fallbackPath) {
-                              e.target.src = fallbackPath;
-                            } else {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }
-                          }}
-                        />
-                      );
-                    })()}
-                    <div className="w-full h-full flex items-center justify-center text-gray-400" style={{display: 'none'}}>
-                      🍦
-                    </div>
-                  </div>
+                {(() => {
+                  // Check multiple possible field names for the image
+                  const imageField = item.image_url || flavorImages[item.flavor_id] || item.flavor_image_url || item.image || item.flavor_image;
+                  
+                  console.log('🔍 Cart item:', item.name || item.flavor_name);
+                  console.log('🔍 Image field found:', imageField);
+                  
+                  if (!imageField) {
+                    return (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100">
+                        🍦
+                      </div>
+                    );
+                  }
+                  
+                  // Use getImageUrl utility which handles both Cloudinary and local paths
+                  const imagePath = getImageUrl(imageField, process.env.REACT_APP_API_URL || "http://localhost:3001");
+                  
+                  console.log('🔍 Resolved image path:', imagePath);
+                  
+                  return (
+                    <img
+                      src={imagePath}
+                      alt={item.flavor_name || item.name || 'Flavor'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('🔍 Image failed to load:', imagePath);
+                        // Try fallback to local upload path
+                        const fallbackPath = `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageField}`;
+                        console.log('🔍 Trying fallback path:', fallbackPath);
+                        if (e.target.src !== fallbackPath) {
+                          e.target.src = fallbackPath;
+                        } else {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }
+                      }}
+                    />
+                  );
+                })()}
+                <div className="w-full h-full flex items-center justify-center text-gray-400" style={{display: 'none'}}>
+                  🍦
+                </div>
+              </div>
 
                   {/* Item Details */}
                   <div className="flex-1 min-w-0 w-full sm:w-auto">

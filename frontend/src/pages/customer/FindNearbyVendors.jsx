@@ -371,11 +371,11 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
                   }`}
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-4 h-4 transition-transform duration-200"
                   />
                   {totalItems > 0 && (
@@ -593,11 +593,11 @@ export const FindNearbyVendors = () => {
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
                   }`}
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200"
                   />
                   {totalItems > 0 && (

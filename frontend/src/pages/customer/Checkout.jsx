@@ -26,6 +26,7 @@ export const Checkout = () => {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isConfirmingOrder, setIsConfirmingOrder] = useState(false);
+  const [paymentOption, setPaymentOption] = useState('full'); // 'full' or '50'
   const receiptRef = useRef(null);
 
   // Debug receipt state changes
@@ -404,6 +405,23 @@ export const Checkout = () => {
     return subtotal + totalDeliveryFee;
   };
 
+  // Helper function to get payment amount based on selected option
+  const getPaymentAmount = () => {
+    const totalAmount = getTotalAmount();
+    if (paymentOption === '50') {
+      return totalAmount * 0.5;
+    }
+    return totalAmount;
+  };
+
+  // Helper function to get remaining balance (for 50% payment)
+  const getRemainingBalance = () => {
+    if (paymentOption === '50') {
+      return getTotalAmount() - getPaymentAmount();
+    }
+    return 0;
+  };
+
   // Old fetchDeliveryPrice function removed - now using calculateDeliveryFees service
 
   const handleBack = () => {
@@ -575,6 +593,9 @@ export const Checkout = () => {
           const vendorDeliveryFee = getVendorDeliveryFee(vendor.vendor_id);
           const vendorTotal = vendorSubtotal + vendorDeliveryFee;
           
+          // Calculate payment amount for this vendor (proportional if 50%)
+          const vendorPaymentAmount = paymentOption === '50' ? vendorTotal * 0.5 : vendorTotal;
+          
           const vendorOrderPayload = {
             customer_id: user.id,
             vendor_id: vendor.vendor_id,
@@ -583,26 +604,27 @@ export const Checkout = () => {
             subtotal: vendorSubtotal,
             delivery_fee: vendorDeliveryFee,
             total_amount: vendorTotal,
+            payment_amount: vendorPaymentAmount,
             status: 'pending',
-            payment_status: 'unpaid',
+            payment_status: paymentOption === '50' ? 'partial' : 'unpaid',
             items: vendorItems
           };
           
           console.log(`📦 Creating order for ${vendor.vendor_name}:`, vendorOrderPayload);
           
           try {
-            const response = await axios.post(`${apiBase}/api/orders`, vendorOrderPayload);
-            
-            if (response.data.success) {
-              console.log(`✅ Order created for ${vendor.vendor_name}:`, response.data.order_id);
-              orderIds.push({
-                order_id: response.data.order_id,
-                vendor_id: vendor.vendor_id,
-                vendor_name: vendor.vendor_name,
-                total_amount: vendorTotal
-              });
-            } else {
-              throw new Error(`Failed to create order for ${vendor.vendor_name}: ${response.data.error}`);
+          const response = await axios.post(`${apiBase}/api/orders`, vendorOrderPayload);
+          
+          if (response.data.success) {
+            console.log(`✅ Order created for ${vendor.vendor_name}:`, response.data.order_id);
+            orderIds.push({
+              order_id: response.data.order_id,
+              vendor_id: vendor.vendor_id,
+              vendor_name: vendor.vendor_name,
+              total_amount: vendorTotal
+            });
+          } else {
+            throw new Error(`Failed to create order for ${vendor.vendor_name}: ${response.data.error}`);
             }
           } catch (axiosError) {
             // Extract error message from axios error
@@ -623,6 +645,8 @@ export const Checkout = () => {
         // Single vendor order (direct from product page)
         console.log('🛍️ Creating single vendor order');
         
+        const paymentAmount = getPaymentAmount();
+        
         const orderPayload = {
           customer_id: user.id,
           vendor_id: orderData.vendorId,
@@ -631,8 +655,9 @@ export const Checkout = () => {
           subtotal: parseFloat(orderData.totalPrice),
           delivery_fee: deliveryPrice || 0,
           total_amount: getTotalAmount(),
+          payment_amount: paymentAmount,
           status: 'pending',
-          payment_status: 'unpaid',
+          payment_status: paymentOption === '50' ? 'partial' : 'unpaid',
           items: orderData.items || []
         };
 
@@ -1060,6 +1085,57 @@ NEXT STEPS
             {/* Payment Information */}
             <div className="mb-6 sm:mb-8">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Payment Information</h2>
+              
+              {/* Payment Option Selection */}
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Option:</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('full')}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      paymentOption === 'full'
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className={`font-semibold ${paymentOption === 'full' ? 'text-blue-600' : 'text-gray-700'}`}>
+                        Full Payment
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Pay ₱{getTotalAmount().toFixed(2)}
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('50')}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      paymentOption === '50'
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className={`font-semibold ${paymentOption === '50' ? 'text-blue-600' : 'text-gray-700'}`}>
+                        50% Payment
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Pay ₱{getPaymentAmount().toFixed(2)} now
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                {paymentOption === '50' && (
+                  <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-xs text-yellow-800">
+                      <strong>Note:</strong> Remaining balance of ₱{getRemainingBalance().toFixed(2)} will be collected on delivery.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -1068,11 +1144,14 @@ NEXT STEPS
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-blue-800">Payment Required</h3>
+                    <h3 className="text-sm font-medium text-blue-800">GCash Payment Required</h3>
                     <div className="mt-2 text-sm text-blue-700">
-                      <p>• Please proceed with payment via GCash to confirm your order</p>
+                      <p>• {paymentOption === '50' ? 'Pay 50% now via GCash to confirm your order' : 'Please proceed with full payment via GCash to confirm your order'}</p>
                       <p>• Payment can be made immediately after placing your order</p>
                       <p>• You'll receive a notification once payment is received</p>
+                      {paymentOption === '50' && (
+                        <p>• Remaining balance (₱{getRemainingBalance().toFixed(2)}) due on delivery</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1095,9 +1174,15 @@ NEXT STEPS
                     <span>Grand Total:</span>
                     <span>₱{getTotalAmount().toFixed(2)}</span>
                   </div>
+                  {paymentOption === '50' && (
+                    <div className="flex items-center justify-between sm:justify-end space-x-2 text-sm text-gray-600 border-t border-gray-300 pt-1 mt-1">
+                      <span>Remaining Balance:</span>
+                      <span>₱{getRemainingBalance().toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between sm:justify-end space-x-2 text-base sm:text-lg font-bold text-blue-600 border-t border-gray-300 pt-1 mt-1">
-                    <span>Estimated Total:</span>
-                    <span>₱{getTotalAmount().toFixed(2)}</span>
+                    <span>{paymentOption === '50' ? 'Amount to Pay Now:' : 'Estimated Total:'}</span>
+                    <span>₱{paymentOption === '50' ? getPaymentAmount().toFixed(2) : getTotalAmount().toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -1178,13 +1263,15 @@ NEXT STEPS
                       <div>
                         <span className="font-medium text-gray-900">GCash</span>
                         <p className="text-sm text-gray-600">
-                          Full Payment
+                          {paymentOption === '50' ? '50% Payment (₱' + getPaymentAmount().toFixed(2) + ')' : 'Full Payment'}
                         </p>
                       </div>
                     </div>
                     <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mt-3">
                       <p className="text-sm text-yellow-800">
-                        <strong>Note:</strong> Please proceed with payment via GCash to confirm your order. The vendor will start preparing once payment is received.
+                        <strong>Note:</strong> {paymentOption === '50' 
+                          ? `Please proceed with 50% payment (₱${getPaymentAmount().toFixed(2)}) via GCash to confirm your order. Remaining balance of ₱${getRemainingBalance().toFixed(2)} will be collected on delivery.`
+                          : 'Please proceed with payment via GCash to confirm your order. The vendor will start preparing once payment is received.'}
                       </p>
                     </div>
                   </div>
@@ -1222,9 +1309,15 @@ NEXT STEPS
                         <span>Grand Total:</span>
                         <span>₱{getTotalAmount().toFixed(2)}</span>
                       </div>
+                      {paymentOption === '50' && (
+                        <div className="flex justify-between text-sm border-t pt-2 mt-2">
+                          <span className="text-gray-600">Remaining Balance:</span>
+                          <span className="font-medium">₱{getRemainingBalance().toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between font-semibold text-lg border-t pt-2 mt-2">
-                        <span>Estimated Total:</span>
-                        <span className="text-blue-600">₱{getTotalAmount().toFixed(2)}</span>
+                        <span>{paymentOption === '50' ? 'Amount to Pay Now:' : 'Estimated Total:'}</span>
+                        <span className="text-blue-600">₱{paymentOption === '50' ? getPaymentAmount().toFixed(2) : getTotalAmount().toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -1244,8 +1337,13 @@ NEXT STEPS
                   <h3 className="font-semibold text-green-800 mb-2">Next Steps</h3>
                   <div className="text-sm text-green-700 space-y-1">
                     <p>• Your order has been placed successfully</p>
-                    <p>• Please proceed with payment via GCash to confirm your order</p>
+                    <p>• {paymentOption === '50' 
+                      ? `Please proceed with 50% payment (₱${getPaymentAmount().toFixed(2)}) via GCash to confirm your order`
+                      : 'Please proceed with payment via GCash to confirm your order'}</p>
                     <p>• You will receive a notification once payment is received</p>
+                    {paymentOption === '50' && (
+                      <p>• Remaining balance (₱{getRemainingBalance().toFixed(2)}) will be collected on delivery</p>
+                    )}
                     <p>• The vendor will start preparing your order after payment confirmation</p>
                     <p>• Keep this confirmation for your records</p>
                   </div>
@@ -1325,7 +1423,7 @@ NEXT STEPS
                 <button
                   onClick={() => {
                     setShowAddressModal(false);
-                    navigate('/customer?view=settings');
+                    navigate('/customer?view=settings&tab=addresses');
                   }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
                 >

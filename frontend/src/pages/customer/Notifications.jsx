@@ -574,7 +574,7 @@ export const Notifications = () => {
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-4 h-4 transition-transform duration-200 sm:w-5 sm:h-5" 
                   />
                   {totalItems > 0 && (

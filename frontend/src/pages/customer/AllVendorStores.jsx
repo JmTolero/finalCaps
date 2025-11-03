@@ -226,11 +226,11 @@ export const AllVendorStores = () => {
                 <button 
                   onClick={() => navigate('/cart')}
                   className="p-1.5 rounded-lg transition-all duration-200 relative hover:bg-gray-100"
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className={`w-4 h-4 transition-transform duration-200`} 
                   />
                   {totalItems > 0 && (
@@ -443,11 +443,11 @@ export const AllVendorStores = () => {
                       ? 'bg-blue-100 hover:bg-blue-200 shadow-sm' 
                       : 'hover:bg-gray-100'
                   }`}
-                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in cart`}
+                  title={`${totalItems} item${totalItems !== 1 ? 's' : ''} in favorites`}
                 >
                   <img 
                     src={cartIcon} 
-                    alt="Cart" 
+                    alt="Favorites" 
                     className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200" 
                   />
                   {totalItems > 0 && (
