@@ -143,67 +143,67 @@ export const VendorPending = () => {
   return (
     <>
       {/* Navbar */}
-      <header className="w-full bg-sky-100 flex items-center justify-between px-8 py-4">
-        <div className="flex items-center space-x-3">
+      <header className="w-full bg-sky-100 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <Link to="/">
             <img
               src={logoImage}
               alt="ChillNet Logo"
-              className="ChillNet-Logo h-10 rounded-full object-cover"
+              className="ChillNet-Logo h-8 sm:h-10 rounded-full object-cover"
             />
           </Link>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           
           
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm sm:text-base"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span>Logout</span>
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </header>
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center px-4 py-8">
-        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center px-3 sm:px-4 py-4 sm:py-8">
+        <div className="max-w-2xl w-full bg-white rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
           {/* Header Section */}
-          <div className={`px-8 py-6 border-b border-gray-100 ${
+          <div className={`px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-100 ${
             vendorData?.vendor_status === 'rejected' 
               ? 'bg-gradient-to-r from-red-50 to-pink-50' 
               : 'bg-gradient-to-r from-blue-50 to-sky-50'
           }`}>
             <div className="text-center">
               {/* Icon with Animation */}
-              <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-lg ${
+              <div className={`mx-auto w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-lg ${
                 vendorData?.vendor_status === 'rejected'
                   ? 'bg-gradient-to-br from-red-100 to-red-200'
                   : 'bg-gradient-to-br from-yellow-100 to-yellow-200 animate-pulse'
               }`}>
                 {vendorData?.vendor_status === 'rejected' ? (
-                  <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 ) : (
-                  <svg className="w-12 h-12 text-yellow-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{animation: 'spin 3s linear infinite'}}>
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-yellow-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{animation: 'spin 3s linear infinite'}}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
               </div>
 
               {/* Title */}
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
                 {vendorData?.vendor_status === 'rejected' 
                   ? 'Account Application Rejected' 
                   : 'Account Pending Approval'
                 }
               </h1>
-              <p className={`text-lg font-semibold mb-2 ${
+              <p className={`text-base sm:text-lg font-semibold mb-2 ${
                 vendorData?.vendor_status === 'rejected' 
                   ? 'text-red-600' 
                   : 'text-yellow-600'
@@ -213,7 +213,7 @@ export const VendorPending = () => {
                   : '⚠️ Your account is under review'   
                 }
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs sm:text-sm text-gray-600 px-2">
                 {vendorData?.vendor_status === 'rejected' 
                   ? 'Please review the feedback and reapply after 1 week' 
                   : 'We\'re carefully reviewing your application and documents'
@@ -223,38 +223,38 @@ export const VendorPending = () => {
           </div>
 
           {/* Main Content */}
-          <div className="px-8 py-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 
             {/* Welcome Message */}
-            <div className="text-center mb-6">
-              <p className="text-gray-600 mb-4">
+            <div className="text-center mb-4 sm:mb-6">
+              <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
                 Hi <span className="font-semibold text-blue-600">{vendorData?.fname || 'Vendor'}</span>,
               </p>
-              <div className={`border-l-4 p-6 mb-4 rounded-r-lg shadow-sm ${
+              <div className={`border-l-4 p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 rounded-r-lg shadow-sm ${
                 vendorData?.vendor_status === 'rejected'
                   ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-400'
                   : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-400'
               }`}>
-                <div className="flex items-start space-x-3">
+                <div className="flex items-start space-x-2 sm:space-x-3">
                   <div className="flex-shrink-0">
                     {vendorData?.vendor_status === 'rejected' ? (
-                      <svg className="w-6 h-6 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                       </svg>
                     ) : (
-                      <svg className="w-6 h-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-gray-800 font-semibold mb-2">
+                    <p className="text-sm sm:text-base text-gray-800 font-semibold mb-1 sm:mb-2">
                       {vendorData?.vendor_status === 'rejected' 
                         ? '📋 Application Needs Review' 
                         : '⏳ Your Account is Under Review'
                       }
                     </p>
-                    <p className="text-gray-700 text-sm leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                       {vendorData?.vendor_status === 'rejected' 
                         ? 'Your vendor application requires some improvements. You can reapply after 1 week to give you time to address any issues. Please review your documents and make necessary corrections.'
                         : 'Our admin team is carefully reviewing your application and documents. You will be notified via email once your account is approved.'
@@ -263,7 +263,7 @@ export const VendorPending = () => {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs sm:text-sm text-gray-500 px-2">
                 {vendorData?.vendor_status === 'rejected' 
                   ? 'You\'ll receive a notification when you\'re eligible to reapply. Use this time to improve your application.'
                   : 'You\'ll be able to complete your store setup and start selling once your account is approved.'
@@ -272,35 +272,35 @@ export const VendorPending = () => {
             </div>
 
             {/* Status Badge */}
-            <div className="flex justify-center mb-6">
-              <span className={`inline-flex items-center px-6 py-3 rounded-full text-sm font-medium shadow-md ${
+            <div className="flex justify-center mb-4 sm:mb-6">
+              <span className={`inline-flex items-center px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-medium shadow-md ${
                 vendorData?.vendor_status === 'rejected'
                   ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300'
                   : 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300'
               }`}>
                 {vendorData?.vendor_status === 'rejected' ? (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
-                Status: {vendorData?.vendor_status === 'rejected' ? 'Rejected - Can Reapply in 1 Week' : 'Pending Review'}
+                <span className="hidden sm:inline">Status: </span>{vendorData?.vendor_status === 'rejected' ? 'Rejected - Can Reapply in 1 Week' : 'Pending Review'}
               </span>
             </div>
 
             {/* Application Information Card */}
             {vendorData && (
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border border-gray-200 shadow-sm">
-                <div className="flex items-center mb-4">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center mb-3 sm:mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Application Details</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Application Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-3">
@@ -336,73 +336,75 @@ export const VendorPending = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
               <button
                 onClick={handleRefreshStatus}
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg sm:rounded-xl hover:bg-blue-700 transition-all duration-200 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center justify-center space-x-2">
-                  <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   <span>{loading ? 'Checking...' : 'Refresh Status'}</span>
                 </div>
               </button>
 
-              {/* Go to Customer Page Button - Always show for rejected vendors */}
-              <button
-                onClick={async () => {
-                  console.log('Go to Customer Page button clicked');
-                  console.log('Current user data:', vendorData);
-                  
-                  // Refresh user session data to get updated role
-                  try {
-                    const userRaw = sessionStorage.getItem('user');
-                    if (userRaw) {
-                      const user = JSON.parse(userRaw);
-                      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-                      
-                      // Fetch updated user data from backend
-                      const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`);
-                      if (response.data.success) {
-                        const updatedUser = response.data.user;
-                        // Update session storage with new role
-                        const updatedUserData = {
-                          ...user,
-                          role: updatedUser.role
-                        };
-                        sessionStorage.setItem('user', JSON.stringify(updatedUserData));
-                        console.log('Updated user role in session:', updatedUser.role);
+              {/* Go to Customer Page Button - Only show for rejected vendors */}
+              {vendorData?.vendor_status === 'rejected' && (
+                <button
+                  onClick={async () => {
+                    console.log('Go to Customer Page button clicked');
+                    console.log('Current user data:', vendorData);
+                    
+                    // Refresh user session data to get updated role
+                    try {
+                      const userRaw = sessionStorage.getItem('user');
+                      if (userRaw) {
+                        const user = JSON.parse(userRaw);
+                        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
                         
-                        // Trigger user change event to update app state
-                        window.dispatchEvent(new Event('userChanged'));
+                        // Fetch updated user data from backend
+                        const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`);
+                        if (response.data.success) {
+                          const updatedUser = response.data.user;
+                          // Update session storage with new role
+                          const updatedUserData = {
+                            ...user,
+                            role: updatedUser.role
+                          };
+                          sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                          console.log('Updated user role in session:', updatedUser.role);
+                          
+                          // Trigger user change event to update app state
+                          window.dispatchEvent(new Event('userChanged'));
+                        }
                       }
+                    } catch (error) {
+                      console.error('Error refreshing user data:', error);
                     }
-                  } catch (error) {
-                    console.error('Error refreshing user data:', error);
-                  }
-                  
-                  console.log('Navigating to /customer');
-                  navigate('/customer');
-                }}
-                className="w-full bg-green-600 text-white py-3 px-6 rounded-xl hover:bg-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-              >
-                <div className="flex items-center justify-center space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span>Go to Customer Page</span>
-                </div>
-              </button>
+                    
+                    console.log('Navigating to /customer');
+                    navigate('/customer');
+                  }}
+                  className="w-full bg-green-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg sm:rounded-xl hover:bg-green-700 transition-all duration-200 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl"
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>Go to Customer Page</span>
+                  </div>
+                </button>
+              )}
               
               <div className="text-center">
-                <p className="text-sm text-gray-500 mb-2">Need assistance?</p>
+                <p className="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2">Need assistance?</p>
                 <Link
                   to="/contact"
-                  className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium transition-colors"
                 >
-                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   Contact Support
@@ -411,14 +413,14 @@ export const VendorPending = () => {
             </div>
 
             {/* Enhanced Timeline */}
-            <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
-              <div className="flex items-center mb-6">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-gray-200">
+              <div className="flex items-center mb-4 sm:mb-6">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center mr-2 sm:mr-3">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                   </svg>
                 </div>
-                <h4 className="text-lg font-semibold text-gray-900">What happens next?</h4>
+                <h4 className="text-base sm:text-lg font-semibold text-gray-900">What happens next?</h4>
               </div>
               
               <div className="space-y-4">

@@ -3,8 +3,18 @@ const router = express.Router();
 const feedbackController = require('../controller/feedbackController');
 const { authenticateToken } = require('../middleware/auth');
 
-// Submit feedback (authenticated users)
-router.post('/', authenticateToken, feedbackController.submitFeedback);
+// Submit feedback (authenticated users) - with optional image upload
+router.post('/', authenticateToken, (req, res, next) => {
+  feedbackController.uploadImage(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'File upload error'
+      });
+    }
+    next();
+  });
+}, feedbackController.submitFeedback);
 
 // Get my feedback (authenticated users)
 router.get('/my-feedback', authenticateToken, feedbackController.getMyFeedback);

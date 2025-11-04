@@ -362,6 +362,23 @@ export const AdminFeedback = () => {
                         <div className="bg-white rounded-lg p-3 sm:p-4">
                           <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-2">Description:</h4>
                           <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap">{feedback.description}</p>
+                          {feedback.image_url && (
+                            <div className="mt-3">
+                              <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-2">Attached Image:</h4>
+                              <a
+                                href={feedback.image_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={feedback.image_url}
+                                  alt="Feedback attachment"
+                                  className="max-w-full h-auto max-h-64 rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                                />
+                              </a>
+                            </div>
+                          )}
                         </div>
 
                         {feedback.admin_response && (
@@ -472,6 +489,23 @@ export const AdminFeedback = () => {
               <div className="bg-white rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 border border-gray-200">
                 <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">{selectedFeedback.subject}</h3>
                 <p className="text-xs sm:text-sm text-gray-700">{selectedFeedback.description}</p>
+                {selectedFeedback.image_url && (
+                  <div className="mt-3">
+                    <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-2">Attached Image:</h4>
+                    <a
+                      href={selectedFeedback.image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={selectedFeedback.image_url}
+                        alt="Feedback attachment"
+                        className="max-w-full h-auto max-h-48 rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                  </div>
+                )}
                 <p className="text-xs text-gray-500 mt-2">
                   From: {selectedFeedback.user_name} ({selectedFeedback.user_email})
                 </p>

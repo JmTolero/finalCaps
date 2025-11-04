@@ -2,11 +2,12 @@
     import { useState, useEffect } from 'react';
     import './App.css';
     import { CartProvider } from './contexts/CartContext';
-    import { LandingPage } from './pages/shared/landingpage';
-    import { Login } from "./pages/shared/login.jsx";
-    import { ForgotPassword } from "./pages/shared/forgotPassword.jsx";
-    import { ResetPassword } from "./pages/shared/resetPassword.jsx";
-    import { UserRegister } from "./pages/shared/userRegister.jsx";
+import { LandingPage } from './pages/shared/landingpage';
+import { Login } from "./pages/shared/login.jsx";
+import { ForgotPassword } from "./pages/shared/forgotPassword.jsx";
+import { ResetPassword } from "./pages/shared/resetPassword.jsx";
+import { UserRegister } from "./pages/shared/userRegister.jsx";
+import ContactSupport from "./pages/shared/ContactSupport.jsx";
 import { VendorRegister } from "./pages/vendor/vendorRegister.jsx";
 import { VendorGoogleComplete } from "./pages/vendor/vendorGoogleComplete.jsx";
 import { BecomeVendor } from "./pages/vendor/BecomeVendor.jsx";
@@ -149,6 +150,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/flavor/:flavorId" element={requireRole('customer', <FlavorDetail />)} />
           <Route path="/checkout" element={requireRole('customer', <Checkout />)} />
           <Route path="/order-confirmation" element={requireRole('customer', <OrderConfirmation />)} />
+          <Route path="/contact" element={<ContactSupport />} />
           <Route path="/login-test" element={<LoginTest />} />
         </Routes>
       </Router>

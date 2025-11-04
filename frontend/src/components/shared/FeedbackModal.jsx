@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 /**
@@ -12,9 +12,62 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
     category: 'question',
     description: ''
   });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+  const errorTimeoutRef = useRef(null);
+
+  // Auto-scroll to error and auto-hide after 3 seconds
+  useEffect(() => {
+    if (error && errorRef.current) {
+      // Scroll to error message with offset for sticky header
+      setTimeout(() => {
+        if (errorRef.current) {
+          const element = errorRef.current;
+          const modalContainer = element.closest('[class*="overflow-y-auto"]');
+          
+          if (modalContainer) {
+            // Get the sticky header height (approximately 80-100px)
+            const stickyHeaderHeight = 100;
+            const elementTop = element.offsetTop;
+            
+            // Scroll within modal container with offset
+            modalContainer.scrollTo({
+              top: elementTop - stickyHeaderHeight - 20, // Extra 20px padding
+              behavior: 'smooth'
+            });
+          } else {
+            // Fallback: use scrollIntoView with more offset
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }
+        }
+      }, 100);
+      
+      // Clear any existing timeout
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      
+      // Auto-hide error after 3 seconds
+      errorTimeoutRef.current = setTimeout(() => {
+        setError('');
+      }, 3000);
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, [error]);
 
   const categories = [
     { value: 'bug', label: 'Bug Report' },
@@ -31,7 +84,48 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
       [name]: value
     }));
     // Clear error when user starts typing
-    if (error) setError('');
+    if (error) {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      setError('');
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPG, PNG, GIF, or WEBP)');
+        return;
+      }
+      
+      // Validate file size (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
+        return;
+      }
+      
+      setSelectedImage(file);
+      setError('');
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    // Reset file input
+    const fileInput = document.getElementById('feedback-image');
+    if (fileInput) fileInput.value = '';
   };
 
   const handleSubmit = async (e) => {
@@ -60,16 +154,22 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const token = sessionStorage.getItem('token');
 
+      // Create FormData for file upload
+      const submitData = new FormData();
+      submitData.append('subject', formData.subject.trim());
+      submitData.append('category', formData.category);
+      submitData.append('description', formData.description.trim());
+      if (selectedImage) {
+        submitData.append('image', selectedImage);
+      }
+
       const response = await axios.post(
         `${apiBase}/api/feedback`,
-        {
-          subject: formData.subject.trim(),
-          category: formData.category,
-          description: formData.description.trim()
-        },
+        submitData,
         {
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
           }
         }
       );
@@ -82,6 +182,10 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
           category: 'question',
           description: ''
         });
+        setSelectedImage(null);
+        setImagePreview(null);
+        const fileInput = document.getElementById('feedback-image');
+        if (fileInput) fileInput.value = '';
         
         // Auto close after 2 seconds
         setTimeout(() => {
@@ -107,8 +211,12 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
         category: 'question',
         description: ''
       });
+      setSelectedImage(null);
+      setImagePreview(null);
       setError('');
       setShowSuccess(false);
+      const fileInput = document.getElementById('feedback-image');
+      if (fileInput) fileInput.value = '';
       onClose();
     }
   };
@@ -190,7 +298,10 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
 
         {/* Error Message */}
         {error && (
-          <div className="mx-4 sm:mx-6 mt-4 sm:mt-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div 
+            ref={errorRef}
+            className="mx-4 sm:mx-6 mt-4 sm:mt-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg"
+          >
             <div className="flex items-center">
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -265,6 +376,45 @@ export const FeedbackModal = ({ isOpen, onClose, userRole = 'customer' }) => {
             <p className="text-xs text-gray-500 mt-1">
               {formData.description.length}/2000 characters (minimum 10)
             </p>
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label htmlFor="feedback-image" className="block text-sm font-medium text-gray-700 mb-2">
+              Screenshot/Image (Optional)
+            </label>
+            <div className="space-y-2">
+              <input
+                type="file"
+                id="feedback-image"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleImageChange}
+                disabled={isSubmitting}
+                className="w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500">
+                Supported formats: JPG, PNG, GIF, WEBP (max 10MB)
+              </p>
+              {imagePreview && (
+                <div className="relative inline-block mt-2">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="max-w-full h-auto max-h-48 rounded-lg border border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    disabled={isSubmitting}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Info Box */}

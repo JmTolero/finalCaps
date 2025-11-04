@@ -1,4 +1,43 @@
 const pool = require('../db/config');
+const multer = require('multer');
+const path = require('path');
+const cloudinary = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Configure Cloudinary storage for feedback images
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'feedback-images',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    resource_type: 'image',
+    public_id: (req, file) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return `feedback-${uniqueSuffix}`;
+    }
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+// Export multer upload middleware
+exports.uploadImage = upload.single('image');
 
 /**
  * Submit feedback (customer or vendor)
@@ -7,8 +46,11 @@ const pool = require('../db/config');
 exports.submitFeedback = async (req, res) => {
   try {
     const { subject, category, description } = req.body;
-      const userId = req.user.user_id || req.user.id; // From auth middleware
+    const userId = req.user.user_id || req.user.id; // From auth middleware
     const userRole = req.user.role;
+    
+    // Get image URL from uploaded file (if any)
+    const image_url = req.file ? req.file.path : null;
 
     // Validation
     if (!subject || !category || !description) {
@@ -29,11 +71,11 @@ exports.submitFeedback = async (req, res) => {
 
     // Insert feedback
     const query = `
-      INSERT INTO feedback (user_id, user_role, subject, category, description)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO feedback (user_id, user_role, subject, category, description, image_url)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     
-    const [result] = await pool.query(query, [userId, userRole, subject, category, description]);
+    const [result] = await pool.query(query, [userId, userRole, subject, category, description, image_url]);
 
     res.status(201).json({
       success: true,
