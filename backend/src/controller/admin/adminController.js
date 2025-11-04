@@ -300,6 +300,10 @@ const getAllUsers = async (req, res) => {
                 COALESCE(u.status, 'active') as status,
                 u.created_at,
                 CASE 
+                    WHEN v.vendor_id IS NOT NULL THEN v.vendor_id
+                    ELSE NULL
+                END as vendor_id,
+                CASE 
                     WHEN v.vendor_id IS NOT NULL THEN v.store_name
                     ELSE NULL
                 END as store_name,

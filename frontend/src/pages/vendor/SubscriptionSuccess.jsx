@@ -208,18 +208,8 @@ const SubscriptionSuccess = () => {
     }
     y += lineHeight;
     
-    if (features.analytics) {
-      ctx.fillText('✓ Advanced analytics', 50, y);
-      y += lineHeight;
-    }
-    
     if (features.priority_support) {
       ctx.fillText('✓ Priority support', 50, y);
-      y += lineHeight;
-    }
-    
-    if (features.dedicated_manager) {
-      ctx.fillText('✓ Dedicated account manager', 50, y);
       y += lineHeight;
     }
     
@@ -247,17 +237,14 @@ const SubscriptionSuccess = () => {
       'professional': {
         max_flavors: 15,
         max_drums: 15,
-        max_orders_per_month: 200,
-        analytics: true,
+        max_orders_per_month: 70,
         priority_support: true
       },
       'premium': {
         max_flavors: -1,
         max_drums: -1,
         max_orders_per_month: -1,
-        analytics: true,
-        priority_support: true,
-        dedicated_manager: true
+        priority_support: true
       }
     };
     return features[planName.toLowerCase()] || features['professional'];

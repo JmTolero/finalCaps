@@ -132,8 +132,8 @@ const VendorSubscription = () => {
   const getPlanPrice = (plan) => {
     switch (plan) {
       case 'free': return 0;
-      case 'professional': return 999;
-      case 'premium': return 1999;
+      case 'professional': return 499;
+      case 'premium': return 999;
       default: return 0;
     }
   };
@@ -224,7 +224,7 @@ const VendorSubscription = () => {
                 <Star className="h-6 w-6 text-blue-600" />
                 <h3 className="text-lg font-semibold">Professional Plan</h3>
               </div>
-              <div className="text-3xl font-bold text-blue-600 mb-4">₱999<span className="text-lg font-normal">/month</span></div>
+              <div className="text-3xl font-bold text-blue-600 mb-4">₱499<span className="text-lg font-normal">/month</span></div>
               <ul className="space-y-2 text-sm mb-6">
                 <li className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -236,11 +236,7 @@ const VendorSubscription = () => {
                 </li>
                 <li className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>200 orders/month</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Advanced analytics</span>
+                  <span>70 orders/month</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -263,7 +259,7 @@ const VendorSubscription = () => {
                 <Crown className="h-6 w-6 text-purple-600" />
                 <h3 className="text-lg font-semibold">Premium Plan</h3>
               </div>
-              <div className="text-3xl font-bold text-purple-600 mb-4">₱1,999<span className="text-lg font-normal">/month</span></div>
+              <div className="text-3xl font-bold text-purple-600 mb-4">₱999<span className="text-lg font-normal">/month</span></div>
               <ul className="space-y-2 text-sm mb-6">
                 <li className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -280,10 +276,6 @@ const VendorSubscription = () => {
                 <li className="flex items-center space-x-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span>All Professional features</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Dedicated account manager</span>
                 </li>
               </ul>
               <button

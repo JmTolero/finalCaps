@@ -313,10 +313,11 @@ export const AdminUserManagement = () => {
 
   // Filter users based on search term and role filter
   const filteredUsers = users.filter(user => {
-    const matchesSearch = (user.fname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.lname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    // If searching, check user_id always, and vendor_id only when role filter is 'vendor' or 'all'
+    const matchesSearch = searchTerm.trim() === '' || 
+                         (user.user_id && user.user_id.toString().includes(searchTerm)) ||
+                         ((roleFilter === 'vendor' || roleFilter === 'all') && 
+                          user.vendor_id && user.vendor_id.toString().includes(searchTerm));
     
     const matchesRole = roleFilter === 'all' || 
                        (user.role && user.role.toLowerCase() === roleFilter.toLowerCase());
@@ -416,7 +417,7 @@ export const AdminUserManagement = () => {
         <div className="relative max-w-md flex-1">
           <input
             type="text"
-            placeholder="Search users..."
+            placeholder="Search by User ID or Vendor ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-3 sm:px-4 py-2 sm:py-3 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm sm:text-base"

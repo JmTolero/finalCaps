@@ -172,7 +172,7 @@ export const AdminFeedback = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
+        <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 bg-blue-500 rounded-md p-2 sm:p-3">
               <svg className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +188,7 @@ export const AdminFeedback = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
+        <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 bg-yellow-500 rounded-md p-2 sm:p-3">
               <svg className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +204,7 @@ export const AdminFeedback = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
+        <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 bg-red-500 rounded-md p-2 sm:p-3">
               <svg className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +220,7 @@ export const AdminFeedback = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
+        <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0 bg-green-500 rounded-md p-2 sm:p-3">
               <svg className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +238,7 @@ export const AdminFeedback = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
+      <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
         <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Filters</h2>
         <div className="grid grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           <div>
@@ -246,7 +246,7 @@ export const AdminFeedback = () => {
             <select
               value={filters.status}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-white border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All</option>
               <option value="pending">Pending</option>
@@ -261,7 +261,7 @@ export const AdminFeedback = () => {
             <select
               value={filters.category}
               onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-white border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All</option>
               <option value="bug">Bug</option>
@@ -277,7 +277,7 @@ export const AdminFeedback = () => {
             <select
               value={filters.role}
               onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-white border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All</option>
               <option value="customer">Customer</option>
@@ -290,7 +290,7 @@ export const AdminFeedback = () => {
             <select
               value={filters.priority}
               onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-white border border-gray-300 rounded-lg px-1 sm:px-2 py-1 sm:py-2 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All</option>
               <option value="urgent">Urgent</option>
@@ -312,7 +312,7 @@ export const AdminFeedback = () => {
       </div>
 
       {/* Feedback List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-sky-100 rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -333,7 +333,7 @@ export const AdminFeedback = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {feedbackList.map((feedback) => (
-              <div key={feedback.id} className="p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors">
+              <div key={feedback.id} className="bg-white p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
@@ -359,13 +359,13 @@ export const AdminFeedback = () => {
 
                     {expandedFeedbackId === feedback.id && (
                       <div className="mt-3 sm:mt-4 space-y-3 sm:space-y-4">
-                        <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                        <div className="bg-white rounded-lg p-3 sm:p-4">
                           <h4 className="text-xs sm:text-sm font-medium text-gray-900 mb-2">Description:</h4>
                           <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap">{feedback.description}</p>
                         </div>
 
                         {feedback.admin_response && (
-                          <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                          <div className="bg-white rounded-lg p-3 sm:p-4">
                             <h4 className="text-xs sm:text-sm font-medium text-blue-900 mb-2">
                               Response from {feedback.admin_name}:
                             </h4>
@@ -382,7 +382,7 @@ export const AdminFeedback = () => {
                             <select
                               value={feedback.status}
                               onChange={(e) => handleStatusChange(feedback.id, e.target.value)}
-                              className="w-full text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+                              className="w-full bg-white text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="pending">Pending</option>
                               <option value="in_progress">In Progress</option>
@@ -396,7 +396,7 @@ export const AdminFeedback = () => {
                             <select
                               value={feedback.priority}
                               onChange={(e) => handlePriorityChange(feedback.id, e.target.value)}
-                              className="w-full text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+                              className="w-full bg-white text-xs sm:text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="low">Low</option>
                               <option value="medium">Medium</option>
@@ -450,8 +450,8 @@ export const AdminFeedback = () => {
       {/* Response Modal */}
       {showResponseModal && selectedFeedback && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
+          <div className="bg-sky-100 rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-4 sm:p-6">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Respond to Feedback</h2>
                 <button
@@ -469,7 +469,7 @@ export const AdminFeedback = () => {
                 </button>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="bg-white rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 border border-gray-200">
                 <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">{selectedFeedback.subject}</h3>
                 <p className="text-xs sm:text-sm text-gray-700">{selectedFeedback.description}</p>
                 <p className="text-xs text-gray-500 mt-2">

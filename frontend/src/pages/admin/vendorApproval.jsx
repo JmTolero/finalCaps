@@ -200,6 +200,11 @@ export const AdminVendorApproval = () => {
     setSelectedImageTitle('');
   };
 
+  // Calculate pending approval count
+  const pendingCount = vendors.filter(vendor => 
+    vendor.status && vendor.status.toLowerCase() === 'pending'
+  ).length;
+
   // Filter vendors based on search term, tab, and status filter
   const filteredVendors = vendors.filter(vendor => {
     const matchesSearch = (vendor.store_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,10 +261,10 @@ export const AdminVendorApproval = () => {
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-3 sm:mb-4 lg:mb-6">Vendor Approval</h1>
       
       {/* Tabs */}
-      <div className="flex flex-row space-x-1 mb-3 sm:mb-4 lg:mb-6">
+      <div className="flex flex-row flex-nowrap space-x-1 mb-3 sm:mb-4 lg:mb-6 overflow-x-auto">
         <button
           onClick={() => handleTabChange('allVendors')}
-          className={`px-3 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-sm sm:text-base ${
+          className={`px-2 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-xs sm:text-base whitespace-nowrap flex-shrink-0 ${
             activeTab === 'allVendors'
               ? 'bg-[#FFDDAE] text-gray-600'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -269,13 +274,18 @@ export const AdminVendorApproval = () => {
         </button>
         <button
           onClick={() => handleTabChange('requestedApproval')}
-          className={`px-3 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-sm sm:text-base ${
+          className={`px-2 sm:px-4 lg:px-6 py-2 sm:py-3 font-medium rounded-lg sm:rounded-t-lg sm:rounded-b-none transition-colors duration-200 text-xs sm:text-base relative whitespace-nowrap flex-shrink-0 ${
             activeTab === 'requestedApproval'
               ? 'bg-[#FFDDAE] text-gray-600'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
         >
           Requested Approval
+          {pendingCount > 0 && (
+            <span className="ml-1 sm:ml-2 inline-flex items-center justify-center px-1.5 sm:px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+              {pendingCount}
+            </span>
+          )}
         </button>
       </div>
 

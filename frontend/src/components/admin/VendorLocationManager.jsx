@@ -203,7 +203,7 @@ const VendorLocationManager = () => {
   return (
     <div className="space-y-3 sm:space-y-4 lg:space-y-6 h-full overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3 lg:p-4 xl:p-6 flex-shrink-0">
+      <div className="bg-sky-100 rounded-lg shadow-sm p-2 sm:p-3 lg:p-4 xl:p-6 flex-shrink-0">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Vendor Location Management</h2>
         <p className="text-sm sm:text-base text-gray-600">Manage and update all vendor store locations</p>
       </div>
@@ -220,7 +220,7 @@ const VendorLocationManager = () => {
       )}
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow-sm flex flex-col flex-1 min-h-0">
+      <div className="bg-sky-100 rounded-lg shadow-sm flex flex-col flex-1 min-h-0">
         <div className="border-b border-gray-200 flex-shrink-0">
           <nav className="flex space-x-1 sm:space-x-2 lg:space-x-4 px-2 sm:px-4 lg:px-6 overflow-x-auto">
             {tabs.map((tab) => (
@@ -253,7 +253,7 @@ const VendorLocationManager = () => {
               ) : (
                 <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                   {vendors.map((vendor) => (
-                  <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                  <div key={vendor.vendor_id} className="bg-sky-100 border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
                     {/* Vendor Header */}
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4 space-y-2 md:space-y-0">
                       <div className="flex-1">
@@ -282,7 +282,7 @@ const VendorLocationManager = () => {
                           <p>No business location set yet</p>
                         </div>
                       ) : (
-                        <div className="bg-gray-50 rounded-lg p-3 md:p-4">
+                        <div className="bg-white rounded-lg p-3 md:p-4">
                           <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-2 md:space-y-0">
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
@@ -326,19 +326,19 @@ const VendorLocationManager = () => {
                 <>
                   {/* Overall Stats */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
-                    <div className="bg-blue-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                    <div className="bg-sky-100 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
                       <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-blue-900">Total Vendors</h3>
                       <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-blue-600">
                         {stats.stats?.total_vendors || 0}
                       </p>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                    <div className="bg-sky-100 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
                       <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-green-900">With Locations</h3>
                       <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-green-600">
                         {stats.stats?.vendors_with_locations || 0}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
+                    <div className="bg-sky-100 rounded-lg p-2 sm:p-3 lg:p-4 xl:p-6">
                       <h3 className="text-xs sm:text-sm lg:text-lg font-semibold text-yellow-900">Without Locations</h3>
                       <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-yellow-600">
                         {stats.stats?.vendors_without_locations || 0}
@@ -347,7 +347,7 @@ const VendorLocationManager = () => {
                   </div>
 
                   {/* Simple Info */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6">
+                  <div className="bg-sky-100 border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6">
                     <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">Location Overview</h3>
                     <div className="space-y-2 sm:space-y-3">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
@@ -377,7 +377,7 @@ const VendorLocationManager = () => {
           {activeTab === 'search' && (
             <div className="h-full overflow-y-auto space-y-6">
               {/* Search Form */}
-              <div className="bg-gray-50 rounded-lg p-4 md:p-6 flex-shrink-0">
+              <div className="bg-sky-100 rounded-lg p-4 md:p-6 flex-shrink-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Search Vendor Locations</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
@@ -446,7 +446,7 @@ const VendorLocationManager = () => {
                 ) : (
                   <div className="space-y-2 sm:space-y-3 lg:space-y-4 overflow-y-auto max-h-full">
                     {vendors.map((vendor) => (
-                      <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                      <div key={vendor.vendor_id} className="bg-sky-100 border border-gray-200 rounded-lg p-2 sm:p-3 lg:p-4">
                         <h4 className="font-semibold text-gray-900 text-sm md:text-base">{vendor.store_name}</h4>
                         <p className="text-xs md:text-sm text-gray-600 mb-3 break-words">
                           <span className="block md:inline">{vendor.vendor_name}</span>
@@ -455,11 +455,11 @@ const VendorLocationManager = () => {
                         </p>
                         <div className="space-y-2">
                           {!vendor.address ? (
-                            <div className="bg-gray-50 rounded p-3 text-xs md:text-sm text-gray-500">
+                            <div className="bg-white rounded p-3 text-xs md:text-sm text-gray-500">
                               <p>No business location set</p>
                             </div>
                           ) : (
-                            <div className="bg-gray-50 rounded p-3 text-xs md:text-sm">
+                            <div className="bg-white rounded p-3 text-xs md:text-sm">
                               <div className="flex flex-col md:flex-row md:justify-between md:items-start space-y-2 md:space-y-0">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium break-words">Business Location</p>
@@ -490,8 +490,8 @@ const VendorLocationManager = () => {
       {/* Edit Location Modal */}
       {showLocationForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+          <div className="bg-sky-100 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">
                   Edit Location - {selectedVendor?.store_name}

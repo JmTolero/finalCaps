@@ -10,26 +10,26 @@ const getSubscriptionPlans = async (req, res) => {
                 price: 0,
                 flavor_limit: 5,
                 drum_limit: 5,
-                order_limit: 50,
+                order_limit: 30,
                 features: ['Basic analytics', 'Standard support', 'Basic store listing']
             },
             {
                 plan_id: 'professional',
                 plan_name: 'Professional Plan',
-                price: 999,
+                price: 499,
                 flavor_limit: 15,
                 drum_limit: 15,
-                order_limit: 200,
-                features: ['Advanced analytics', 'Priority support', 'Featured listing', 'Custom store branding']
+                order_limit: 70,
+                features: ['Priority support', 'Featured listing', 'Custom store branding']
             },
             {
                 plan_id: 'premium',
                 plan_name: 'Premium Plan',
-                price: 1999,
+                price: 999,
                 flavor_limit: -1, // -1 means unlimited
                 drum_limit: -1,
                 order_limit: -1,
-                features: ['All Professional features', 'Advanced marketing tools', 'Dedicated account manager']
+                features: ['All Professional features', 'Advanced marketing tools']
             }
         ];
 
@@ -142,12 +142,12 @@ const updateVendorSubscription = async (req, res) => {
             case 'free':
                 flavor_limit = 5;
                 drum_limit = 5;
-                order_limit = 50;
+                order_limit = 30;
                 break;
             case 'professional':
                 flavor_limit = 15;
                 drum_limit = 15;
-                order_limit = 200;
+                order_limit = 70;
                 break;
             case 'premium':
                 flavor_limit = -1; // unlimited
@@ -268,13 +268,13 @@ const getSubscriptionRevenue = async (req, res) => {
                 COUNT(*) as vendor_count,
                 CASE 
                     WHEN subscription_plan = 'free' THEN 0
-                    WHEN subscription_plan = 'professional' THEN 999
-                    WHEN subscription_plan = 'premium' THEN 1999
+                    WHEN subscription_plan = 'professional' THEN 499
+                    WHEN subscription_plan = 'premium' THEN 999
                 END as monthly_price,
                 COUNT(*) * CASE 
                     WHEN subscription_plan = 'free' THEN 0
-                    WHEN subscription_plan = 'professional' THEN 999
-                    WHEN subscription_plan = 'premium' THEN 1999
+                    WHEN subscription_plan = 'professional' THEN 499
+                    WHEN subscription_plan = 'premium' THEN 999
                 END as monthly_revenue
             FROM vendors 
             GROUP BY subscription_plan

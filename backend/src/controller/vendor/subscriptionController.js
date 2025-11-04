@@ -297,17 +297,14 @@ const getPlanFeatures = (plan_name) => {
         'professional': {
             max_flavors: 15,
             max_drums: 15,
-            max_orders_per_month: 200,
-            analytics: true,
+            max_orders_per_month: 70,
             priority_support: true
         },
         'premium': {
             max_flavors: -1, // unlimited
             max_drums: -1, // unlimited
             max_orders_per_month: -1, // unlimited
-            analytics: true,
-            priority_support: true,
-            dedicated_manager: true
+            priority_support: true
         }
     };
 
