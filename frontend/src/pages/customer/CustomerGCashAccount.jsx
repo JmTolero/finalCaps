@@ -154,6 +154,39 @@ const CustomerGCashAccount = () => {
     }
   };
 
+  const handleDownloadQRCode = async () => {
+    if (!vendorQR?.qr_code_image) return;
+    
+    try {
+      // Fetch the image
+      const response = await fetch(vendorQR.qr_code_image);
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `GCash-QR-Code-${orderId || 'payment'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      // Fallback: try direct download
+      const link = document.createElement('a');
+      link.href = vendorQR.qr_code_image;
+      link.download = `GCash-QR-Code-${orderId || 'payment'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   // Helper function to get the amount to pay
   const getAmountToPay = () => {
     if (!order) return 0;
@@ -346,13 +379,25 @@ const CustomerGCashAccount = () => {
                       </p>
                     )}
                     
-                    {/* View Full Image Button */}
-                    <button
-                      onClick={() => setShowImageModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium"
-                    >
-                      View Full Image
-                    </button>
+                    {/* View Full Image and Download Buttons */}
+                    <div className="flex items-center justify-center gap-2 sm:gap-3">
+                      <button
+                        onClick={() => setShowImageModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium"
+                      >
+                        View Full Image
+                      </button>
+                      <button
+                        onClick={handleDownloadQRCode}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2"
+                        title="Download QR Code"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span className="hidden sm:inline">Download</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Payment Instructions */}

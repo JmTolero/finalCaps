@@ -24,7 +24,7 @@ export const LandingPage = () => {
             </div>
             </div>
 
-            <div className="flex-1 flex justify-center lg:justify-end">
+            <div className="hidden lg:flex flex-1 justify-center lg:justify-end">
              <img src={logoImage} alt="ChillNet Ice Cream" className="rounded-2xl shadow-2xl w-full max-w-sm lg:max-w-md xl:max-w-lg object-cover" />
             </div>
         </section>

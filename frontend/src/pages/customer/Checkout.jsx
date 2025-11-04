@@ -1087,23 +1087,23 @@ NEXT STEPS
               <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Payment Information</h2>
               
               {/* Payment Option Selection */}
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Payment Option:</label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="mb-4 sm:mb-6">
+                <label className="text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3 block">Payment Option:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setPaymentOption('full')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                       paymentOption === 'full'
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-300 bg-white hover:border-gray-400'
                     }`}
                   >
                     <div className="text-center">
-                      <div className={`font-semibold ${paymentOption === 'full' ? 'text-blue-600' : 'text-gray-700'}`}>
+                      <div className={`text-sm sm:text-base font-semibold ${paymentOption === 'full' ? 'text-blue-600' : 'text-gray-700'}`}>
                         Full Payment
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">
+                      <div className="text-xs sm:text-sm text-gray-600 mt-1">
                         Pay ₱{getTotalAmount().toFixed(2)}
                       </div>
                     </div>
@@ -1111,46 +1111,46 @@ NEXT STEPS
                   <button
                     type="button"
                     onClick={() => setPaymentOption('50')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
                       paymentOption === '50'
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-300 bg-white hover:border-gray-400'
                     }`}
                   >
                     <div className="text-center">
-                      <div className={`font-semibold ${paymentOption === '50' ? 'text-blue-600' : 'text-gray-700'}`}>
+                      <div className={`text-sm sm:text-base font-semibold ${paymentOption === '50' ? 'text-blue-600' : 'text-gray-700'}`}>
                         50% Payment
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">
+                      <div className="text-xs sm:text-sm text-gray-600 mt-1">
                         Pay ₱{getPaymentAmount().toFixed(2)} now
                       </div>
                     </div>
                   </button>
                 </div>
                 {paymentOption === '50' && (
-                  <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p className="text-xs text-yellow-800">
+                  <div className="mt-2 sm:mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3">
+                    <p className="text-xs sm:text-sm text-yellow-800">
                       <strong>Note:</strong> Remaining balance of ₱{getRemainingBalance().toFixed(2)} will be collected on delivery.
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-blue-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-start">
+                  <div className="flex-shrink-0 mb-2 sm:mb-0 sm:mr-3">
+                    <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-blue-800">GCash Payment Required</h3>
-                    <div className="mt-2 text-sm text-blue-700">
-                      <p>• {paymentOption === '50' ? 'Pay 50% now via GCash to confirm your order' : 'Please proceed with full payment via GCash to confirm your order'}</p>
-                      <p>• Payment can be made immediately after placing your order</p>
-                      <p>• You'll receive a notification once payment is received</p>
+                  <div className="flex-1 sm:ml-0">
+                    <h3 className="text-sm sm:text-base font-medium text-blue-800 mb-2 sm:mb-0">GCash Payment Required</h3>
+                    <div className="mt-2 space-y-1 sm:space-y-0">
+                      <p className="text-xs sm:text-sm text-blue-700">• {paymentOption === '50' ? 'Pay 50% now via GCash to confirm your order' : 'Please proceed with full payment via GCash to confirm your order'}</p>
+                      <p className="text-xs sm:text-sm text-blue-700">• Payment can be made immediately after placing your order</p>
+                      <p className="text-xs sm:text-sm text-blue-700">• You'll receive a notification once payment is received</p>
                       {paymentOption === '50' && (
-                        <p>• Remaining balance (₱{getRemainingBalance().toFixed(2)}) due on delivery</p>
+                        <p className="text-xs sm:text-sm text-blue-700">• Remaining balance (₱{getRemainingBalance().toFixed(2)}) due on delivery</p>
                       )}
                     </div>
                   </div>

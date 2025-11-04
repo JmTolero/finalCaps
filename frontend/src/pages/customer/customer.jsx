@@ -1857,26 +1857,26 @@ export const Customer = () => {
                  !selectedOrder.remaining_payment_method && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4">
                     <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">Choose Payment Method for Remaining Balance</p>
-                    <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                    <p className="text-blue-700 text-xs sm:text-sm mb-3 sm:mb-4">
                       {selectedOrder.status === 'out_for_delivery' 
                         ? `Your order is on the way! Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)}:`
                         : `Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)} when your order is delivered:`}
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       <button 
                         onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'gcash')}
-                        className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base flex flex-col items-center space-y-1"
+                        className="bg-green-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1"
                       >
-                        <span className="text-lg">📱</span>
-                        <span>Pay via GCash</span>
+                       
+                        <span className="font-medium">Pay via GCash</span>
                         <span className="text-xs opacity-90">Pay Now</span>
                       </button>
                       <button 
                         onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'cod')}
-                        className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base flex flex-col items-center space-y-1"
+                        className="bg-blue-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1"
                       >
-                        <span className="text-lg">💰</span>
-                        <span>Cash on Delivery</span>
+                     
+                        <span className="font-medium">Cash on Delivery</span>
                         <span className="text-xs opacity-90">Pay when arrives</span>
                       </button>
                     </div>

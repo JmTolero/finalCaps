@@ -6331,16 +6331,39 @@ export const Vendor = () => {
                             {selectedTransaction.customer_fname} {selectedTransaction.customer_lname}
                           </span>
                         </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Amount:</span>
-                          <span className="ml-2 text-gray-900 font-semibold">
-                            ₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-700">Payment Method:</span>
-                          <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
-                        </div>
+                        {selectedTransaction.payment_status === 'partial' && selectedTransaction.payment_amount ? (
+                          <>
+                            <div>
+                              <span className="font-medium text-gray-700">Total Amount:</span>
+                              <span className="ml-2 text-gray-900">₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Payment Method:</span>
+                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <span className="font-medium text-gray-700">Amount Paid (50%):</span>
+                              <span className="ml-2 text-green-600 font-bold">₱{parseFloat(selectedTransaction.payment_amount || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <span className="font-medium text-gray-700">Remaining Balance:</span>
+                              <span className="ml-2 text-orange-600">₱{parseFloat(selectedTransaction.remaining_balance || (selectedTransaction.total_amount - selectedTransaction.payment_amount)).toFixed(2)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <span className="font-medium text-gray-700">Amount:</span>
+                              <span className="ml-2 text-gray-900 font-semibold">
+                                ₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Payment Method:</span>
+                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
+                            </div>
+                          </>
+                        )}
                         <div>
                           <span className="font-medium text-gray-700">Status:</span>
                           <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
@@ -7499,12 +7522,12 @@ export const Vendor = () => {
 
                           {/* Expanded Order Details */}
                           {expandedOrderId === order.order_id && (
-                            <div className="border-t border-gray-200 p-6 bg-white">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className="border-t border-gray-200 p-3 sm:p-4 md:p-6 bg-white">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                             {/* Customer Information */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-gray-900">Customer Information</h4>
-                              <div className="bg-white rounded-lg p-4 space-y-2">
+                            <div className="space-y-2 sm:space-y-3">
+                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Customer Information</h4>
+                              <div className="bg-white rounded-lg p-3 sm:p-4 space-y-2">
                                 {(() => {
                                   const fullAddress = order.delivery_address || '';
                                   const parts = fullAddress.split(', ');
@@ -7534,24 +7557,24 @@ export const Vendor = () => {
                                   
                                   return (
                                     <>
-                                      <p className="text-sm"><strong>Name:</strong> {displayName}</p>
-                                      <p className="text-sm"><strong>Contact:</strong> {displayContact}</p>
-                                      <p className="text-sm"><strong>Email:</strong> {displayEmail}</p>
+                                      <p className="text-xs sm:text-sm"><strong>Name:</strong> <span className="break-words">{displayName}</span></p>
+                                      <p className="text-xs sm:text-sm"><strong>Contact:</strong> <span className="break-all">{displayContact}</span></p>
+                                      <p className="text-xs sm:text-sm"><strong>Email:</strong> <span className="break-all">{displayEmail}</span></p>
                                     </>
                                   );
                                 })()}
                               </div>
                             </div>
                             {/* Order Details */}
-                            <div className="space-y-3">
-                              <h4 className="font-medium text-gray-900">Order Details</h4>
-                              <div className="bg-white rounded-lg p-4 space-y-2">
+                            <div className="space-y-2 sm:space-y-3">
+                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Order Details</h4>
+                              <div className="bg-white rounded-lg p-3 sm:p-4 space-y-2">
                                 {order.payment_status === 'partial' && order.payment_amount ? (
                                   <>
-                                    <p className="text-sm"><strong>Total Order Amount:</strong> <span className="font-medium">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
-                                    <p className="text-sm border-t pt-2"><strong>Amount Paid (50%):</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span></p>
-                                    <p className="text-sm text-gray-600"><strong>Remaining Balance:</strong> <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span></p>
-                                    <p className="text-sm"><strong>Payment Status:</strong> 
+                                    <p className="text-xs sm:text-sm"><strong>Total Order Amount:</strong> <span className="font-medium">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-xs sm:text-sm border-t pt-2"><strong>Amount Paid (50%):</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-xs sm:text-sm text-gray-600"><strong>Remaining Balance:</strong> <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span></p>
+                                    <p className="text-xs sm:text-sm"><strong>Payment Status:</strong> 
                                       <span className="ml-1 font-medium text-orange-600">
                                         Partial (50% Paid)
                                       </span>
@@ -7559,8 +7582,8 @@ export const Vendor = () => {
                                   </>
                                 ) : (
                                   <>
-                                    <p className="text-sm"><strong>Total Amount:</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
-                                    <p className="text-sm"><strong>Payment Status:</strong> 
+                                    <p className="text-xs sm:text-sm"><strong>Total Amount:</strong> <span className="text-green-600 font-bold">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
+                                    <p className="text-xs sm:text-sm"><strong>Payment Status:</strong> 
                                       <span className={`ml-1 font-medium ${
                                         order.payment_status === 'unpaid' ? 'text-yellow-600' :
                                         order.payment_status === 'paid' ? 'text-green-600' :
@@ -7571,7 +7594,7 @@ export const Vendor = () => {
                                     </p>
                                   </>
                                 )}
-                                <div className="text-sm">
+                                <div className="text-xs sm:text-sm">
                                   <strong>Delivery Date:</strong>
                                   {order.delivery_datetime ? (() => {
                                     const deliveryDate = new Date(order.delivery_datetime);
@@ -7600,13 +7623,13 @@ export const Vendor = () => {
                                     
                                     return (
                                       <div className="mt-2">
-                                        <div className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold ${urgencyClass}`}>
-                                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-semibold ${urgencyClass}`}>
+                                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                           </svg>
                                           {urgencyText}
                                         </div>
-                                        <p className="text-gray-900 font-medium mt-2">
+                                        <p className="text-gray-900 font-medium mt-2 text-xs sm:text-sm">
                                           {deliveryDate.toLocaleString('en-US', {
                                             weekday: 'long',
                                             year: 'numeric',
@@ -7621,8 +7644,8 @@ export const Vendor = () => {
                                     );
                                   })() : (
                                     <div className="mt-2">
-                                      <div className="inline-flex items-center px-3 py-1 rounded-md text-sm font-semibold text-gray-600 bg-gray-100 border border-gray-200">
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <div className="inline-flex items-center px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-semibold text-gray-600 bg-gray-100 border border-gray-200">
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         NOT SCHEDULED
@@ -7636,18 +7659,18 @@ export const Vendor = () => {
 
                           {/* Order Items Details */}
                           {order.order_items_details && (
-                            <div className="space-y-3 mb-6">
-                              <h4 className="font-medium text-gray-900">Order Items</h4>
-                              <div className="bg-pink-50 rounded-lg p-4 border border-pink-200">
-                                <p className="text-gray-800 font-medium">{order.order_items_details}</p>
+                            <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Order Items</h4>
+                              <div className="bg-pink-50 rounded-lg p-3 sm:p-4 border border-pink-200">
+                                <p className="text-xs sm:text-sm text-gray-800 font-medium break-words">{order.order_items_details}</p>
                               </div>
                             </div>
                           )}
 
                           {/* Delivery Information */}
-                          <div className="mb-6">
-                            <h4 className="font-medium text-gray-900 mb-3">Delivery Information</h4>
-                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                          <div className="mb-4 sm:mb-6">
+                            <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-2 sm:mb-3">Delivery Information</h4>
+                            <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
                               {(() => {
                                 const fullAddress = order.delivery_address || '';
                                 const parts = fullAddress.split(', ');
@@ -7662,7 +7685,7 @@ export const Vendor = () => {
                                 const deliveryAddress = addressParts.join(', ') || 'No address specified';
                                 
                                 return (
-                                  <p className="text-sm"><strong>Address:</strong> {deliveryAddress}</p>
+                                  <p className="text-xs sm:text-sm break-words"><strong>Address:</strong> {deliveryAddress}</p>
                                 );
                               })()}
                             </div>
@@ -7670,10 +7693,10 @@ export const Vendor = () => {
 
                           {/* Action Buttons */}
                           {order.status === 'pending' && (
-                            <div className="flex space-x-4">
-                              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p className="text-blue-800 font-medium">Order Auto-Confirmed</p>
-                                <p className="text-blue-700 text-sm">
+                            <div className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-6">
+                              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                                <p className="text-blue-800 font-medium text-sm sm:text-base">Order Auto-Confirmed</p>
+                                <p className="text-blue-700 text-xs sm:text-sm mt-1">
                                   This order was automatically confirmed because drums were available for the selected date. Waiting for payment to start preparation.
                                 </p>
                               </div>
@@ -7686,9 +7709,9 @@ export const Vendor = () => {
                             const isWalkInOrder = fullAddress.includes('Customer: ') && fullAddress.includes('Contact: ');
                             
                             return (
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <p className="text-green-800 font-medium mb-2">Order Confirmed!</p>
-                                <p className="text-green-700 text-sm mb-3">
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                                <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Order Confirmed!</p>
+                                <p className="text-green-700 text-xs sm:text-sm mb-3">
                                   {isWalkInOrder 
                                     ? 'Walk-in order - Waiting for payment. Mark as paid to start preparation.'
                                     : 'Order automatically confirmed. Waiting for customer payment to start preparation.'
@@ -7714,7 +7737,7 @@ export const Vendor = () => {
                                         updateStatus("error", "Failed to update payment status. Please try again.");
                                       }
                                     }}
-                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
                                   >
                                      Mark as Paid
                                   </button>
@@ -7724,18 +7747,18 @@ export const Vendor = () => {
                           })()}
 
                           {order.status === 'confirmed' && (order.payment_status === 'paid' || order.payment_status === 'partial') && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                              <p className="text-blue-800 font-medium mb-2">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                              <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">
                                 {order.payment_status === 'partial' ? 'Partial Payment Received!' : 'Payment Received!'}
                               </p>
-                              <p className="text-blue-700 text-sm mb-3">
+                              <p className="text-blue-700 text-xs sm:text-sm mb-3">
                                 {order.payment_status === 'partial' && order.payment_amount
                                   ? `Customer has paid 50% (₱${parseFloat(order.payment_amount).toFixed(2)}) of the total amount. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} will be collected on delivery. You can now start preparing the ice cream.`
                                   : 'Customer has paid. You can now start preparing the ice cream.'}
                               </p>
                               {order.payment_status === 'partial' && order.payment_amount && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-                                  <p className="text-orange-800 text-sm font-medium">
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 mb-3">
+                                  <p className="text-orange-800 text-xs sm:text-sm font-medium break-words">
                                     Amount Paid: ₱{parseFloat(order.payment_amount).toFixed(2)} | 
                                     Remaining: ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}
                                   </p>
@@ -7744,14 +7767,15 @@ export const Vendor = () => {
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                   onClick={() => handlePrepareOrder(order)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto whitespace-nowrap"
                                 >
-                                  🍦 Start Preparing Ice Cream
+                                  <span className="sm:hidden">🍦 Start Preparing</span>
+                                  <span className="hidden sm:inline">🍦 Start Preparing Ice Cream</span>
                                 </button>
                                 {order.payment_confirmation_image && (
                                   <button
                                     onClick={() => handleViewPaymentProof(order)}
-                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                    className="bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
                                   >
                                     📱 View Payment Proof
                                   </button>
@@ -7761,14 +7785,14 @@ export const Vendor = () => {
                           )}
 
                           {order.status === 'preparing' && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                              <p className="text-blue-800 font-medium mb-2">🍦 Preparing Ice Cream</p>
-                              <p className="text-blue-700 text-sm mb-3">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                              <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">🍦 Preparing Ice Cream</p>
+                              <p className="text-blue-700 text-xs sm:text-sm mb-3">
                                 Ice cream is being prepared. Mark as ready for delivery when finished.
                               </p>
                               <button
                                 onClick={() => handleReadyOrder(order)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                                className="bg-purple-600 hover:bg-purple-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
                               >
                                 🚚 Ready for Delivery
                               </button>
@@ -7776,22 +7800,22 @@ export const Vendor = () => {
                           )}
 
                           {order.status === 'out_for_delivery' && (
-                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                              <p className="text-purple-800 font-medium mb-2">🚚 Out for Delivery</p>
-                              <p className="text-purple-700 text-sm mb-3">
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+                              <p className="text-purple-800 font-medium mb-2 text-sm sm:text-base">🚚 Out for Delivery</p>
+                              <p className="text-purple-700 text-xs sm:text-sm mb-3">
                                 Order is on the way to customer. Mark as delivered when completed.
                               </p>
                               
                               {/* Show remaining balance info if partial payment */}
                               {order.payment_status === 'partial' && order.remaining_balance > 0 && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-                                  <p className="text-orange-800 font-medium mb-1 text-sm">Remaining Balance: ₱{parseFloat(order.remaining_balance).toFixed(2)}</p>
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 mb-3">
+                                  <p className="text-orange-800 font-medium mb-1 text-xs sm:text-sm">Remaining Balance: ₱{parseFloat(order.remaining_balance).toFixed(2)}</p>
                                   {order.remaining_payment_method === 'cod' && (
                                     <>
                                       <p className="text-orange-700 text-xs mb-2">Customer selected: Cash on Delivery</p>
                                       <button
                                         onClick={() => handleConfirmCODPayment(order.order_id, order.remaining_balance)}
-                                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm w-full sm:w-auto"
+                                        className="bg-orange-600 hover:bg-orange-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
                                       >
                                         💰 Mark Remaining Balance as Paid (COD)
                                       </button>
@@ -9010,8 +9034,19 @@ export const Vendor = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   <p><span className="font-medium">Order ID:</span> #{selectedOrderForPaymentProof.order_id}</p>
                   <p><span className="font-medium">Customer:</span> {selectedOrderForPaymentProof.customer_fname} {selectedOrderForPaymentProof.customer_lname}</p>
-                  <p><span className="font-medium">Amount:</span> ₱{parseFloat(selectedOrderForPaymentProof.total_amount || 0).toFixed(2)}</p>
-                  <p><span className="font-medium">Payment Method:</span> {selectedOrderForPaymentProof.qr_payment_method || 'GCash QR'}</p>
+                  {selectedOrderForPaymentProof.payment_status === 'partial' && selectedOrderForPaymentProof.payment_amount ? (
+                    <>
+                      <p><span className="font-medium">Total Amount:</span> ₱{parseFloat(selectedOrderForPaymentProof.total_amount || 0).toFixed(2)}</p>
+                      <p><span className="font-medium">Payment Method:</span> {selectedOrderForPaymentProof.qr_payment_method || 'GCash QR'}</p>
+                      <p className="sm:col-span-2"><span className="font-medium">Amount Paid (50%):</span> <span className="text-green-600 font-bold">₱{parseFloat(selectedOrderForPaymentProof.payment_amount || 0).toFixed(2)}</span></p>
+                      <p className="sm:col-span-2"><span className="font-medium">Remaining Balance:</span> <span className="text-orange-600">₱{parseFloat(selectedOrderForPaymentProof.remaining_balance || (selectedOrderForPaymentProof.total_amount - selectedOrderForPaymentProof.payment_amount)).toFixed(2)}</span></p>
+                    </>
+                  ) : (
+                    <>
+                      <p><span className="font-medium">Amount:</span> ₱{parseFloat(selectedOrderForPaymentProof.total_amount || 0).toFixed(2)}</p>
+                      <p><span className="font-medium">Payment Method:</span> {selectedOrderForPaymentProof.qr_payment_method || 'GCash QR'}</p>
+                    </>
+                  )}
                 </div>
               </div>
 
