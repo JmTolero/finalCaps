@@ -649,18 +649,33 @@ export const FindNearbyVendors = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Mobile Layout - Map on Top */}
+        {/* Mobile Layout - Title and Map on Top */}
         <div className="xl:hidden mb-6 lg:mb-8">
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden mx-2 sm:mx-0">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 sm:px-6 py-3 sm:py-4">
-              <h3 className="text-lg sm:text-xl font-bold text-white">
-                Find Vendors Near You
-              </h3>
-              <p className="text-blue-100 text-xs sm:text-sm">
-                Click on markers to view vendor details and delivery options
-              </p>
-            </div>
+          {/* "Find nearby Vendors" Title at Top for Mobile */}
+          <div className="mx-2 sm:mx-0 mb-4 sm:mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold text-blue-600 mb-3 sm:mb-4">
+              Find nearby Vendors
+            </h2>
             
+            {/* Location Accuracy Legend */}
+            <div className="flex flex-wrap gap-2 lg:gap-3 mb-3 sm:mb-4">
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-100 border border-green-300 rounded-full"></div>
+                <span className="text-gray-600">Exact Location</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-100 border border-yellow-300 rounded-full"></div>
+                <span className="text-gray-600">Approximate</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-100 border border-gray-300 rounded-full"></div>
+                <span className="text-gray-600">Location Needed</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Map Card */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden mx-2 sm:mx-0">
             <div className="p-3 sm:p-4">
               <CustomerVendorMap
                 onVendorSelect={handleVendorSelect}
@@ -674,7 +689,8 @@ export const FindNearbyVendors = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-8">
           {/* Left Side - Vendor Information */}
           <div className="space-y-4 lg:space-y-6">
-            <div className="flex flex-col gap-4 mb-4 lg:mb-6">
+            {/* Desktop Title - Hidden on mobile since it's now at the top */}
+            <div className="hidden xl:flex flex-col gap-4 mb-4 lg:mb-6">
               <h2 className="text-2xl sm:text-3xl font-bold text-blue-600">
                 Find nearby Vendors
               </h2>
