@@ -2106,6 +2106,20 @@ export const Vendor = () => {
     setSelectedSize('');
     setWalkInQuantity(1);
     updateStatus("success", "Item added to cart");
+    
+    // Auto-scroll to Order Items section on mobile
+    if (window.innerWidth < 768) {
+      setTimeout(() => {
+        const orderItemsSection = document.getElementById('walk-in-order-items');
+        if (orderItemsSection) {
+          orderItemsSection.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+    }
   };
 
   const removeFromWalkInCart = (itemId) => {
@@ -7288,7 +7302,7 @@ export const Vendor = () => {
                     </div>
 
                     {/* Right Side - Order Items */}
-                    <div className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 shadow-lg">
+                    <div id="walk-in-order-items" className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 shadow-lg">
                       <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-2 sm:mb-3 lg:mb-4 xl:mb-6 flex items-center">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
