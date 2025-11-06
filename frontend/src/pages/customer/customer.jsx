@@ -1271,34 +1271,36 @@ export const Customer = () => {
     return (
       <>
         <NavWithLogo />
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-8 mt-16">
-          <div className="max-w-6xl mx-auto px-4">
+        <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-3 sm:py-4 lg:py-8 mt-16">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
             {/* Header */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1 sm:mb-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Orders</h1>
+            <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 mb-3 sm:mb-4 lg:mb-6">
+              <div className="mb-3 sm:mb-4">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">My Orders</h1>
+                    <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">Track your order status and history</p>
+                  </div>
                   {/* Back Button - Right corner */}
                   <button
                     onClick={() => {
                       setActiveView('dashboard');
                       navigate('/customer');
                     }}
-                    className="bg-gray-100 text-gray-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                    className="bg-gray-100 text-gray-700 px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors flex items-center gap-1 sm:gap-1.5 lg:gap-2 text-xs sm:text-sm flex-shrink-0 ml-2"
                     title="Back to Home"
                   >
                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    <span className="hidden sm:inline">Back to Home</span>
+                    <span className="hidden sm:inline">Back</span>
                   </button>
                 </div>
-                <p className="text-sm sm:text-base text-gray-600">Track your order status and history</p>
               </div>
               
               {/* Order Filters */}
-              <div className="overflow-x-auto">
-                <div className="flex gap-2 pb-2 min-w-max">
+              <div className="overflow-x-auto -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+                <div className="flex gap-1.5 sm:gap-2 pb-1 sm:pb-2 min-w-max">
                   {[
                     { value: 'all', label: 'All Orders', count: orders.length },
                     { value: 'pending', label: 'Pending', count: orders.filter(o => o.status === 'pending').length },
@@ -1314,13 +1316,23 @@ export const Customer = () => {
                         console.log('🔍 Filter button clicked:', filter.value);
                         setOrderFilter(filter.value);
                       }}
-                      className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                      className={`px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs lg:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 active:scale-95 ${
                         orderFilter === filter.value
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-blue-600 text-white shadow-sm'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      {filter.label} {filter.count > 0 && `(${filter.count})`}
+                      <span className="hidden sm:inline">{filter.label}</span>
+                      <span className="sm:hidden">
+                        {filter.value === 'all' ? 'All' : 
+                         filter.value === 'pending' ? 'Pending' :
+                         filter.value === 'confirmed' ? 'Confirmed' :
+                         filter.value === 'preparing' ? 'Prep' :
+                         filter.value === 'out_for_delivery' ? 'Out' :
+                         filter.value === 'delivered' ? 'Delivered' :
+                         'Cancel'}
+                      </span>
+                      {filter.count > 0 && <span className="ml-1">({filter.count})</span>}
                     </button>
                   ))}
                 </div>
@@ -1341,34 +1353,34 @@ export const Customer = () => {
                 }
                 
                 return ordersLoading ? (
-                  <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading your orders...</p>
+                  <div className="p-6 sm:p-8 lg:p-12 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
+                    <p className="text-sm sm:text-base text-gray-600">Loading your orders...</p>
                   </div>
                 ) : orders.length === 0 ? (
-                <div className="p-8 text-center">
-                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="p-6 sm:p-8 lg:p-12 text-center">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
-                  <p className="text-gray-600 mb-4">You haven't placed any orders yet.</p>
+                  <h3 className="text-base sm:text-lg lg:text-xl font-medium text-gray-900 mb-2">No orders yet</h3>
+                  <p className="text-sm sm:text-base text-gray-600 mb-4">You haven't placed any orders yet.</p>
                   <button
                     onClick={() => {
                       setActiveView('dashboard');
                       navigate('/customer');
                     }}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-600 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base active:scale-95"
                   >
                     Start Shopping
                   </button>
                 </div>
                 ) : filteredOrders.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="p-6 sm:p-8 lg:p-12 text-center">
+                    <svg className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No {orderFilter === 'all' ? 'orders' : orderFilter} orders</h3>
-                    <p className="text-gray-600">
+                    <h3 className="text-base sm:text-lg lg:text-xl font-medium text-gray-900 mb-2">No {orderFilter === 'all' ? 'orders' : orderFilter} orders</h3>
+                    <p className="text-sm sm:text-base text-gray-600">
                       {orderFilter === 'all' 
                         ? "You haven't placed any orders yet." 
                         : `No orders with status "${orderFilter.replace('_', ' ')}" found.`
@@ -1378,78 +1390,76 @@ export const Customer = () => {
                 ) : (
                 <div className="divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
-                    <div key={order.order_id} className="p-3 sm:p-6">
+                    <div key={order.order_id} className="p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors active:bg-gray-100">
                       {/* Condensed Order Summary */}
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-3 sm:space-y-0">
-                        <div className="flex-1">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
-                            <div className="flex-1">
-                              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                      <div className="flex flex-col space-y-3 sm:space-y-4">
+                        {/* Top Row: Order ID, Status, Price */}
+                        <div className="flex items-start justify-between gap-2 sm:gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                              <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
                                 Order #{order.order_id}
                               </h3>
-                              <p className="text-xs sm:text-sm text-gray-600">
-                                {order.vendor_name} • {new Date(order.created_at).toLocaleDateString()}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                🕒 Delivery: {order.delivery_datetime ? (() => {
-                                  const deliveryDate = new Date(order.delivery_datetime);
-                                  console.log('🕒 Customer order display:', {
-                                    orderId: order.order_id,
-                                    rawDatetime: order.delivery_datetime,
-                                    parsedDate: deliveryDate,
-                                    formatted: deliveryDate.toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    })
-                                  });
-                                  return deliveryDate.toLocaleString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  });
-                                })() : 'Not scheduled'}
-                              </p>
+                              <span className={`inline-flex px-2 sm:px-2.5 lg:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs lg:text-sm font-medium rounded-full flex-shrink-0 ${
+                                order.status === 'pending' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : order.status === 'confirmed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : order.status === 'preparing'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : order.status === 'out_for_delivery'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : order.status === 'delivered'
+                                  ? 'bg-green-100 text-green-800'
+                                  : order.status === 'cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.status === 'pending' ? 'Confirmed' : (order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' '))}
+                              </span>
                             </div>
-                            <div className="text-left sm:text-right">
-                              <p className="text-base sm:text-lg font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
-                            </div>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate mb-1">
+                              {order.vendor_name} • {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                            <p className="text-[10px] sm:text-xs text-gray-500">
+                              🕒 Delivery: {order.delivery_datetime ? (() => {
+                                const deliveryDate = new Date(order.delivery_datetime);
+                                return deliveryDate.toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                });
+                              })() : 'Not scheduled'}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-base sm:text-lg lg:text-xl font-bold text-green-600">₱{parseFloat(order.total_amount).toFixed(2)}</p>
                           </div>
                         </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-                          <span className={`inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full w-fit ${
-                            order.status === 'pending' 
-                              ? 'bg-green-100 text-green-800' 
-                              : order.status === 'confirmed'
-                              ? 'bg-green-100 text-green-800'
-                              : order.status === 'preparing'
-                              ? 'bg-blue-100 text-blue-800'
-                              : order.status === 'out_for_delivery'
-                              ? 'bg-purple-100 text-purple-800'
-                              : order.status === 'delivered'
-                              ? 'bg-green-100 text-green-800'
-                              : order.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {order.status === 'pending' ? 'Confirmed' : (order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' '))}
-                          </span>
+                        
+                        {/* Bottom Row: Action Button */}
+                        <div className="flex gap-2 sm:gap-3">
                           <button
                             onClick={() => {
                               setSelectedOrder(order);
                               setShowOrderModal(true);
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm transition-colors w-full sm:w-auto"
+                            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 sm:px-3 lg:px-4 py-2 sm:py-1.5 lg:py-2 rounded-lg text-xs sm:text-sm transition-colors active:scale-95"
                           >
                             View Details
                           </button>
+                          {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
+                            <button
+                              onClick={() => handlePayment(order)}
+                              className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-4 sm:px-3 lg:px-4 py-2 sm:py-1.5 lg:py-2 rounded-lg text-xs sm:text-sm transition-colors active:scale-95"
+                            >
+                              💳 Pay Now
+                            </button>
+                          )}
                         </div>
                       </div>
-
                     </div>
                   ))}
                 </div>
@@ -1804,7 +1814,7 @@ export const Customer = () => {
         {/* Order Details Modal */}
         {showOrderModal && selectedOrder && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-3 lg:p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowOrderModal(false);
@@ -1812,12 +1822,12 @@ export const Customer = () => {
               }
             }}
           >
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto mx-2 sm:mx-4">
-              <div className="p-3 sm:p-6">
+            <div className="bg-white rounded-lg sm:rounded-xl max-w-4xl w-full max-h-[98vh] sm:max-h-[95vh] lg:max-h-[90vh] overflow-y-auto mx-2 sm:mx-3 lg:mx-4">
+              <div className="p-3 sm:p-4 lg:p-6">
                 {/* Modal Header */}
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <div className="flex-1 pr-2">
-                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900">
+                <div className="flex items-start justify-between mb-3 sm:mb-4 lg:mb-6 gap-2">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <h2 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 break-words">
                       Order #{selectedOrder.order_id} Details
                     </h2>
                     {selectedOrder.status === 'cancelled' && (
@@ -1834,7 +1844,8 @@ export const Customer = () => {
                       setShowOrderModal(false);
                       setSelectedOrder(null);
                     }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                    className="text-gray-400 hover:text-gray-600 active:text-gray-700 transition-colors flex-shrink-0 p-1 -mr-1 active:scale-95"
+                    aria-label="Close modal"
                   >
                     <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1844,74 +1855,75 @@ export const Customer = () => {
 
                 {/* Order Status Progression */}
                 {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered') && (
-                  <div className="mb-4 sm:mb-6">
-                    <h4 className="font-medium text-gray-900 mb-3 text-sm sm:text-base">Order Progress</h4>
+                  <div className="mb-3 sm:mb-4 lg:mb-6">
+                    <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-xs sm:text-sm lg:text-base">Order Progress</h4>
                     <div className="flex items-center justify-between">
                       {/* Step 1: Confirmed */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           selectedOrder.status === 'confirmed' || selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
                             ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
                         }`}>
-                          <span className="text-xs sm:text-sm">✓</span>
+                          <span className="text-[10px] sm:text-xs lg:text-sm">✓</span>
                         </div>
-                        <span className="text-xs mt-1 text-center">Confirmed</span>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs mt-1 text-center leading-tight">Confirmed</span>
                       </div>
                       
                       {/* Progress Line 1 */}
-                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                      <div className={`flex-1 h-0.5 sm:h-1 mx-0.5 sm:mx-1 lg:mx-2 ${
                         selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
                           ? 'bg-green-500' : 'bg-gray-300'
                       }`}></div>
                       
                       {/* Step 2: Preparing */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           selectedOrder.status === 'preparing' || selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
                             ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
                         }`}>
-                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'preparing' ? '🍦' : '✓'}</span>
+                          <span className="text-[10px] sm:text-xs lg:text-sm">{selectedOrder.status === 'preparing' ? '🍦' : '✓'}</span>
                         </div>
-                        <span className="text-xs mt-1 text-center">Preparing</span>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs mt-1 text-center leading-tight">Preparing</span>
                       </div>
                       
                       {/* Progress Line 2 */}
-                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                      <div className={`flex-1 h-0.5 sm:h-1 mx-0.5 sm:mx-1 lg:mx-2 ${
                         selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
                           ? 'bg-purple-500' : 'bg-gray-300'
                       }`}></div>
                       
                       {/* Step 3: Out for Delivery */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           selectedOrder.status === 'out_for_delivery' || selectedOrder.status === 'delivered'
                             ? 'bg-purple-500 text-white' : 'bg-gray-300 text-gray-600'
                         }`}>
-                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'out_for_delivery' ? '🚚' : '✓'}</span>
+                          <span className="text-[10px] sm:text-xs lg:text-sm">{selectedOrder.status === 'out_for_delivery' ? '🚚' : '✓'}</span>
                         </div>
-                        <span className="text-xs mt-1 text-center">Out for Delivery</span>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs mt-1 text-center leading-tight hidden sm:inline">Out for Delivery</span>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs mt-1 text-center leading-tight sm:hidden">Out</span>
                       </div>
                       
                       {/* Progress Line 3 */}
-                      <div className={`flex-1 h-1 mx-1 sm:mx-2 ${
+                      <div className={`flex-1 h-0.5 sm:h-1 mx-0.5 sm:mx-1 lg:mx-2 ${
                         selectedOrder.status === 'delivered' ? 'bg-green-500' : 'bg-gray-300'
                       }`}></div>
                       
                       {/* Step 4: Delivered */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${
+                      <div className="flex flex-col items-center flex-1 min-w-0">
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                           selectedOrder.status === 'delivered'
                             ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
                         }`}>
-                          <span className="text-xs sm:text-sm">{selectedOrder.status === 'delivered' ? '🎉' : '✓'}</span>
+                          <span className="text-[10px] sm:text-xs lg:text-sm">{selectedOrder.status === 'delivered' ? '🎉' : '✓'}</span>
                         </div>
-                        <span className="text-xs mt-1 text-center">Delivered</span>
+                        <span className="text-[9px] sm:text-[10px] lg:text-xs mt-1 text-center leading-tight">Delivered</span>
                       </div>
                     </div>
                     
                     {/* Current Status Message */}
-                    <div className="mt-3 sm:mt-4 text-center">
-                      <p className="text-xs sm:text-sm text-gray-600 px-2">
+                    <div className="mt-2 sm:mt-3 lg:mt-4 text-center">
+                      <p className="text-[10px] sm:text-xs lg:text-sm text-gray-600 px-1 sm:px-2">
                         {selectedOrder.status === 'confirmed' && 'Order confirmed! Waiting for payment to start preparation.'}
                         {selectedOrder.status === 'preparing' && '🍦 Your ice cream is being prepared!'}
                         {selectedOrder.status === 'out_for_delivery' && '🚚 Your order is on the way!'}
@@ -1921,37 +1933,37 @@ export const Customer = () => {
                   </div>
                 )}
                       
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Vendor</h4>
-                    <p className="text-gray-600 text-sm sm:text-base">{selectedOrder.vendor_name || 'N/A'}</p>
+                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-xs sm:text-sm lg:text-base">Vendor</h4>
+                    <p className="text-gray-600 text-xs sm:text-sm lg:text-base break-words">{selectedOrder.vendor_name || 'N/A'}</p>
                   </div>
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">Total Amount</h4>
-                    <p className="text-base sm:text-lg font-semibold text-green-600">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                    <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-xs sm:text-sm lg:text-base">Total Amount</h4>
+                    <p className="text-sm sm:text-base lg:text-lg font-semibold text-green-600">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
                   </div>
                 </div>
                       
                 {/* Order Items Details */}
                 {selectedOrder.order_items_details && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Order Items</h4>
+                  <div className="mb-3 sm:mb-4">
+                    <h4 className="font-medium text-gray-900 mb-2 text-xs sm:text-sm lg:text-base">Order Items</h4>
                     <div className="bg-pink-50 rounded-lg p-3 sm:p-4">
-                      <p className="text-gray-800 font-medium text-sm sm:text-base break-words">{selectedOrder.order_items_details}</p>
+                      <p className="text-gray-800 font-medium text-xs sm:text-sm lg:text-base break-words">{selectedOrder.order_items_details}</p>
                     </div>
                   </div>
                 )}
                       
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Delivery Details</h4>
-                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
+                <div className="mb-3 sm:mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2 text-xs sm:text-sm lg:text-base">Delivery Details</h4>
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
                     <div>
-                      <span className="text-xs sm:text-sm font-medium text-gray-700">Address:</span>
-                      <p className="text-gray-900 text-sm sm:text-base break-words">{selectedOrder.delivery_address || 'No address specified'}</p>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">Address:</span>
+                      <p className="text-gray-900 text-xs sm:text-sm lg:text-base break-words">{selectedOrder.delivery_address || 'No address specified'}</p>
                     </div>
                     <div>
-                      <span className="text-xs sm:text-sm font-medium text-gray-700">Scheduled Date & Time:</span>
-                      <p className="text-gray-900 text-sm sm:text-base">
+                      <span className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">Scheduled Date & Time:</span>
+                      <p className="text-gray-900 text-xs sm:text-sm lg:text-base break-words">
                         {selectedOrder.delivery_datetime ? 
                           new Date(selectedOrder.delivery_datetime).toLocaleString('en-US', {
                             weekday: 'long',
@@ -1968,21 +1980,21 @@ export const Customer = () => {
                   </div>
                 </div>
                       
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Payment</h4>
+                <div className="mb-3 sm:mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2 text-xs sm:text-sm lg:text-base">Payment</h4>
                   <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 text-sm sm:text-base">Initial Payment Method:</span>
-                        <span className="font-medium text-sm sm:text-base">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                        <span className="text-gray-600 text-xs sm:text-sm lg:text-base">Initial Payment Method:</span>
+                        <span className="font-medium text-xs sm:text-sm lg:text-base">
                           {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
                             ? 'GCash' 
                             : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-600 text-sm sm:text-base">Status:</span>
-                        <span className={`font-medium text-sm sm:text-base ${
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                        <span className="text-gray-600 text-xs sm:text-sm lg:text-base">Status:</span>
+                        <span className={`font-medium text-xs sm:text-sm lg:text-base ${
                           selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
                           selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
                           selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
@@ -2179,20 +2191,44 @@ export const Customer = () => {
                  selectedOrder.payment_amount && 
                  parseFloat(selectedOrder.payment_amount) > 0 &&
                  parseFloat(selectedOrder.payment_amount) < parseFloat(selectedOrder.total_amount) && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 md:p-5">
-                    <div className="flex flex-col mb-3 sm:mb-4 space-y-3">
-                      <div className="flex-1">
-                         <p className="text-yellow-800 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg">⏳ Order Not Yet Confirmed</p>
-                         <p className="text-yellow-700 text-xs sm:text-sm md:text-base leading-relaxed">
-                           Your order has not yet been confirmed! Please pay the initial 50% payment now to be confirmed by vendor.
-                         </p>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 lg:p-5 mb-3 sm:mb-4">
+                    {/* Payment Method and Status Header */}
+                    <div className="mb-3 sm:mb-4 space-y-1.5 sm:space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm text-gray-700">Initial Payment Method:</span>
+                          <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                            {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
+                              ? 'GCash' 
+                              : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm text-gray-700">Status:</span>
+                          <span className="text-xs sm:text-sm font-semibold text-orange-600">Unpaid</span>
+                        </div>
                       </div>
-                      <div className="flex flex-col md:flex-row gap-2.5 sm:gap-3 w-full">
+                    </div>
+
+                    {/* Warning Section */}
+                    <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                      <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                        <span className="text-lg sm:text-xl lg:text-2xl flex-shrink-0">⏳</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-yellow-800 font-semibold mb-1.5 sm:mb-2 text-sm sm:text-base lg:text-lg">Order Not Yet Confirmed</p>
+                          <p className="text-yellow-700 text-xs sm:text-sm lg:text-base leading-relaxed">
+                            Your order has not yet been confirmed! Please pay the initial 50% payment now to be confirmed by vendor.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3 sm:mt-4">
                         <button 
                           onClick={() => handlePayment(selectedOrder)}
-                          className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
+                          className="flex-1 bg-green-600 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-semibold min-h-[44px] sm:min-h-[48px] active:scale-95"
                         >
-                          <span className="text-lg sm:text-xl">💳</span>
+                          <span className="text-base sm:text-lg lg:text-xl">💳</span>
                           <span>Pay Now via GCash</span>
                         </button>
                         <button 
@@ -2200,16 +2236,20 @@ export const Customer = () => {
                             console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
                             handleCancelOrderClick(selectedOrder.order_id);
                           }}
-                          className="bg-red-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
+                          className="flex-1 bg-red-600 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-semibold min-h-[44px] sm:min-h-[48px] active:scale-95"
                         >
-                          <span className="text-lg sm:text-xl">❌</span>
+                          <span className="text-base sm:text-lg lg:text-xl">❌</span>
                           <span>Cancel Order</span>
                         </button>
                       </div>
                     </div>
-                    <p className="text-green-600 text-xs sm:text-sm md:text-base leading-relaxed">
-                      Initial payment (50%): <span className="font-bold">₱{parseFloat(selectedOrder.total_amount * 0.5).toFixed(2)}</span>. Pay now to proceed. Remaining balance will be collected on delivery.
-                    </p>
+
+                    {/* Payment Summary */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 sm:p-3 lg:p-4">
+                      <p className="text-green-700 text-xs sm:text-sm lg:text-base leading-relaxed">
+                        Initial payment (50%): <span className="font-bold text-green-800">₱{parseFloat(selectedOrder.total_amount * 0.5).toFixed(2)}</span>. Pay now to proceed. Remaining balance will be collected on delivery.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -2364,7 +2404,7 @@ export const Customer = () => {
                       setShowOrderModal(false);
                       setSelectedOrder(null);
                     }}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto"
+                    className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto min-h-[44px] sm:min-h-0 active:scale-95"
                   >
                     Close
                   </button>

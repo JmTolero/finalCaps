@@ -624,57 +624,113 @@ export const Notifications = () => {
         </div>
       </div>
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-6 lg:py-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-3 sm:py-4 lg:py-6">
         <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {/* Left Sidebar - User Profile and Navigation */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 sticky top-20 sm:top-24">
-                {/* User Profile Section */}
-                <div className="text-center mb-4 sm:mb-6">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                    <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+              {/* Mobile: Horizontal Navigation Tabs */}
+              <div className="lg:hidden mb-3 sm:mb-4">
+                <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
+                  {/* User Profile - Mobile */}
+                  <div className="flex items-center space-x-3 mb-3 pb-3 border-b border-gray-200">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{customerData.fname} {customerData.lname}</h3>
+                      <button
+                        onClick={handleViewProfile}
+                        className="text-blue-600 hover:text-blue-800 text-xs mt-0.5"
+                      >
+                        Edit Profile
+                      </button>
+                    </div>
                   </div>
-                  <h3 className="text-sm sm:text-lg font-semibold text-gray-900">{customerData.fname} {customerData.lname}</h3>
-                  <button
-                    onClick={handleViewProfile}
-                    className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm mt-1"
-                  >
-                    Edit Profile
-                  </button>
+                  
+                  {/* Mobile Navigation Tabs */}
+                  <div className="flex space-x-2 overflow-x-auto">
+                    <button 
+                      onClick={handleViewProfile}
+                      className="flex-shrink-0 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-xs sm:text-sm border border-blue-200"
+                    >
+                      My Account
+                    </button>
+                    <button
+                      onClick={handleViewOrder}
+                      className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${
+                        activeView === 'orders' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200' 
+                      }`}
+                    >
+                      My Order
+                    </button>
+                    <button 
+                      onClick={() => setActiveView('notifications')}
+                      className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${
+                        activeView === 'notifications' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                      }`}
+                    >
+                      Notifications
+                    </button>
+                  </div>
                 </div>
+              </div>
 
-                {/* Navigation Menu */}
-                <div className="space-y-1 sm:space-y-2">
-                  <button 
-                    onClick={handleViewProfile}
-                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base border-2 border-blue-200"
-                  >
-                    My Account
-                  </button>
-                  <button
-                    onClick={handleViewOrder}
-                    className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                      activeView === 'orders' 
-                        ? 'bg-blue-600 text-white border-2 border-blue-600' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200' 
-                    }`}
-                  >
-                    My Order
-                  </button>
-                  <button 
-                    onClick={() => setActiveView('notifications')}
-                    className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
-                      activeView === 'notifications' 
-                        ? 'bg-blue-600 text-white border-2 border-blue-600' 
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200'
-                    }`}
-                  >
-                    Notifications
-                  </button>
+              {/* Desktop: Vertical Sidebar */}
+              <div className="hidden lg:block">
+                <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 sticky top-20 sm:top-24">
+                  {/* User Profile Section */}
+                  <div className="text-center mb-4 sm:mb-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                      <svg className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-sm sm:text-lg font-semibold text-gray-900">{customerData.fname} {customerData.lname}</h3>
+                    <button
+                      onClick={handleViewProfile}
+                      className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm mt-1"
+                    >
+                      Edit Profile
+                    </button>
+                  </div>
+
+                  {/* Navigation Menu */}
+                  <div className="space-y-1 sm:space-y-2">
+                    <button 
+                      onClick={handleViewProfile}
+                      className="w-full text-left px-3 py-2 sm:px-4 sm:py-3 bg-blue-50 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors text-sm sm:text-base border-2 border-blue-200"
+                    >
+                      My Account
+                    </button>
+                    <button
+                      onClick={handleViewOrder}
+                      className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                        activeView === 'orders' 
+                          ? 'bg-blue-600 text-white border-2 border-blue-600' 
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200' 
+                      }`}
+                    >
+                      My Order
+                    </button>
+                    <button 
+                      onClick={() => setActiveView('notifications')}
+                      className={`w-full text-left px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                        activeView === 'notifications' 
+                          ? 'bg-blue-600 text-white border-2 border-blue-600' 
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-2 border-blue-200'
+                      }`}
+                    >
+                      Notifications
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -683,11 +739,18 @@ export const Notifications = () => {
             <div className="lg:col-span-3">
               <div className="bg-white rounded-lg shadow-sm">
                 {/* Header */}
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                    <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900">
                       {activeView === 'notifications' 
-                        ? `Your Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`
+                        ? (
+                          <span>
+                            Your Notifications 
+                            {unreadCount > 0 && (
+                              <span className="text-sm sm:text-base"> ({unreadCount} unread)</span>
+                            )}
+                          </span>
+                        )
                         : 'My Orders'
                       }
                     </h2>
@@ -695,7 +758,7 @@ export const Notifications = () => {
                       {activeView === 'orders' && (
                         <button
                           onClick={() => navigate('/customer?view=orders')}
-                          className="px-2 py-1 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors"
+                          className="px-3 py-1.5 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors active:scale-95"
                         >
                           View More
                         </button>
@@ -703,9 +766,9 @@ export const Notifications = () => {
                       {activeView === 'notifications' && unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
-                          className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
+                          className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium active:scale-95"
                         >
-                          Mark as all read
+                          Mark all read
                         </button>
                       )}
                     </div>
@@ -713,7 +776,7 @@ export const Notifications = () => {
                 </div>
 
                 {/* Content List */}
-                <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
+                <div className="divide-y divide-gray-200 max-h-[calc(100vh-280px)] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                   {activeView === 'notifications' ? (
                     // Notifications Content
                     loading ? (
@@ -799,28 +862,33 @@ export const Notifications = () => {
                       orders.map((order) => (
                         <div
                           key={order.order_id}
-                          className="p-3 sm:p-4 hover:bg-gray-50 transition-colors"
+                          className="p-3 sm:p-4 lg:p-5 hover:bg-gray-50 transition-colors active:bg-gray-100"
                         >
-                          <div className="flex items-start space-x-2 sm:space-x-3">
+                          <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
                             {/* Order Icon */}
-                            <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-lg sm:text-xl">📦</span>
+                            <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-lg sm:text-xl lg:text-2xl">📦</span>
                             </div>
                             
                             {/* Order Content */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1">
-                                    Order #{order.order_id}
-                                  </h3>
-                                  <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
+                                      Order #{order.order_id}
+                                    </h3>
+                                    <span className="text-xs sm:text-sm text-gray-500 ml-2 flex-shrink-0">
+                                      {new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-3 truncate">
                                     {order.vendor_name} • ₱{parseFloat(order.total_amount).toFixed(2)}
                                   </p>
                                   
                                   {/* Order Status & Tracking */}
                                   <div className="mb-2 sm:mb-3">
-                                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full mb-2 ${
+                                    <span className={`inline-flex px-2.5 py-1 text-xs sm:text-sm font-medium rounded-full mb-2 ${
                                       order.status === 'pending' 
                                         ? 'bg-yellow-100 text-yellow-800' 
                                         : order.status === 'confirmed'
@@ -837,33 +905,33 @@ export const Notifications = () => {
                                     </span>
                                     
                                     {/* Tracking Progress Bar */}
-                                    <div className="mt-2">
-                                      <div className="flex items-center justify-between text-[10px] sm:text-xs text-gray-500 mb-1">
-                                        <span className={order.status === 'pending' || order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
-                                          Order Placed
+                                    <div className="mt-2 sm:mt-3">
+                                      <div className="flex items-center justify-between text-[9px] sm:text-[10px] lg:text-xs text-gray-500 mb-1.5 sm:mb-2">
+                                        <span className={`${order.status === 'pending' || order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate`}>
+                                          Placed
                                         </span>
-                                        <span className={order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
+                                        <span className={`${order.status === 'confirmed' || order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate`}>
                                           Confirmed
                                         </span>
-                                        <span className={`hidden sm:inline ${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate hidden sm:inline`}>
                                           Preparing
                                         </span>
-                                        <span className={`sm:hidden ${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`${order.status === 'preparing' || order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate sm:hidden`}>
                                           Prep
                                         </span>
-                                        <span className={`hidden sm:inline ${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate hidden sm:inline`}>
                                           Out for Delivery
                                         </span>
-                                        <span className={`sm:hidden ${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}`}>
+                                        <span className={`${order.status === 'out_for_delivery' || order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate sm:hidden`}>
                                           Out
                                         </span>
-                                        <span className={order.status === 'delivered' ? 'text-blue-600 font-medium' : ''}>
+                                        <span className={`${order.status === 'delivered' ? 'text-blue-600 font-medium' : ''} truncate`}>
                                           Delivered
                                         </span>
                                       </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-1 sm:h-2">
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                                         <div 
-                                          className="bg-blue-600 h-1 sm:h-2 rounded-full transition-all duration-300"
+                                          className="bg-blue-600 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                                           style={{
                                             width: order.status === 'pending' ? '20%' :
                                                    order.status === 'confirmed' ? '40%' :
@@ -940,16 +1008,21 @@ export const Notifications = () => {
                                   )}
 
                                   {/* Order Actions */}
-                                  <div className="flex justify-between items-center">
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 mt-3 sm:mt-2">
                                     <button 
                                       onClick={() => handleViewOrderDetails(order)}
-                                      className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium"
+                                      className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors active:scale-95 text-center"
                                     >
                                       View Details
                                     </button>
-                                    <span className="text-xs sm:text-sm text-gray-500">
-                                      {new Date(order.created_at).toLocaleDateString()}
-                                    </span>
+                                    {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
+                                      <button 
+                                        onClick={() => handlePayment(order)}
+                                        className="w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-medium rounded-lg transition-colors active:scale-95 text-center"
+                                      >
+                                        💳 Pay Now
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -968,9 +1041,9 @@ export const Notifications = () => {
 
       {/* Order Details Modal */}
       {showOrderDetails && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 lg:p-6">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-5 lg:p-6">
               {/* Header */}
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Order Details</h2>
