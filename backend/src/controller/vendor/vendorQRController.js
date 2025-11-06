@@ -223,9 +223,9 @@ const getMyQRCode = async (req, res) => {
   try {
     const user = req.user;
     
-    // Get vendor ID from user
+    // Get vendor ID and store_name from user
     const [vendors] = await pool.query(
-      'SELECT vendor_id FROM vendors WHERE user_id = ?',
+      'SELECT vendor_id, store_name FROM vendors WHERE user_id = ?',
       [user.user_id]
     );
 
@@ -237,6 +237,7 @@ const getMyQRCode = async (req, res) => {
     }
 
     const vendor_id = vendors[0].vendor_id;
+    const store_name = vendors[0].store_name;
 
     const [qrCodes] = await pool.query(
       'SELECT * FROM vendor_gcash_qr WHERE vendor_id = ? AND is_active = 1',
@@ -244,17 +245,25 @@ const getMyQRCode = async (req, res) => {
     );
 
     if (qrCodes.length === 0) {
+      // Return vendor info even if QR code doesn't exist yet (for first-time setup)
       return res.status(404).json({
         success: false,
-        error: 'QR code not found'
+        error: 'QR code not found',
+        store_name: store_name // Include store_name for auto-population
       });
     }
 
     const qrCode = qrCodes[0];
+    
+    // If business_name is not set in QR code, use store_name from vendor
+    if (!qrCode.business_name && store_name) {
+      qrCode.business_name = store_name;
+    }
 
     return res.status(200).json({
       success: true,
-      qrCode: qrCode
+      qrCode: qrCode,
+      store_name: store_name // Always include store_name
     });
 
   } catch (error) {

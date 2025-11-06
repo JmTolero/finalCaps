@@ -606,7 +606,9 @@ export const Checkout = () => {
             total_amount: vendorTotal,
             payment_amount: vendorPaymentAmount,
             status: 'pending',
-            payment_status: paymentOption === '50' ? 'partial' : 'unpaid',
+            // Keep as 'unpaid' until payment is actually confirmed
+            // 'partial' status will be set when payment is received
+            payment_status: 'unpaid',
             items: vendorItems
           };
           
@@ -657,7 +659,9 @@ export const Checkout = () => {
           total_amount: getTotalAmount(),
           payment_amount: paymentAmount,
           status: 'pending',
-          payment_status: paymentOption === '50' ? 'partial' : 'unpaid',
+          // Keep as 'unpaid' until payment is actually confirmed
+          // 'partial' status will be set when payment is received
+          payment_status: 'unpaid',
           items: orderData.items || []
         };
 

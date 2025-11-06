@@ -7,6 +7,7 @@ import { ProvinceDropdown, CityDropdown, RegionDropdown } from "../../components
 import logoImage from "../../assets/images/LOGO.png";
 import { getImageUrl } from "../../utils/imageUtils";
 import axios from "axios";
+import { getAvailabilityByDate } from "../../services/availabilityService";
 
 // Vendor Dashboard Icons
 import dashboardIcon from "../../assets/images/vendordashboardicon/vendorDashboardicon.png";
@@ -279,6 +280,9 @@ export const Vendor = () => {
   const [showPrepareModal, setShowPrepareModal] = useState(false);
   const [showReadyModal, setShowReadyModal] = useState(false);
   const [showDeliveredModal, setShowDeliveredModal] = useState(false);
+  const [showCODPaymentModal, setShowCODPaymentModal] = useState(false);
+  const [codPaymentData, setCodPaymentData] = useState({ orderId: null, amount: null });
+  const [isConfirmingCODPayment, setIsConfirmingCODPayment] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [declineReason, setDeclineReason] = useState('');
   
@@ -318,6 +322,15 @@ export const Vendor = () => {
   const [walkInDeliveryDate, setWalkInDeliveryDate] = useState('');
   const [walkInDeliveryTime, setWalkInDeliveryTime] = useState('');
   const [showWalkInSuccess, setShowWalkInSuccess] = useState(false);
+  
+  // Walk-in date-based availability state
+  const [walkInDateAvailability, setWalkInDateAvailability] = useState(null);
+  const [walkInAvailabilityLoading, setWalkInAvailabilityLoading] = useState(false);
+  
+  // Cancel walk-in order modal state
+  const [showCancelWalkInModal, setShowCancelWalkInModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   // Transaction history state
   const [transactions, setTransactions] = useState([]);
@@ -966,7 +979,7 @@ export const Vendor = () => {
   const fetchVendorOrders = async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch vendor orders: no vendor_id', currentVendor);
-      return;
+      return [];
     }
     
     try {
@@ -989,13 +1002,16 @@ export const Vendor = () => {
         console.log('✅ Successfully fetched orders:', response.data.orders?.length || 0);
         console.log('📋 Orders data:', response.data.orders);
         setVendorOrders(response.data.orders);
+        return response.data.orders;
       } else {
         console.log('❌ API returned unsuccessful response:', response.data);
         setVendorOrders([]);
+        return [];
       }
     } catch (error) {
       console.error("❌ Error fetching vendor orders:", error);
       setVendorOrders([]);
+      return [];
     } finally {
       setOrdersLoading(false);
     }
@@ -1217,6 +1233,14 @@ export const Vendor = () => {
 
   // Handle mark as delivered
   const handleDeliveredOrder = (order) => {
+    // Check if COD payment is still pending
+    if (order.payment_status === 'partial' && 
+        order.remaining_payment_method === 'cod' && 
+        order.remaining_balance > 0) {
+      updateStatus("error", `Cannot mark as delivered. COD payment of ₱${parseFloat(order.remaining_balance).toFixed(2)} is still pending. Please confirm COD payment collection first.`);
+      return;
+    }
+    
     setSelectedOrder(order);
     setShowDeliveredModal(true);
   };
@@ -1224,37 +1248,135 @@ export const Vendor = () => {
   // Confirm mark as delivered
   const confirmDeliveredOrder = () => {
     if (selectedOrder) {
+      // Double-check COD payment status before confirming
+      if (selectedOrder.payment_status === 'partial' && 
+          selectedOrder.remaining_payment_method === 'cod' && 
+          selectedOrder.remaining_balance > 0) {
+        updateStatus("error", `Cannot mark as delivered. COD payment of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)} is still pending. Please confirm COD payment collection first.`);
+        setShowDeliveredModal(false);
+        setSelectedOrder(null);
+        return;
+      }
+      
       updateOrderStatus(selectedOrder.order_id, 'delivered');
       setShowDeliveredModal(false);
       setSelectedOrder(null);
     }
   };
 
-  // Handle COD payment confirmation for remaining balance
-  const handleConfirmCODPayment = async (orderId, remainingBalance) => {
+  // Handle COD payment confirmation button click - show modal
+  const handleConfirmCODPaymentClick = (orderId, remainingBalance) => {
+    // Validate remaining balance before opening modal
+    const balance = parseFloat(remainingBalance) || 0;
+    if (balance <= 0) {
+      updateStatus("error", "No remaining balance to collect. This order may already be fully paid.");
+      return;
+    }
+    
+    console.log('💰 Opening COD payment modal:', { orderId, remainingBalance: balance });
+    setCodPaymentData({ 
+      orderId, 
+      amount: balance
+    });
+    setShowCODPaymentModal(true);
+  };
+
+  // Handle COD payment confirmation
+  const handleConfirmCODPayment = async () => {
+    if (!codPaymentData.orderId || !codPaymentData.amount) {
+      updateStatus("error", "Missing order information. Please try again.");
+      return;
+    }
+    
+    setIsConfirmingCODPayment(true);
+    
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // Show confirmation prompt with amount
-      const confirmed = window.confirm(
-        `Confirm COD payment collection?\n\nAmount: ₱${parseFloat(remainingBalance).toFixed(2)}\n\nThis will mark the order as fully paid.`
-      );
+      // Ensure amount is a number
+      const amountToSend = parseFloat(codPaymentData.amount);
+      if (isNaN(amountToSend) || amountToSend <= 0) {
+        updateStatus("error", "Invalid payment amount. Please try again.");
+        setIsConfirmingCODPayment(false);
+        return;
+      }
+
+      // First, refresh order data to get the latest remaining balance
+      const currentOrders = await fetchVendorOrders();
       
-      if (!confirmed) return;
+      // Find the current order to verify it still has remaining balance
+      const currentOrder = currentOrders.find(o => o.order_id === codPaymentData.orderId);
+      if (currentOrder) {
+        const currentRemainingBalance = parseFloat(currentOrder.remaining_balance || 0);
+        if (currentRemainingBalance <= 0) {
+          updateStatus("error", "No remaining balance to collect. This order has already been fully paid.");
+          setIsConfirmingCODPayment(false);
+          setShowCODPaymentModal(false);
+          setCodPaymentData({ orderId: null, amount: null });
+          return;
+        }
+        
+        // Update amount to match current remaining balance
+        const actualAmount = currentRemainingBalance;
+        console.log('💰 Confirming COD payment:', {
+          orderId: codPaymentData.orderId,
+          requestedAmount: amountToSend,
+          actualRemainingBalance: actualAmount
+        });
 
-      const response = await axios.post(`${apiBase}/api/orders/${orderId}/confirm-cod-payment`, {
-        amount_collected: remainingBalance
-      });
+        const response = await axios.post(`${apiBase}/api/orders/${codPaymentData.orderId}/confirm-cod-payment`, {
+          amount_collected: actualAmount
+        });
 
-      if (response.data.success) {
-        updateStatus("success", `COD payment of ₱${parseFloat(remainingBalance).toFixed(2)} confirmed successfully!`);
-        fetchVendorOrders(); // Refresh orders
+        console.log('✅ COD payment confirmation response:', response.data);
+
+        if (response.data.success) {
+          // Close modal
+          setShowCODPaymentModal(false);
+          const confirmedOrderId = codPaymentData.orderId;
+          setCodPaymentData({ orderId: null, amount: null });
+          
+          // Refresh orders first to get latest data
+          const updatedOrders = await fetchVendorOrders();
+          
+          // Update selectedOrder immediately if it's the same order and modal is still open
+          if (selectedOrder && selectedOrder.order_id === confirmedOrderId && updatedOrders.length > 0) {
+            const updatedOrder = updatedOrders.find(o => o.order_id === confirmedOrderId);
+            if (updatedOrder) {
+              setSelectedOrder(updatedOrder);
+            } else {
+              // Fallback: update with expected values
+              setSelectedOrder({
+                ...selectedOrder,
+                payment_status: 'paid',
+                remaining_balance: 0,
+                remaining_payment_method: null
+              });
+            }
+          }
+          
+          updateStatus("success", `COD payment of ₱${parseFloat(actualAmount).toFixed(2)} confirmed successfully!`);
+        } else {
+          const errorMsg = response.data.error || "Failed to confirm COD payment";
+          console.error('❌ COD payment confirmation failed:', errorMsg);
+          updateStatus("error", errorMsg);
+        }
       } else {
-        updateStatus("error", response.data.error || "Failed to confirm COD payment");
+        updateStatus("error", "Order not found. Please refresh and try again.");
       }
     } catch (error) {
-      console.error('Error confirming COD payment:', error);
-      updateStatus("error", error.response?.data?.error || "Failed to confirm COD payment. Please try again.");
+      console.error('❌ Error confirming COD payment:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || "Failed to confirm COD payment. Please try again.";
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: errorMessage
+      });
+      updateStatus("error", errorMessage);
+      
+      // Don't close modal on error so user can try again or check details
+    } finally {
+      setIsConfirmingCODPayment(false);
     }
   };
 
@@ -1841,6 +1963,88 @@ export const Vendor = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isSidebarOpen]);
 
+  // Helper function to check if an order is a walk-in order
+  const isWalkInOrder = (order) => {
+    if (!order || !order.delivery_address) return false;
+    const fullAddress = order.delivery_address || '';
+    return fullAddress.includes('Customer: ') && fullAddress.includes('Contact: ');
+  };
+
+  // Handle cancel walk-in order button click
+  const handleCancelWalkInOrderClick = (order) => {
+    setOrderToCancel(order);
+    setCancelReason('');
+    setShowCancelWalkInModal(true);
+  };
+
+  // Confirm cancel walk-in order
+  const handleCancelWalkInOrder = async () => {
+    if (!orderToCancel) return;
+    
+    try {
+      await updateOrderStatus(orderToCancel.order_id, 'cancelled', null, cancelReason.trim() || 'Cancelled by vendor');
+      setShowCancelWalkInModal(false);
+      setOrderToCancel(null);
+      setCancelReason('');
+      updateStatus("success", "Walk-in order cancelled successfully.");
+      
+      // Refresh availability if a delivery date is selected
+      // This ensures the availability count updates after drums are released
+      if (walkInDeliveryDate && currentVendor?.vendor_id) {
+        try {
+          const response = await getAvailabilityByDate(currentVendor.vendor_id, walkInDeliveryDate);
+          if (response.success && response.availability) {
+            const simplifiedAvailability = {
+              small: response.availability.small?.available_count || 0,
+              medium: response.availability.medium?.available_count || 0,
+              large: response.availability.large?.available_count || 0
+            };
+            setWalkInDateAvailability(simplifiedAvailability);
+          }
+        } catch (error) {
+          console.error('Error refreshing availability after cancellation:', error);
+        }
+      }
+      
+      // Refresh dashboard data to update order list
+      if (currentVendor?.vendor_id) {
+        fetchDashboardData(currentVendor.vendor_id);
+      }
+    } catch (error) {
+      console.error("Error cancelling walk-in order:", error);
+      updateStatus("error", "Failed to cancel order. Please try again.");
+    }
+  };
+
+  // Helper function to get available drums for walk-in orders
+  const getWalkInAvailableDrums = (size) => {
+    if (!size || !size.trim()) {
+      return 0;
+    }
+    
+    // Normalize size to lowercase for consistent lookup
+    const normalizedSize = size.toLowerCase();
+    
+    // If we have date-specific availability, use that
+    if (walkInDateAvailability) {
+      let dateAvail = walkInDateAvailability[size] ?? walkInDateAvailability[normalizedSize];
+      
+      // If still not found, try other case variations
+      if (dateAvail === undefined || dateAvail === null) {
+        const capitalized = size.charAt(0).toUpperCase() + size.slice(1).toLowerCase();
+        dateAvail = walkInDateAvailability[capitalized] ?? walkInDateAvailability[normalizedSize];
+      }
+      
+      // Return the value if found (even if it's 0, which is a valid value)
+      if (dateAvail !== undefined && dateAvail !== null) {
+        return dateAvail;
+      }
+    }
+    
+    // Fallback: return 0 if no date availability is available
+    return 0;
+  };
+
   // Walk-in order functions
   const addToWalkInCart = () => {
     if (!selectedFlavor || !selectedSize) {
@@ -1860,6 +2064,31 @@ export const Vendor = () => {
     if (!price || price === 0) {
       updateStatus("error", `Price not set for ${selectedSize} size`);
       return;
+    }
+
+    // If delivery date is selected, check availability
+    if (walkInDeliveryDate) {
+      const availableDrums = getWalkInAvailableDrums(selectedSize);
+      
+      if (availableDrums === 0) {
+        const dateDisplay = formatPhilippineDateOnly(walkInDeliveryDate);
+        updateStatus("error", `No ${selectedSize} drums available for ${dateDisplay}. Please select a different date or size.`);
+        return;
+      }
+
+      // Calculate total quantity in cart for this size (including current item)
+      const existingQuantityForSize = walkInCart
+        .filter(item => item.size.toLowerCase() === selectedSize.toLowerCase())
+        .reduce((sum, item) => sum + item.quantity, 0);
+      
+      const totalQuantityAfterAdd = existingQuantityForSize + walkInQuantity;
+      
+      // Check if requested quantity exceeds available
+      if (totalQuantityAfterAdd > availableDrums) {
+        const remaining = availableDrums - existingQuantityForSize;
+        updateStatus("error", `Only ${remaining} ${selectedSize} drum(s) available for ${formatPhilippineDateOnly(walkInDeliveryDate)}. ${existingQuantityForSize > 0 ? `You already have ${existingQuantityForSize} in cart.` : ''} Please reduce quantity.`);
+        return;
+      }
     }
 
     const cartItem = {
@@ -1889,7 +2118,7 @@ export const Vendor = () => {
 
   const submitWalkInOrder = async () => {
     if (walkInCart.length === 0) {
-      updateStatus("error", "Please add items to cart");
+      updateStatus("error", "Please add items to the order");
       return;
     }
 
@@ -1944,6 +2173,26 @@ export const Vendor = () => {
       return;
     }
 
+    // Validate availability for all items in cart before submitting
+    for (const item of walkInCart) {
+      const availableDrums = getWalkInAvailableDrums(item.size);
+      
+      // Calculate total quantity for this size in cart
+      const totalQuantityForSize = walkInCart
+        .filter(cartItem => cartItem.size.toLowerCase() === item.size.toLowerCase())
+        .reduce((sum, cartItem) => sum + cartItem.quantity, 0);
+      
+      if (availableDrums === 0) {
+        updateStatus("error", `No ${item.size} drums available for ${formatPhilippineDateOnly(walkInDeliveryDate)}. Please remove or change these items.`);
+        return;
+      }
+      
+      if (totalQuantityForSize > availableDrums) {
+        updateStatus("error", `Only ${availableDrums} ${item.size} drum(s) available for ${formatPhilippineDateOnly(walkInDeliveryDate)}, but you have ${totalQuantityForSize} in cart. Please reduce quantity.`);
+        return;
+      }
+    }
+
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
@@ -1968,8 +2217,20 @@ export const Vendor = () => {
         price: item.price
       }));
 
-      // Determine payment status based on payment option
-      const paymentStatus = walkInPaymentOption === 'partial' ? 'partial' : 'unpaid';
+      // Determine payment status and calculate payment amount based on payment option
+      const totalAmount = getWalkInCartTotal();
+      let paymentStatus = 'unpaid';
+      let paymentAmount = 0;
+      
+      if (walkInPaymentOption === 'partial') {
+        // 50% down payment
+        paymentStatus = 'partial';
+        paymentAmount = totalAmount * 0.5; // 50% of total
+      } else {
+        // Full payment - for walk-in orders, we assume they pay full amount
+        paymentStatus = 'paid';
+        paymentAmount = totalAmount;
+      }
 
       const orderPayload = {
         customer_id: currentVendor.user_id, // Use vendor's user_id as placeholder for walk-in
@@ -1978,11 +2239,12 @@ export const Vendor = () => {
         delivery_datetime: deliveryDateTime,
         payment_method: walkInPaymentMethod,
         payment_type: walkInPaymentOption,
-        subtotal: getWalkInCartTotal(),
+        subtotal: totalAmount,
         delivery_fee: 0,
-        total_amount: getWalkInCartTotal(),
+        total_amount: totalAmount,
+        payment_amount: paymentAmount, // Amount actually paid (50% for partial, 100% for full)
         status: 'confirmed', // Walk-in orders are automatically approved
-        payment_status: paymentStatus, // unpaid for full payment, partial for 50% down
+        payment_status: paymentStatus,
         items: orderItems
       };
 
@@ -1993,6 +2255,11 @@ export const Vendor = () => {
       if (response.data.success) {
         updateStatus("success", `Walk-in order #${response.data.order_id} created successfully!`);
         setShowWalkInSuccess(true);
+        
+        // Scroll to top to show success message
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
         
         // Clear the cart and form
         setWalkInCart([]);
@@ -2025,7 +2292,31 @@ export const Vendor = () => {
       }
     } catch (error) {
       console.error("Error creating walk-in order:", error);
-      updateStatus("error", "Failed to create walk-in order. Please try again.");
+      
+      // Provide more detailed error messages
+      let errorMessage = "Failed to create walk-in order. Please try again.";
+      
+      if (error.response) {
+        // Server responded with error status
+        const serverError = error.response.data;
+        if (serverError?.error) {
+          errorMessage = serverError.error;
+        } else if (serverError?.message) {
+          errorMessage = serverError.message;
+        } else if (error.response.status === 400) {
+          errorMessage = "Invalid order data. Please check all fields and try again.";
+        } else if (error.response.status === 500) {
+          errorMessage = "Server error. Please try again later or contact support.";
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = "Cannot connect to server. Please check your internet connection and try again.";
+      } else {
+        // Something else happened
+        errorMessage = error.message || errorMessage;
+      }
+      
+      updateStatus("error", errorMessage);
     }
   };
 
@@ -2374,6 +2665,41 @@ export const Vendor = () => {
     }
   }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
 
+  // Fetch date-specific availability for walk-in orders when delivery date changes
+  useEffect(() => {
+    const fetchWalkInDateAvailability = async () => {
+      if (!currentVendor?.vendor_id || !walkInDeliveryDate) {
+        setWalkInDateAvailability(null);
+        return;
+      }
+
+      try {
+        setWalkInAvailabilityLoading(true);
+        console.log('📅 Fetching walk-in availability for date:', walkInDeliveryDate);
+        const response = await getAvailabilityByDate(currentVendor.vendor_id, walkInDeliveryDate);
+        console.log('📅 Walk-in availability response:', response);
+        
+        // Extract just the counts from the nested structure
+        if (response.success && response.availability) {
+          const simplifiedAvailability = {
+            small: response.availability.small?.available_count || 0,
+            medium: response.availability.medium?.available_count || 0,
+            large: response.availability.large?.available_count || 0
+          };
+          console.log('📅 Simplified walk-in availability:', simplifiedAvailability);
+          setWalkInDateAvailability(simplifiedAvailability);
+        }
+      } catch (error) {
+        console.error('Error fetching walk-in date availability:', error);
+        setWalkInDateAvailability(null);
+      } finally {
+        setWalkInAvailabilityLoading(false);
+      }
+    };
+
+    fetchWalkInDateAvailability();
+  }, [walkInDeliveryDate, currentVendor?.vendor_id]);
+
   // Fetch transactions when transaction history view is active
   useEffect(() => {
     if (activeView === "transactions" && currentVendor?.vendor_id && !isInitialLoading && !isUserChanging) {
@@ -2522,6 +2848,65 @@ export const Vendor = () => {
     }
     
     return stars.join('');
+  };
+
+  // Helper function to format dates in Philippines timezone
+  const formatPhilippineDate = (dateString, options = {}) => {
+    if (!dateString) return 'N/A';
+    try {
+      // Handle MySQL DATETIME strings (format: "YYYY-MM-DD HH:mm:ss")
+      // MySQL returns dates in the server's timezone (+08:00 for Philippines)
+      // So we need to treat it as if it's already in PHT, not UTC
+      let date;
+      if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
+        // MySQL DATETIME format - treat as local time in PHT
+        // Append timezone offset to ensure correct parsing
+        date = new Date(dateString + '+08:00');
+      } else {
+        // ISO format or other - parse normally
+        date = new Date(dateString);
+      }
+      
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      const defaultOptions = {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        ...options
+      };
+      
+      return date.toLocaleString('en-PH', defaultOptions);
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return new Date(dateString).toLocaleString();
+    }
+  };
+
+  // Helper function to format date only (no time) in Philippines timezone
+  const formatPhilippineDateOnly = (dateString, options = {}) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      const defaultOptions = {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        ...options
+      };
+      
+      return date.toLocaleDateString('en-PH', defaultOptions);
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return new Date(dateString).toLocaleDateString();
+    }
   };
 
   // Helper function to format time ago
@@ -4698,7 +5083,7 @@ export const Vendor = () => {
                                        <span className="font-medium">Customer:</span> {delivery.customer_name} {delivery.customer_lname}
                                      </p>
                                      <p className="text-xs sm:text-sm text-gray-600">
-                                       <span className="font-medium">Delivery:</span> {deliveryDate.toLocaleString('en-US', {
+                                       <span className="font-medium">Delivery:</span> {formatPhilippineDate(delivery.delivery_datetime, {
                                          weekday: 'short',
                                          month: 'short',
                                          day: 'numeric',
@@ -5700,7 +6085,7 @@ export const Vendor = () => {
                             </p>
                           )}
                           <div className="text-xs text-gray-500 mt-1 sm:mt-2">
-                            Added {new Date(flavor.created_at).toLocaleDateString()}
+                            Added {formatPhilippineDateOnly(flavor.created_at)}
                           </div>
                           
                           {/* Store Status Badge */}
@@ -6264,7 +6649,7 @@ export const Vendor = () => {
                                 {transaction.customer_fname} {transaction.customer_lname}
                               </p>
                               <p className="text-xs sm:text-sm text-gray-500">
-                                {new Date(transaction.order_date).toLocaleDateString()} • {transaction.transaction_type}
+                                {formatPhilippineDateOnly(transaction.order_date)} • {transaction.transaction_type}
                               </p>
                               {transaction.customer_notes && (
                                 <p className="text-xs sm:text-sm text-blue-600 mt-1 truncate">
@@ -6377,7 +6762,7 @@ export const Vendor = () => {
                         <div>
                           <span className="font-medium text-gray-700">Date:</span>
                           <span className="ml-2 text-gray-900">
-                            {new Date(selectedTransaction.order_date).toLocaleDateString('en-US', {
+                            {formatPhilippineDate(selectedTransaction.order_date, {
                               weekday: 'long',
                               year: 'numeric',
                               month: 'long',
@@ -6456,10 +6841,10 @@ export const Vendor = () => {
             )}
 
             {activeView === "addCustomerOrders" && (
-              <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
+              <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-2 sm:p-4 lg:p-6">
                 <div className="max-w-6xl mx-auto">
                   {/* Header */}
-                  <div className="bg-sky-100 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg">
+                  <div className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 mb-2 sm:mb-4 lg:mb-6 shadow-lg">
                     <div className="flex items-center space-x-3 sm:space-x-4">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center">
                         <img 
@@ -6477,7 +6862,7 @@ export const Vendor = () => {
                   </div>
 
                   {/* Monthly Order Limit Display */}
-                  <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg">
+                  <div className="bg-sky-100 rounded-2xl p-2 sm:p-3 lg:p-4 mb-2 sm:mb-4 lg:mb-6 shadow-lg">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                       <div className="flex items-center space-x-2 sm:space-x-3">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -6561,7 +6946,7 @@ export const Vendor = () => {
 
                   {/* Success Message */}
                   {showWalkInSuccess && (
-                    <div className="bg-sky-100 text-blue-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-4 sm:mb-6 flex items-center shadow-md">
+                    <div className="bg-sky-100 text-blue-800 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-3 rounded-lg mb-2 sm:mb-4 lg:mb-6 flex items-center shadow-md">
                       <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
@@ -6569,10 +6954,10 @@ export const Vendor = () => {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 sm:gap-4 lg:gap-6">
                     {/* Left Side - Order Form */}
-                    <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg">
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center">
+                    <div className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 shadow-lg">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-2 sm:mb-4 lg:mb-6 flex items-center">
                         <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
@@ -6580,59 +6965,59 @@ export const Vendor = () => {
                       </h2>
 
                       {/* Customer Information Section */}
-                      <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-white rounded-lg">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 sm:mb-4">
+                      <div className="mb-2 sm:mb-4 p-2 sm:p-3 bg-white rounded-lg">
+                        <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
                           Customer Information
                         </h3>
                         
                         {/* Delivery Address - Inside Customer Info */}
-                        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-50 rounded-lg">
-                          <h4 className="text-xs font-semibold text-gray-900 mb-3 flex items-center">
+                        <div className="mb-2 sm:mb-3 lg:mb-4 p-1.5 sm:p-2 lg:p-3 bg-blue-50 rounded-lg">
+                          <h4 className="text-xs font-semibold text-gray-900 mb-1.5 sm:mb-2 lg:mb-3 flex items-center">
                             <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             Delivery Address *
                           </h4>
-                          <div className="space-y-2">
+                          <div className="space-y-1.5 sm:space-y-2">
                             <div>
                               <input
                                 type="text"
                                 value={customerAddress.street}
                                 onChange={(e) => setCustomerAddress({...customerAddress, street: e.target.value})}
-                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Street Address *"
                               />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                               <input
                                 type="text"
                                 value={customerAddress.barangay}
                                 onChange={(e) => setCustomerAddress({...customerAddress, barangay: e.target.value})}
-                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Barangay *"
                               />
                               <input
                                 type="text"
                                 value={customerAddress.city}
                                 onChange={(e) => setCustomerAddress({...customerAddress, city: e.target.value})}
-                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="City *"
                               />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                               <input
                                 type="text"
                                 value={customerAddress.province}
                                 onChange={(e) => setCustomerAddress({...customerAddress, province: e.target.value})}
-                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Province (optional)"
                               />
                               <input
                                 type="text"
                                 value={customerAddress.postalCode}
                                 onChange={(e) => setCustomerAddress({...customerAddress, postalCode: e.target.value})}
-                                className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                                 placeholder="Postal Code (optional)"
                               />
                             </div>
@@ -6640,7 +7025,7 @@ export const Vendor = () => {
                         </div>
 
                         {/* Customer Name */}
-                        <div className="mb-2 sm:mb-3">
+                        <div className="mb-1.5 sm:mb-2 lg:mb-3">
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                             Name *
                           </label>
@@ -6648,14 +7033,14 @@ export const Vendor = () => {
                             type="text"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="Enter customer name"
                             required
                           />
                         </div>
 
                         {/* Customer Contact */}
-                        <div className="mb-2 sm:mb-3">
+                        <div className="mb-1.5 sm:mb-2 lg:mb-3">
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                             Contact No. *
                           </label>
@@ -6663,7 +7048,7 @@ export const Vendor = () => {
                             type="tel"
                             value={customerContact}
                             onChange={(e) => setCustomerContact(e.target.value)}
-                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="09123456789"
                             required
                           />
@@ -6678,21 +7063,98 @@ export const Vendor = () => {
                             type="email"
                             value={customerEmail}
                             onChange={(e) => setCustomerEmail(e.target.value)}
-                            className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                             placeholder="customer@email.com"
                           />
                         </div>
                       </div>
 
+                      {/* Delivery Date and Time - Moved from cart section */}
+                      <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 bg-white rounded-lg border-2 border-blue-200">
+                        <h3 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4 flex items-center">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-5 lg:h-5 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          Schedule to Deliver *
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                              Date <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="date"
+                              value={walkInDeliveryDate}
+                              onChange={(e) => setWalkInDeliveryDate(e.target.value)}
+                              min={new Date().toISOString().split('T')[0]}
+                              className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 xl:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
+                              required
+                              placeholder="mm/dd/yyyy"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                              Time <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="time"
+                              value={walkInDeliveryTime}
+                              onChange={(e) => setWalkInDeliveryTime(e.target.value)}
+                              className="w-full px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 xl:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
+                              required
+                              placeholder="--:-- --"
+                            />
+                          </div>
+                        </div>
+                        {(!walkInDeliveryDate || !walkInDeliveryTime) && (
+                          <p className="text-red-500 text-xs sm:text-sm mt-1.5 sm:mt-2 lg:mt-3 flex items-center">
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Please select both date and time to see availability
+                          </p>
+                        )}
+                        
+                        {/* Date-specific availability display */}
+                        {walkInDeliveryDate && walkInDateAvailability && (
+                          <div className="mt-2 sm:mt-2.5 lg:mt-3 p-2 sm:p-2.5 lg:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-xs sm:text-sm font-medium text-blue-900 mb-1.5 sm:mb-2">
+                              📅 Availability for {formatPhilippineDateOnly(walkInDeliveryDate)}:
+                            </p>
+                            <div className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:gap-2">
+                              {['small', 'medium', 'large'].map((size) => {
+                                const count = walkInDateAvailability[size] || 0;
+                                return (
+                                  <div key={size} className="text-center p-1 sm:p-1.5 lg:p-2 bg-white rounded">
+                                    <p className="text-xs text-gray-600 capitalize">{size}</p>
+                                    <p className={`text-xs sm:text-sm font-semibold ${count > 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                                      {count} {count !== 1 ? 'drums' : 'drum'}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {walkInDeliveryDate && walkInAvailabilityLoading && (
+                          <div className="mt-2 sm:mt-2.5 lg:mt-3 p-2 sm:p-2.5 lg:p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <p className="text-xs sm:text-sm text-gray-600 text-center">
+                              Loading availability...
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Flavor Selection */}
-                      <div className="mb-3 sm:mb-4">
+                      <div className="mb-2 sm:mb-3 lg:mb-4">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Select Flavor *
                         </label>
                         <select
                           value={selectedFlavor}
                           onChange={(e) => setSelectedFlavor(e.target.value)}
-                          className="w-full px-2 sm:px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 lg:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                         >
                           <option value="">Choose a flavor...</option>
                           {flavorsLoading ? (
@@ -6710,11 +7172,14 @@ export const Vendor = () => {
                       </div>
 
                       {/* Size Selection */}
-                      <div className="mb-3 sm:mb-4">
+                      <div className="mb-2 sm:mb-3 lg:mb-4">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Select Size *
+                          {!walkInDeliveryDate && (
+                            <span className="text-xs text-gray-500 ml-1 sm:ml-2">(Select delivery date first to see availability)</span>
+                          )}
                         </label>
-                        <div className="grid grid-cols-3 gap-1 sm:gap-2">
+                        <div className="grid grid-cols-3 gap-1 sm:gap-1.5 lg:gap-2">
                           {['small', 'medium', 'large'].map((size) => {
                             const selectedFlavorData = savedFlavors.find(
                               f => f.flavor_id === parseInt(selectedFlavor)
@@ -6722,24 +7187,38 @@ export const Vendor = () => {
                             const priceKey = `${size}_price`;
                             const price = selectedFlavorData?.[priceKey] || 0;
                             const hasPrice = price > 0;
+                            
+                            // Check availability for this size
+                            const available = walkInDeliveryDate ? getWalkInAvailableDrums(size) : null;
+                            const isAvailable = available !== null && available > 0;
+                            const isOutOfStock = available !== null && available === 0;
+                            const isDisabled = !hasPrice || !selectedFlavor || isOutOfStock;
 
                             return (
                               <button
                                 key={size}
-                                onClick={() => hasPrice && setSelectedSize(size)}
-                                disabled={!hasPrice || !selectedFlavor}
-                                className={`px-1 sm:px-3 py-2 sm:py-2.5 rounded-lg border-2 transition-all font-medium ${
+                                onClick={() => hasPrice && !isOutOfStock && setSelectedSize(size)}
+                                disabled={isDisabled}
+                                className={`px-1 sm:px-2 lg:px-3 py-1.5 sm:py-2 lg:py-2.5 rounded-lg border-2 transition-all font-medium ${
                                   selectedSize === size
                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : isOutOfStock
+                                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
                                     : hasPrice && selectedFlavor
                                     ? 'border-gray-300 hover:border-blue-400 text-gray-700'
                                     : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                                 }`}
+                                title={isOutOfStock ? `No ${size} drums available for selected date` : available !== null ? `${available} ${size} drum(s) available` : ''}
                               >
                                 <div className="text-xs capitalize">{size}</div>
                                 {selectedFlavor && (
-                                  <div className="text-xs mt-0.5 sm:mt-1">
+                                  <div className="text-xs mt-0.5 sm:mt-0.5 lg:mt-1">
                                     {hasPrice ? `₱${price}` : 'N/A'}
+                                  </div>
+                                )}
+                                {walkInDeliveryDate && available !== null && (
+                                  <div className={`text-xs mt-0.5 ${isOutOfStock ? 'text-red-500' : 'text-green-600'}`}>
+                                    {isOutOfStock ? 'Out' : `${available} avail.`}
                                   </div>
                                 )}
                               </button>
@@ -6749,53 +7228,72 @@ export const Vendor = () => {
                       </div>
 
                       {/* Quantity Selection */}
-                      <div className="mb-3 sm:mb-4">
+                      <div className="mb-2 sm:mb-3 lg:mb-4">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
                           Quantity *
+                          {selectedSize && walkInDeliveryDate && (
+                            <span className="text-xs text-gray-500 ml-1 sm:ml-2">
+                              (Max: {getWalkInAvailableDrums(selectedSize)} available)
+                            </span>
+                          )}
                         </label>
                         <div className="flex items-center space-x-1 sm:space-x-2">
                           <button
                             onClick={() => setWalkInQuantity(Math.max(1, walkInQuantity - 1))}
-                            className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm"
+                            className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm"
                           >
                             -
                           </button>
                           <input
                             type="number"
                             min="1"
+                            max={selectedSize && walkInDeliveryDate ? getWalkInAvailableDrums(selectedSize) : undefined}
                             value={walkInQuantity}
-                            onChange={(e) => setWalkInQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-12 sm:w-16 px-1 sm:px-2 py-1.5 sm:py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
+                            onChange={(e) => {
+                              const newQty = parseInt(e.target.value) || 1;
+                              const maxAvailable = selectedSize && walkInDeliveryDate ? getWalkInAvailableDrums(selectedSize) : Infinity;
+                              setWalkInQuantity(Math.max(1, Math.min(newQty, maxAvailable)));
+                            }}
+                            className="w-12 sm:w-14 lg:w-16 px-1 sm:px-2 py-1.5 sm:py-2 text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-xs sm:text-sm"
                           />
                           <button
-                            onClick={() => setWalkInQuantity(walkInQuantity + 1)}
-                            className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm"
+                            onClick={() => {
+                              const maxAvailable = selectedSize && walkInDeliveryDate ? getWalkInAvailableDrums(selectedSize) : Infinity;
+                              setWalkInQuantity(Math.min(walkInQuantity + 1, maxAvailable));
+                            }}
+                            disabled={selectedSize && walkInDeliveryDate && walkInQuantity >= getWalkInAvailableDrums(selectedSize)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center justify-center font-bold text-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             +
                           </button>
                         </div>
+                        {selectedSize && walkInDeliveryDate && (
+                          <p className="text-xs text-gray-600 mt-0.5 sm:mt-1">
+                            {getWalkInAvailableDrums(selectedSize)} {selectedSize} drum(s) available for {formatPhilippineDateOnly(walkInDeliveryDate)}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Add to Cart Button */}
+                      {/* Add Item Button */}
                       <button
                         onClick={addToWalkInCart}
                         disabled={!selectedFlavor || !selectedSize}
-                        className="w-full py-2 sm:py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-md hover:shadow-lg text-xs sm:text-sm"
+                        className="w-full py-1.5 sm:py-2 lg:py-2.5 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-md hover:shadow-lg text-xs sm:text-sm"
                       >
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        <span>Add to Cart</span>
+                        <span>Add Item</span>
                       </button>
                     </div>
 
-                    {/* Right Side - Cart */}
-                    <div className="bg-sky-100 rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg">
-                      <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-3 sm:mb-4 lg:mb-6 flex items-center">
+                    {/* Right Side - Order Items */}
+                    <div className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 shadow-lg">
+                      <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-2 sm:mb-3 lg:mb-4 xl:mb-6 flex items-center">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        Cart ({walkInCart.length} items)
+                        Order Items ({walkInCart.length} {walkInCart.length === 1 ? 'item' : 'items'})
                       </h2>
 
                       {walkInCart.length === 0 ? (
@@ -6803,15 +7301,15 @@ export const Vendor = () => {
                           <svg className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 mx-auto mb-2 sm:mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
-                          <p className="text-xs sm:text-sm lg:text-base">Cart is empty</p>
-                          <p className="text-xs mt-1">Add items to create an order</p>
+                          <p className="text-xs sm:text-sm lg:text-base">No items added</p>
+                          <p className="text-xs mt-1">Add items to build the order</p>
                         </div>
                       ) : (
                         <>
-                          {/* Cart Items */}
-                          <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-4 lg:mb-6 max-h-60 sm:max-h-80 lg:max-h-96 overflow-y-auto">
+                          {/* Order Items List */}
+                          <div className="space-y-1 sm:space-y-2 mb-2 sm:mb-3 lg:mb-4 xl:mb-6 max-h-48 sm:max-h-60 lg:max-h-80 xl:max-h-96 overflow-y-auto">
                             {walkInCart.map((item) => (
-                              <div key={item.id} className="bg-white p-2 sm:p-3 lg:p-4 rounded-lg flex justify-between items-center">
+                              <div key={item.id} className="bg-white p-1.5 sm:p-2 lg:p-3 xl:p-4 rounded-lg flex justify-between items-center">
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold text-gray-900 text-xs sm:text-sm lg:text-base truncate">{item.flavor_name}</h3>
                                   <div className="text-xs text-gray-600 mt-0.5 sm:mt-1">
@@ -6831,66 +7329,19 @@ export const Vendor = () => {
                             ))}
                           </div>
 
-                          {/* Delivery Date and Time */}
-                          <div className="mb-4 sm:mb-5 lg:mb-6 pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200 bg-white p-2 sm:p-3 lg:p-4 rounded-lg">
-                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
-                              <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              Schedule to Deliver
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
-                              <div>
-                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                  Date <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="date"
-                                  value={walkInDeliveryDate}
-                                  onChange={(e) => setWalkInDeliveryDate(e.target.value)}
-                                  min={new Date().toISOString().split('T')[0]}
-                                  className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
-                                  required
-                                  placeholder="mm/dd/yyyy"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                                  Time <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="time"
-                                  value={walkInDeliveryTime}
-                                  onChange={(e) => setWalkInDeliveryTime(e.target.value)}
-                                  className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm lg:text-base bg-white"
-                                  required
-                                  placeholder="--:-- --"
-                                />
-                              </div>
-                            </div>
-                            {(!walkInDeliveryDate || !walkInDeliveryTime) && (
-                              <p className="text-red-500 text-xs sm:text-sm mt-2 sm:mt-3 flex items-center">
-                                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                Please select both date and time to proceed
-                              </p>
-                            )}
-                          </div>
-
                           {/* Payment Method */}
-                          <div className="mb-4 sm:mb-5 lg:mb-6 pb-4 sm:pb-5 lg:pb-6 border-b border-gray-200">
-                            <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 sm:mb-3">
+                          <div className="mb-2 sm:mb-3 lg:mb-4 xl:mb-5 pb-2 sm:pb-3 lg:pb-4 xl:pb-6 border-b border-gray-200">
+                            <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2 lg:mb-3">
                               Payment Method
                             </h3>
                             
                             {/* Payment Method Selection */}
-                            <div className="mb-3 sm:mb-4">
-                              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                            <div className="mb-2 sm:mb-3 lg:mb-4">
+                              <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:gap-3">
                                 <button
                                   type="button"
                                   onClick={() => setWalkInPaymentMethod('cash')}
-                                  className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg border-2 transition-all ${
+                                  className={`px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 xl:py-3 rounded-lg border-2 transition-all ${
                                     walkInPaymentMethod === 'cash'
                                       ? 'border-green-500 bg-green-50 text-green-700'
                                       : 'border-gray-300 hover:border-green-300 text-gray-700'
@@ -6901,7 +7352,7 @@ export const Vendor = () => {
                                 <button
                                   type="button"
                                   onClick={() => setWalkInPaymentMethod('gcash')}
-                                  className={`px-2 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 rounded-lg border-2 transition-all ${
+                                  className={`px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 lg:py-2.5 xl:py-3 rounded-lg border-2 transition-all ${
                                     walkInPaymentMethod === 'gcash'
                                       ? 'border-green-500 bg-green-50 text-green-700'
                                       : 'border-gray-300 hover:border-green-300 text-gray-700'
@@ -6913,11 +7364,11 @@ export const Vendor = () => {
                             </div>
 
                             {/* Payment Option */}
-                            <div className="bg-blue-50 p-2 sm:p-3 lg:p-4 rounded-lg">
+                            <div className="bg-blue-50 p-1.5 sm:p-2 lg:p-3 xl:p-4 rounded-lg">
                               <label className="block text-xs font-medium text-gray-700 mb-1 sm:mb-2">
                                 Payment Option:
                               </label>
-                              <div className="space-y-1 sm:space-y-2">
+                              <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
                                 <label className="flex items-center cursor-pointer">
                                   <input
                                     type="radio"
@@ -6945,23 +7396,37 @@ export const Vendor = () => {
                           </div>
 
                           {/* Total */}
-                          <div className="bg-white p-2 sm:p-3 lg:p-4 rounded-lg mb-4 sm:mb-5 lg:mb-6">
-                            <div className="flex justify-between items-center text-sm sm:text-base lg:text-lg font-bold text-gray-900">
+                          <div className="bg-white p-1.5 sm:p-2 lg:p-3 xl:p-4 rounded-lg mb-2 sm:mb-3 lg:mb-4 xl:mb-6">
+                            <div className="flex justify-between items-center text-xs sm:text-sm lg:text-base xl:text-lg font-bold text-gray-900">
                               <span>Total Amount:</span>
-                              <span className="text-lg sm:text-xl lg:text-2xl text-blue-600">₱{getWalkInCartTotal().toFixed(2)}</span>
+                              <span className="text-base sm:text-lg lg:text-xl xl:text-2xl text-blue-600">₱{getWalkInCartTotal().toFixed(2)}</span>
                             </div>
                           </div>
 
                           {/* Complete Order Button */}
                           <button
                             onClick={submitWalkInOrder}
-                            className="w-full py-3 sm:py-3.5 lg:py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-lg hover:shadow-xl text-sm sm:text-base"
+                            disabled={walkInCart.length === 0 || !customerName.trim() || !customerContact.trim() || !walkInDeliveryDate || !walkInDeliveryTime || (!customerAddress.street || !customerAddress.barangay || !customerAddress.city)}
+                            className={`w-full py-2 sm:py-2.5 lg:py-3 xl:py-3.5 lg:py-4 font-bold rounded-lg transition-colors flex items-center justify-center space-x-1 sm:space-x-2 shadow-lg text-xs sm:text-sm lg:text-base ${
+                              walkInCart.length === 0 || !customerName.trim() || !customerContact.trim() || !walkInDeliveryDate || !walkInDeliveryTime || (!customerAddress.street || !customerAddress.barangay || !customerAddress.city)
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-500 hover:bg-blue-600 text-white hover:shadow-xl'
+                            }`}
                           >
-                            <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 sm:w-4 sm:h-5 lg:w-5 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span>Complete Order</span>
                           </button>
+                          {(walkInCart.length === 0 || !customerName.trim() || !customerContact.trim() || !walkInDeliveryDate || !walkInDeliveryTime || (!customerAddress.street || !customerAddress.barangay || !customerAddress.city)) && (
+                            <p className="text-xs text-gray-500 mt-1.5 sm:mt-2 text-center">
+                              {walkInCart.length === 0 && "Add items to order • "}
+                              {!customerName.trim() && "Enter customer name • "}
+                              {!customerContact.trim() && "Enter contact number • "}
+                              {(!customerAddress.street || !customerAddress.barangay || !customerAddress.city) && "Complete delivery address • "}
+                              {(!walkInDeliveryDate || !walkInDeliveryTime) && "Select delivery date and time"}
+                            </p>
+                          )}
                         </>
                       )}
                     </div>
@@ -6972,19 +7437,19 @@ export const Vendor = () => {
 
             {activeView === "orders" && (
               <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-50">
-                <div className="bg-sky-100 rounded-2xl p-8 mx-4 shadow-lg">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-4">
+                <div className="bg-sky-100 rounded-2xl p-2 sm:p-4 lg:p-6 xl:p-8 mx-2 sm:mx-4 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6">
+                    <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
                       <img 
                         src={ordersIcon} 
                         alt="Orders" 
-                        className="w-8 h-8"
+                        className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
                       />
                       <div>
-                        <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                        <h1 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">
                           Order Management
                         </h1>
-                        <p className="text-sm sm:text-base text-gray-600">
+                        <p className="text-xs sm:text-sm lg:text-base text-gray-600">
                           Review and manage customer orders
                         </p>  
                       </div>
@@ -6994,19 +7459,19 @@ export const Vendor = () => {
 
                   {/* Undo Notification */}
                   {recentStatusChange && (
-                    <div className="mb-6 bg-sky-100 rounded-lg p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-blue-800 font-medium">
+                    <div className="mb-3 sm:mb-4 lg:mb-6 bg-sky-100 rounded-lg p-2 sm:p-3 lg:p-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
+                        <div className="flex-1">
+                          <p className="text-blue-800 font-medium text-xs sm:text-sm lg:text-base">
                             Order #{recentStatusChange.orderId} status changed to "{recentStatusChange.newStatus}"
                           </p>
-                          <p className="text-blue-700 text-sm">
+                          <p className="text-blue-700 text-xs sm:text-sm">
                             You have 30 seconds to undo this action if it was accidental.
                           </p>
                         </div>
                         <button
                           onClick={undoStatusChange}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
                         >
                           ↶ Undo
                         </button>
@@ -7015,12 +7480,12 @@ export const Vendor = () => {
                   )}
 
                      {/* Order Filters - Mobile Responsive */}
-                  <div className="mb-8">
+                  <div className="mb-4 sm:mb-6 lg:mb-8">
                      {/* Filter Buttons - Horizontal Scroll on Mobile, Wrap on Desktop */}
-                     <div className="mb-4">
+                     <div className="mb-2 sm:mb-3 lg:mb-4">
                        {/* Mobile Layout - Horizontal Scroll */}
                        <div 
-                         className="flex overflow-x-auto gap-1.5 pb-2 sm:hidden hide-scrollbar" 
+                         className="flex overflow-x-auto gap-1 sm:gap-1.5 pb-2 sm:hidden hide-scrollbar" 
                          style={{ 
                            scrollbarWidth: 'none', 
                            msOverflowStyle: 'none'
@@ -7029,7 +7494,6 @@ export const Vendor = () => {
                          {[
                            { value: 'all', label: 'All Orders', count: vendorOrders.length },
                            { value: 'pending', label: 'Pending', count: vendorOrders.filter(o => o.status === 'pending').length },
-                           { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
                            { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && (o.payment_status === 'paid' || o.payment_status === 'partial')).length },
                            { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
                            { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
@@ -7043,7 +7507,7 @@ export const Vendor = () => {
                                setOrderFilter(filter.value);
                                handleRefreshOrders(); // Auto-refresh when filter changes
                              }}
-                             className={`flex-shrink-0 px-2 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                             className={`flex-shrink-0 px-2 py-1 sm:py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                                orderFilter === filter.value
                                  ? 'bg-blue-600 text-white shadow-sm'
                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
@@ -7069,7 +7533,6 @@ export const Vendor = () => {
                       {[
                                                   { value: 'all', label: 'All Orders', count: vendorOrders.length },
                           { value: 'pending', label: 'Pending Payment', count: vendorOrders.filter(o => o.status === 'pending').length },
-                        { value: 'confirmed', label: 'Awaiting Payment', count: vendorOrders.filter(o => o.status === 'confirmed' && o.payment_status === 'unpaid').length },
                         { value: 'paid', label: 'Ready to Prepare', count: vendorOrders.filter(o => o.status === 'confirmed' && (o.payment_status === 'paid' || o.payment_status === 'partial')).length },
                         { value: 'preparing', label: 'Preparing', count: vendorOrders.filter(o => o.status === 'preparing').length },
                         { value: 'out_for_delivery', label: 'Out for Delivery', count: vendorOrders.filter(o => o.status === 'out_for_delivery').length },
@@ -7096,22 +7559,22 @@ export const Vendor = () => {
                     </div>
 
                     {/* Date Filter - Mobile Responsive */}
-                    <div className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-2 sm:space-y-0">
-                        <h4 className="text-sm font-medium text-gray-700">Filter by Delivery Date</h4>
-                        <label className="flex items-center space-x-2">
+                    <div className="bg-gray-50 rounded-lg p-2 sm:p-3 lg:p-4 border border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3 space-y-2 sm:space-y-0">
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-700">Filter by Delivery Date</h4>
+                        <label className="flex items-center space-x-1.5 sm:space-x-2">
                           <input
                             type="checkbox"
                             checked={dateFilter.enabled}
                             onChange={(e) => setDateFilter(prev => ({ ...prev, enabled: e.target.checked }))}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3 h-3 sm:w-4 sm:h-4"
                           />
                           <span className="text-xs text-gray-600">Show orders scheduled for specific date</span>
                         </label>
                       </div>
                       
                       {dateFilter.enabled && (
-                        <div className="space-y-3">
+                        <div className="space-y-2 sm:space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
                           <div className="flex-1">
                             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -7121,13 +7584,13 @@ export const Vendor = () => {
                               type="date"
                               value={dateFilter.selectedDate}
                               onChange={(e) => setDateFilter(prev => ({ ...prev, selectedDate: e.target.value }))}
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                           </div>
                           <div className="flex items-end">
                             <button
                               onClick={() => setDateFilter({ selectedDate: '', enabled: false })}
-                                className="w-full sm:w-auto px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               Clear
                             </button>
@@ -7139,23 +7602,23 @@ export const Vendor = () => {
 
                     {/* Container Returns Bulk Action - Mobile Responsive */}
                     {orderFilter === 'drum_return' && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-3 space-y-3 lg:space-y-0">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-2 sm:mb-3 space-y-2 sm:space-y-3 lg:space-y-0">
                           <div>
-                            <h4 className="text-orange-800 font-medium mb-1">📦 Container Returns Management</h4>
-                            <p className="text-orange-700 text-sm">
+                            <h4 className="text-orange-800 font-medium mb-1 text-xs sm:text-sm lg:text-base">📦 Container Returns Management</h4>
+                            <p className="text-orange-700 text-xs sm:text-sm">
                               Select specific containers or mark all as returned
                             </p>
                           </div>
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
                             {selectedReturnOrders.length > 0 && (
-                              <span className="text-sm font-medium text-orange-700 bg-orange-100 px-3 py-2 rounded-full text-center">
+                              <span className="text-xs sm:text-sm font-medium text-orange-700 bg-orange-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-full text-center">
                                 {selectedReturnOrders.length} selected
                               </span>
                             )}
                             <button 
                               onClick={() => handleSelectAllReturns()}
-                              className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2 text-sm"
+                              className="bg-blue-500 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                             >
                               <span>{selectedReturnOrders.length === vendorOrders.filter(o => o.drum_status === 'not returned' || o.drum_status === 'return_requested').length ? '☑️' : '☐'}</span>
                               <span className="hidden sm:inline">Select All</span>
@@ -7164,7 +7627,7 @@ export const Vendor = () => {
                             <button 
                               onClick={() => handleMarkSelectedReturned()}
                               disabled={drumReturnLoading === 'selected' || selectedReturnOrders.length === 0}
-                              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm"
+                              className="bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                             >
                               {drumReturnLoading === 'selected' ? (
                                 <>
@@ -7183,7 +7646,7 @@ export const Vendor = () => {
                             <button 
                               onClick={() => handleBulkMarkReturned()}
                               disabled={drumReturnLoading === 'bulk'}
-                              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm"
+                              className="bg-green-600 text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                             >
                               {drumReturnLoading === 'bulk' ? (
                                 <>
@@ -7206,13 +7669,11 @@ export const Vendor = () => {
                   </div>
 
                   {/* Orders List */}
-                  <div className="space-y-4">
+                  <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                     {(() => {
                       // First apply status filter
                       let statusFilteredOrders = orderFilter === 'all' 
                         ? vendorOrders 
-                        : orderFilter === 'confirmed'
-                        ? vendorOrders.filter(order => order.status === 'confirmed' && order.payment_status === 'unpaid')
                         : orderFilter === 'paid'
                         ? vendorOrders.filter(order => order.status === 'confirmed' && (order.payment_status === 'paid' || order.payment_status === 'partial'))
                         : orderFilter === 'drum_return'
@@ -7282,11 +7743,11 @@ export const Vendor = () => {
                             }
                             {dateFilter.enabled && dateFilter.selectedDate && 
                               <span className="block mt-1 text-sm">
-                                No orders scheduled for delivery on {new Date(dateFilter.selectedDate).toLocaleDateString('en-US', { 
+                                No orders scheduled for delivery on {formatPhilippineDateOnly(dateFilter.selectedDate, {
                                   weekday: 'long', 
                                   year: 'numeric', 
                                   month: 'long', 
-                                  day: 'numeric' 
+                                  day: 'numeric'
                                 })}. Try selecting a different date or clearing the date filter.
                               </span>
                             }
@@ -7296,9 +7757,9 @@ export const Vendor = () => {
                         filteredOrders.map((order) => (
                         <div key={order.order_id} id={`order-${order.order_id}`} className="bg-gray-50 rounded-lg border border-gray-200">
                           {/* Condensed Order Summary - Mobile Responsive */}
-                          <div className="p-3 sm:p-4">
+                          <div className="p-2 sm:p-3 lg:p-4">
                             {/* Mobile Layout - Stacked */}
-                            <div className="flex flex-col sm:hidden space-y-3">
+                            <div className="flex flex-col sm:hidden space-y-2 sm:space-y-3">
                               {/* Top Row: Order Info */}
                               <div className="flex justify-between items-start">
                                 <div className="flex-1 min-w-0">
@@ -7309,7 +7770,7 @@ export const Vendor = () => {
                                     {order.customer_fname} {order.customer_lname}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                                    {order.created_at ? formatPhilippineDateOnly(order.created_at) : 'Recent'}
                                   </p>
                                 </div>
                                 <div className="text-right ml-2">
@@ -7377,7 +7838,7 @@ export const Vendor = () => {
                                         {urgencyText}
                                       </div>
                                       <p className="text-xs font-medium text-gray-900">
-                                        {deliveryDate.toLocaleString('en-US', {
+                                        {formatPhilippineDate(order.delivery_datetime, {
                                           weekday: 'short',
                                           month: 'short',
                                           day: 'numeric',
@@ -7418,7 +7879,7 @@ export const Vendor = () => {
                                       Order #{order.order_id}
                                     </h3>
                                     <p className="text-sm text-gray-600">
-                                      {order.customer_fname} {order.customer_lname} • {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Recent'}
+                                      {order.customer_fname} {order.customer_lname} • {order.created_at ? formatPhilippineDateOnly(order.created_at) : 'Recent'}
                                     </p>
                                     {/* Enhanced Delivery Date Display */}
                                     {order.delivery_datetime ? (() => {
@@ -7455,7 +7916,7 @@ export const Vendor = () => {
                                             {urgencyText}
                                           </div>
                                           <p className="text-sm font-medium text-gray-900 mt-1">
-                                            {deliveryDate.toLocaleString('en-US', {
+                                            {formatPhilippineDate(order.delivery_datetime, {
                                               weekday: 'short',
                                               month: 'short',
                                               day: 'numeric',
@@ -7522,12 +7983,12 @@ export const Vendor = () => {
 
                           {/* Expanded Order Details */}
                           {expandedOrderId === order.order_id && (
-                            <div className="border-t border-gray-200 p-3 sm:p-4 md:p-6 bg-white">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                            <div className="border-t border-gray-200 p-2 sm:p-3 lg:p-4 xl:p-6 bg-white">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-3 sm:mb-4 lg:mb-6">
                             {/* Customer Information */}
-                            <div className="space-y-2 sm:space-y-3">
-                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Customer Information</h4>
-                              <div className="bg-white rounded-lg p-3 sm:p-4 space-y-2">
+                            <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
+                              <h4 className="text-sm sm:text-base lg:text-lg font-medium text-gray-900">Customer Information</h4>
+                              <div className="bg-white rounded-lg p-2 sm:p-3 lg:p-4 space-y-1.5 sm:space-y-2">
                                 {(() => {
                                   const fullAddress = order.delivery_address || '';
                                   const parts = fullAddress.split(', ');
@@ -7566,9 +8027,9 @@ export const Vendor = () => {
                               </div>
                             </div>
                             {/* Order Details */}
-                            <div className="space-y-2 sm:space-y-3">
-                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Order Details</h4>
-                              <div className="bg-white rounded-lg p-3 sm:p-4 space-y-2">
+                            <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
+                              <h4 className="text-sm sm:text-base lg:text-lg font-medium text-gray-900">Order Details</h4>
+                              <div className="bg-white rounded-lg p-2 sm:p-3 lg:p-4 space-y-1.5 sm:space-y-2">
                                 {order.payment_status === 'partial' && order.payment_amount ? (
                                   <>
                                     <p className="text-xs sm:text-sm"><strong>Total Order Amount:</strong> <span className="font-medium">₱{parseFloat(order.total_amount || 0).toFixed(2)}</span></p>
@@ -7630,7 +8091,7 @@ export const Vendor = () => {
                                           {urgencyText}
                                         </div>
                                         <p className="text-gray-900 font-medium mt-2 text-xs sm:text-sm">
-                                          {deliveryDate.toLocaleString('en-US', {
+                                          {formatPhilippineDate(order.delivery_datetime, {
                                             weekday: 'long',
                                             year: 'numeric',
                                             month: 'long',
@@ -7659,18 +8120,18 @@ export const Vendor = () => {
 
                           {/* Order Items Details */}
                           {order.order_items_details && (
-                            <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                              <h4 className="text-base sm:text-lg font-medium text-gray-900">Order Items</h4>
-                              <div className="bg-pink-50 rounded-lg p-3 sm:p-4 border border-pink-200">
+                            <div className="space-y-1.5 sm:space-y-2 lg:space-y-3 mb-3 sm:mb-4 lg:mb-6">
+                              <h4 className="text-sm sm:text-base lg:text-lg font-medium text-gray-900">Order Items</h4>
+                              <div className="bg-pink-50 rounded-lg p-2 sm:p-3 lg:p-4 border border-pink-200">
                                 <p className="text-xs sm:text-sm text-gray-800 font-medium break-words">{order.order_items_details}</p>
                               </div>
                             </div>
                           )}
 
                           {/* Delivery Information */}
-                          <div className="mb-4 sm:mb-6">
-                            <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-2 sm:mb-3">Delivery Information</h4>
-                            <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                          <div className="mb-3 sm:mb-4 lg:mb-6">
+                            <h4 className="text-sm sm:text-base lg:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2 lg:mb-3">Delivery Information</h4>
+                            <div className="bg-blue-50 rounded-lg p-2 sm:p-3 lg:p-4 border border-blue-200">
                               {(() => {
                                 const fullAddress = order.delivery_address || '';
                                 const parts = fullAddress.split(', ');
@@ -7693,9 +8154,9 @@ export const Vendor = () => {
 
                           {/* Action Buttons */}
                           {order.status === 'pending' && (
-                            <div className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-6">
-                              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                                <p className="text-blue-800 font-medium text-sm sm:text-base">Order Auto-Confirmed</p>
+                            <div className="flex space-x-2 sm:space-x-4 mb-3 sm:mb-4 lg:mb-6">
+                              <div className="flex-1 bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                                <p className="text-blue-800 font-medium text-xs sm:text-sm lg:text-base">Order Auto-Confirmed</p>
                                 <p className="text-blue-700 text-xs sm:text-sm mt-1">
                                   This order was automatically confirmed because drums were available for the selected date. Waiting for payment to start preparation.
                                 </p>
@@ -7704,20 +8165,18 @@ export const Vendor = () => {
                           )}
 
                           {order.status === 'confirmed' && order.payment_status === 'unpaid' && (() => {
-                            // Check if this is a walk-in order
-                            const fullAddress = order.delivery_address || '';
-                            const isWalkInOrder = fullAddress.includes('Customer: ') && fullAddress.includes('Contact: ');
+                            const walkInCheck = isWalkInOrder(order);
                             
                             return (
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                                <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Order Confirmed!</p>
-                                <p className="text-green-700 text-xs sm:text-sm mb-3">
-                                  {isWalkInOrder 
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4 lg:mb-6">
+                                <p className="text-green-800 font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">Order Confirmed!</p>
+                                <p className="text-green-700 text-xs sm:text-sm mb-2 sm:mb-3">
+                                  {walkInCheck 
                                     ? 'Walk-in order - Waiting for payment. Mark as paid to start preparation.'
                                     : 'Order automatically confirmed. Waiting for customer payment to start preparation.'
                                   }
                                 </p>
-                                {isWalkInOrder && (
+                                {walkInCheck && (
                                   <button
                                     onClick={async () => {
                                       try {
@@ -7737,7 +8196,7 @@ export const Vendor = () => {
                                         updateStatus("error", "Failed to update payment status. Please try again.");
                                       }
                                     }}
-                                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
+                                    className="bg-green-600 hover:bg-green-700 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto"
                                   >
                                      Mark as Paid
                                   </button>
@@ -7747,27 +8206,27 @@ export const Vendor = () => {
                           })()}
 
                           {order.status === 'confirmed' && (order.payment_status === 'paid' || order.payment_status === 'partial') && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                              <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4 lg:mb-6">
+                              <p className="text-blue-800 font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">
                                 {order.payment_status === 'partial' ? 'Partial Payment Received!' : 'Payment Received!'}
                               </p>
-                              <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                              <p className="text-blue-700 text-xs sm:text-sm mb-2 sm:mb-3">
                                 {order.payment_status === 'partial' && order.payment_amount
                                   ? `Customer has paid 50% (₱${parseFloat(order.payment_amount).toFixed(2)}) of the total amount. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} will be collected on delivery. You can now start preparing the ice cream.`
                                   : 'Customer has paid. You can now start preparing the ice cream.'}
                               </p>
                               {order.payment_status === 'partial' && order.payment_amount && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 mb-3">
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-1.5 sm:p-2 lg:p-3 mb-2 sm:mb-3">
                                   <p className="text-orange-800 text-xs sm:text-sm font-medium break-words">
                                     Amount Paid: ₱{parseFloat(order.payment_amount).toFixed(2)} | 
                                     Remaining: ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}
                                   </p>
                                 </div>
                               )}
-                              <div className="flex flex-col sm:flex-row gap-2">
+                              <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
                                 <button
                                   onClick={() => handlePrepareOrder(order)}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto whitespace-nowrap"
+                                  className="bg-blue-600 hover:bg-blue-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto whitespace-nowrap"
                                 >
                                   <span className="sm:hidden">🍦 Start Preparing</span>
                                   <span className="hidden sm:inline">🍦 Start Preparing Ice Cream</span>
@@ -7775,9 +8234,17 @@ export const Vendor = () => {
                                 {order.payment_confirmation_image && (
                                   <button
                                     onClick={() => handleViewPaymentProof(order)}
-                                    className="bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
+                                    className="bg-green-600 hover:bg-green-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto"
                                   >
                                     📱 View Payment Proof
+                                  </button>
+                                )}
+                                {isWalkInOrder(order) && (
+                                  <button
+                                    onClick={() => handleCancelWalkInOrderClick(order)}
+                                    className="bg-red-600 hover:bg-red-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto"
+                                  >
+                                    ❌ Cancel Order
                                   </button>
                                 )}
                               </div>
@@ -7785,100 +8252,132 @@ export const Vendor = () => {
                           )}
 
                           {order.status === 'preparing' && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                              <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">🍦 Preparing Ice Cream</p>
-                              <p className="text-blue-700 text-xs sm:text-sm mb-3">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4 lg:mb-6">
+                              <p className="text-blue-800 font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">🍦 Preparing Ice Cream</p>
+                              <p className="text-blue-700 text-xs sm:text-sm mb-2 sm:mb-3">
                                 Ice cream is being prepared. Mark as ready for delivery when finished.
                               </p>
                               <button
                                 onClick={() => handleReadyOrder(order)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto"
+                                className="bg-purple-600 hover:bg-purple-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto"
                               >
                                 🚚 Ready for Delivery
                               </button>
                             </div>
                           )}
 
-                          {order.status === 'out_for_delivery' && (
-                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                              <p className="text-purple-800 font-medium mb-2 text-sm sm:text-base">🚚 Out for Delivery</p>
-                              <p className="text-purple-700 text-xs sm:text-sm mb-3">
-                                Order is on the way to customer. Mark as delivered when completed.
-                              </p>
-                              
-                              {/* Show remaining balance info if partial payment */}
-                              {order.payment_status === 'partial' && order.remaining_balance > 0 && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 mb-3">
-                                  <p className="text-orange-800 font-medium mb-1 text-xs sm:text-sm">Remaining Balance: ₱{parseFloat(order.remaining_balance).toFixed(2)}</p>
-                                  {order.remaining_payment_method === 'cod' && (
-                                    <>
-                                      <p className="text-orange-700 text-xs mb-2">Customer selected: Cash on Delivery</p>
-                                      <button
-                                        onClick={() => handleConfirmCODPayment(order.order_id, order.remaining_balance)}
-                                        className="bg-orange-600 hover:bg-orange-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
-                                      >
-                                        💰 Mark Remaining Balance as Paid (COD)
-                                      </button>
-                                    </>
+                          {order.status === 'out_for_delivery' && (() => {
+                            const walkInCheck = isWalkInOrder(order);
+                            
+                            return (
+                              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4 lg:mb-6">
+                                <p className="text-purple-800 font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">
+                                  🚚 Out for Delivery
+                                  {walkInCheck && (
+                                    <span className="ml-1 sm:ml-2 text-xs font-normal text-purple-600 bg-purple-100 px-1.5 sm:px-2 py-0.5 rounded-full">
+                                      Walk-in Order
+                                    </span>
                                   )}
-                                  {order.remaining_payment_method === 'gcash' && (
-                                    <p className="text-orange-700 text-xs">Customer will pay via GCash</p>
-                                  )}
-                                  {!order.remaining_payment_method && (
-                                    <p className="text-orange-700 text-xs">Customer hasn't selected payment method yet</p>
-                                  )}
-                                </div>
-                              )}
-                              
-                              <button
-                                onClick={() => handleDeliveredOrder(order)}
-                                className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
-                              >
-                                ✅ Mark as Delivered
-                              </button>
-                            </div>
-                          )}
+                                </p>
+                                <p className="text-purple-700 text-xs sm:text-sm mb-2 sm:mb-3">
+                                  {walkInCheck 
+                                    ? 'Walk-in order - Being delivered to customer. Mark as delivered when completed.'
+                                    : 'Order is on the way to customer. Mark as delivered when completed.'}
+                                </p>
+                                
+                                {/* Show remaining balance info if partial payment */}
+                                {order.payment_status === 'partial' && order.remaining_balance > 0 && (
+                                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-1.5 sm:p-2 lg:p-3 mb-2 sm:mb-3">
+                                    <p className="text-orange-800 font-medium mb-1 text-xs sm:text-sm">Remaining Balance: ₱{parseFloat(order.remaining_balance).toFixed(2)}</p>
+                                    {walkInCheck && (
+                                      <p className="text-orange-700 text-xs mb-1.5 sm:mb-2 italic">
+                                        Walk-in order: Collect remaining balance upon delivery
+                                      </p>
+                                    )}
+                                    {order.remaining_payment_method === 'cod' && (
+                                      <>
+                                        <p className="text-orange-700 text-xs mb-1.5 sm:mb-2">Customer selected: Cash on Delivery</p>
+                                        <button
+                                          onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
+                                          className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                          💰 Mark Remaining Balance as Paid (COD)
+                                        </button>
+                                      </>
+                                    )}
+                                    {order.remaining_payment_method === 'gcash' && (
+                                      <p className="text-orange-700 text-xs">Customer will pay via GCash</p>
+                                    )}
+                                    {!order.remaining_payment_method && (
+                                      <p className="text-orange-700 text-xs">
+                                        {walkInCheck 
+                                          ? 'Payment method not specified. Confirm with customer upon delivery.'
+                                          : 'Customer hasn\'t selected payment method yet'}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                <button
+                                  onClick={() => handleDeliveredOrder(order)}
+                                  disabled={order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0}
+                                  className={`py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto ${
+                                    order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0
+                                      ? 'bg-gray-400 cursor-not-allowed text-gray-600'
+                                      : 'bg-green-600 hover:bg-green-700 text-white'
+                                  }`}
+                                  title={order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0
+                                    ? `Cannot mark as delivered. COD payment of ₱${parseFloat(order.remaining_balance).toFixed(2)} must be confirmed first.`
+                                    : 'Mark order as delivered'}
+                                >
+                                  ✅ Mark as Delivered
+                                </button>
+                              </div>
+                            );
+                          })()}
 
                           {order.status === 'delivered' && (
-                            <div className="space-y-4">
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <p className="text-green-800 font-medium mb-2">🎉 Order Completed!</p>
-                                <p className="text-green-700 text-sm">
+                            <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                                <p className="text-green-800 font-medium mb-1 sm:mb-2 text-xs sm:text-sm lg:text-base">🎉 Order Completed!</p>
+                                <p className="text-green-700 text-xs sm:text-sm">
                                   This order has been successfully delivered to the customer.
                                 </p>
                               </div>
 
                               {/* Container Return Section */}
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  {orderFilter === 'drum_return' && (order.drum_status === 'not returned' || order.drum_status === 'return_requested') && (
-                                    <div className="flex items-center mr-3">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedReturnOrders.includes(order.order_id)}
-                                        onChange={() => handleToggleReturnSelection(order.order_id)}
-                                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                      />
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+                                  <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    {orderFilter === 'drum_return' && (order.drum_status === 'not returned' || order.drum_status === 'return_requested') && (
+                                      <div className="flex items-center flex-shrink-0 mt-0.5 sm:mt-0">
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedReturnOrders.includes(order.order_id)}
+                                          onChange={() => handleToggleReturnSelection(order.order_id)}
+                                          className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-blue-800 font-medium mb-0.5 sm:mb-1 text-xs sm:text-sm lg:text-base">📦 Container Return Status</h3>
+                                      <p className="text-blue-700 text-xs sm:text-sm break-words">
+                                        {(order.drum_status === 'in_use' || order.drum_status === 'in use' || !order.drum_status) && 'Container is currently in use by customer'}
+                                        {(order.drum_status === 'not returned' || order.drum_status === 'return_requested') && 'Customer has requested container return - waiting for pickup'}
+                                        {order.drum_status === 'returned' && 'Container has been successfully returned'}
+                                      </p>
                                     </div>
-                                  )}
-                                  <div>
-                                    <h3 className="text-blue-800 font-medium mb-1">📦 Container Return Status</h3>
-                                    <p className="text-blue-700 text-sm">
-                                      {(order.drum_status === 'in_use' || order.drum_status === 'in use' || !order.drum_status) && 'Container is currently in use by customer'}
-                                      {(order.drum_status === 'not returned' || order.drum_status === 'return_requested') && 'Customer has requested container return - waiting for pickup'}
-                                      {order.drum_status === 'returned' && 'Container has been successfully returned'}
-                                    </p>
                                   </div>
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 flex-shrink-0">
                                     {(order.drum_status === 'not returned' || order.drum_status === 'return_requested') && (
                                       <button 
                                         onClick={() => handleDrumReturnPickup(order.order_id)}
                                         disabled={drumReturnLoading === order.order_id}
-                                        className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                                        className="bg-orange-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm"
                                       >
                                         {drumReturnLoading === order.order_id ? (
                                           <>
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
                                             <span>Updating...</span>
                                           </>
                                         ) : (
@@ -7890,19 +8389,19 @@ export const Vendor = () => {
                                       </button>
                                     )}
                                     {order.drum_status === 'returned' && (
-                                      <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800">
+                                      <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-green-100 text-green-800 justify-center">
                                         ✅ Container Returned
                                       </span>
                                     )}
                                     {(order.drum_status === 'in_use' || order.drum_status === 'in use' || !order.drum_status) && (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+                                        <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-blue-100 text-blue-800 justify-center">
                                           📦 In Use
                                         </span>
                                         <button 
                                           onClick={() => handleDrumReturnPickup(order.order_id)}
                                           disabled={drumReturnLoading === order.order_id}
-                                          className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 text-sm"
+                                          className="bg-green-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 sm:space-x-1 text-xs sm:text-sm"
                                         >
                                           {drumReturnLoading === order.order_id ? (
                                             <>
@@ -7921,8 +8420,8 @@ export const Vendor = () => {
                                   </div>
                                 </div>
                                 {order.return_requested_at && (
-                                  <p className="text-blue-600 text-xs">
-                                    Return requested on: {new Date(order.return_requested_at).toLocaleString()}
+                                  <p className="text-blue-600 text-xs mt-2 sm:mt-0">
+                                    Return requested on: {formatPhilippineDate(order.return_requested_at)}
                                   </p>
                                 )}
                               </div>
@@ -7930,9 +8429,9 @@ export const Vendor = () => {
                           )}
 
                           {order.status === 'cancelled' && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                              <p className="text-red-800 font-medium">Order Declined</p>
-                              <p className="text-red-700 text-sm">This order has been cancelled.</p>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3 lg:p-4">
+                              <p className="text-red-800 font-medium text-xs sm:text-sm lg:text-base">Order Declined</p>
+                              <p className="text-red-700 text-xs sm:text-sm">This order has been cancelled.</p>
                             </div>
                           )}
                             </div>
@@ -8652,24 +9151,24 @@ export const Vendor = () => {
 
       {/* Drum Setup Validation Modal */}
       {showDrumSetupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 mb-4">
-                <svg className="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-orange-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
                 Setup Required
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
                 Please set up your drum inventory and prices before uploading flavors. Go to the "Inventory" tab to configure your drums first.
               </p>
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowDrumSetupModal(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
@@ -8680,7 +9179,7 @@ export const Vendor = () => {
                     // Auto scroll to top to show inventory section
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                 >
                   Go to Inventory
                 </button>
@@ -8692,39 +9191,39 @@ export const Vendor = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-lg w-full mx-2 sm:mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="text-center">
               {/* Warning Icon */}
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 rounded-full bg-red-100 mb-3 sm:mb-4">
+                <svg className="h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
               
               {/* Title */}
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+              <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Delete Flavor - Warning!
               </h3>
               
               {/* Flavor Name */}
-              <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                <p className="text-base font-semibold text-gray-800">
+              <div className="bg-gray-50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+                <p className="text-sm sm:text-base font-semibold text-gray-800">
                   "{flavorToDelete?.flavor_name}"
                 </p>
               </div>
               
               {/* Warning Message */}
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4 text-left">
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-3 sm:mb-4 text-left">
                 <div className="flex items-start">
-                  <svg className="h-5 w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <h4 className="text-sm font-bold text-red-800 mb-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-red-800 mb-1">
                       This will permanently delete:
                     </h4>
-                    <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                    <ul className="text-xs sm:text-sm text-red-700 space-y-0.5 sm:space-y-1 list-disc list-inside">
                       <li>All sales records for this flavor</li>
                       <li>Order history containing this flavor</li>
                       <li>Product variations (sizes)</li>
@@ -8735,22 +9234,22 @@ export const Vendor = () => {
               </div>
               
               {/* Additional Info */}
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-5 lg:mb-6">
                 This action <span className="font-bold text-red-600">cannot be undone</span>. 
                 All data will be permanently removed from the system.
               </p>
               
               {/* Action Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={cancelDeleteFlavor}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 border border-gray-300"
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 rounded-lg transition-colors duration-200 border border-gray-300 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={deleteFlavor}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                 >
                   Yes, Delete Forever
                 </button>
@@ -8764,24 +9263,24 @@ export const Vendor = () => {
 
       {/* Decline Reason Modal */}
       {showDeclineReasonModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-lg w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-red-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
                 Decline Order #{selectedOrder.order_id}
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Please provide a reason for declining this order:
               </p>
               
-              <div className="text-left text-xs text-gray-500 mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="font-medium mb-2">Common reasons:</p>
-                <ul className="space-y-1">
+              <div className="text-left text-xs text-gray-500 mb-3 sm:mb-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium mb-1.5 sm:mb-2">Common reasons:</p>
+                <ul className="space-y-0.5 sm:space-y-1">
                   <li>• No available containers/drums</li>
                   <li>• Delivery date fully booked</li>
                   <li>• Ingredient shortage</li>
@@ -8794,25 +9293,25 @@ export const Vendor = () => {
                 value={declineReason}
                 onChange={(e) => setDeclineReason(e.target.value)}
                 placeholder="Enter your reason for declining this order..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-xs sm:text-sm"
                 rows={4}
                 required
               />
               
-              <div className="flex space-x-3 mt-6">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4 sm:mt-5 lg:mt-6">
                 <button
                   onClick={() => {
                     setShowDeclineReasonModal(false);
                     setSelectedOrder(null);
                     setDeclineReason('');
                   }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeclineReasonSubmit}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Submit Decline
                 </button>
@@ -8824,34 +9323,34 @@ export const Vendor = () => {
 
       {/* Prepare Order Confirmation Modal */}
       {showPrepareModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
                 Start Preparing Order #{selectedOrder.order_id}
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
                 This will notify the customer that their ice cream is being prepared. Are you ready to start?
               </p>
               
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => {
                     setShowPrepareModal(false);
                     setSelectedOrder(null);
                   }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmPrepareOrder}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Start Preparing
                 </button>
@@ -8863,38 +9362,38 @@ export const Vendor = () => {
 
       {/* Ready for Delivery Confirmation Modal */}
       {showReadyModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
-                <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-purple-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 sm:mb-3">
                 Ready for Delivery - Order #{selectedOrder.order_id}
               </h3>
-              <div className="text-sm text-gray-600 mb-4 text-left bg-gray-50 p-3 rounded-lg">
-                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
-                <p><strong>Address:</strong> {selectedOrder.delivery_address}</p>
+              <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 text-left bg-gray-50 p-2 sm:p-3 rounded-lg">
+                <p className="mb-1 sm:mb-1.5"><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+                <p className="break-words"><strong>Address:</strong> {selectedOrder.delivery_address}</p>
               </div>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
                 This will notify the customer that their order is on the way.
               </p>
               
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => {
                     setShowReadyModal(false);
                     setSelectedOrder(null);
                   }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmReadyOrder}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Ready for Delivery
                 </button>
@@ -8904,40 +9403,113 @@ export const Vendor = () => {
         </div>
       )}
 
+      {/* COD Payment Confirmation Modal */}
+      {showCODPaymentModal && codPaymentData.orderId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 rounded-full bg-orange-100 mb-3 sm:mb-4">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">
+                Confirm COD Payment Collection
+              </h3>
+              <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 text-left bg-gray-50 p-3 sm:p-4 rounded-lg">
+                <p className="mb-1.5 sm:mb-2">
+                  <strong>Amount:</strong> <span className="font-bold text-orange-600 text-base sm:text-lg">₱{codPaymentData.amount ? parseFloat(codPaymentData.amount).toFixed(2) : '0.00'}</span>
+                </p>
+                <p className="text-gray-700">
+                  This will mark the order as fully paid.
+                </p>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
+                Please confirm that you have collected the cash payment from the customer.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => {
+                    setShowCODPaymentModal(false);
+                    setCodPaymentData({ orderId: null, amount: null });
+                  }}
+                  disabled={isConfirmingCODPayment}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmCODPayment}
+                  disabled={isConfirmingCODPayment}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xs sm:text-sm"
+                >
+                  {isConfirmingCODPayment ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-1.5 sm:mr-2"></div>
+                      Confirming...
+                    </>
+                  ) : (
+                    'OK'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mark as Delivered Confirmation Modal */}
       {showDeliveredModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 sm:mb-3">
                 Mark as Delivered - Order #{selectedOrder.order_id}
               </h3>
-              <div className="text-sm text-gray-600 mb-4 text-left bg-gray-50 p-3 rounded-lg">
-                <p><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
+              <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 text-left bg-gray-50 p-2 sm:p-3 rounded-lg">
+                <p className="mb-1 sm:mb-1.5"><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
                 <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
+                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0 && (
+                  <div className="mt-2 p-1.5 sm:p-2 bg-red-50 border border-red-200 rounded">
+                    <p className="text-red-800 text-xs font-medium">
+                      ⚠️ COD Payment Pending: ₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}
+                    </p>
+                    <p className="text-red-700 text-xs mt-1">
+                      Please confirm COD payment collection before marking as delivered.
+                    </p>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-gray-500 mb-6">
-                Confirm that the order has been successfully delivered to the customer.
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
+                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0
+                  ? '⚠️ Cannot mark as delivered. COD payment must be confirmed first.'
+                  : 'Confirm that the order has been successfully delivered to the customer.'}
               </p>
               
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => {
                     setShowDeliveredModal(false);
                     setSelectedOrder(null);
                   }}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDeliveredOrder}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  disabled={selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0}
+                  className={`flex-1 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm ${
+                    selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0
+                      ? 'bg-gray-400 cursor-not-allowed text-gray-600'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
                 >
                   Mark as Delivered
                 </button>
@@ -8949,38 +9521,38 @@ export const Vendor = () => {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
+              <div className={`mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full mb-3 sm:mb-4 ${
                 confirmModalData.type === 'danger' ? 'bg-red-100' : 
                 confirmModalData.type === 'info' ? 'bg-blue-100' : 
                 'bg-yellow-100'
               }`}>
                 {confirmModalData.type === 'danger' ? (
-                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 ) : confirmModalData.type === 'info' ? (
-                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 ) : (
-                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 )}
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
                 {confirmModalData.title}
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
                 {confirmModalData.message}
               </p>
-              <div className="flex space-x-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
                 >
                   {confirmModalData.cancelText}
                 </button>
@@ -8990,7 +9562,7 @@ export const Vendor = () => {
                       confirmModalData.onConfirm();
                     }
                   }}
-                  className={`flex-1 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ${
+                  className={`flex-1 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm ${
                     confirmModalData.type === 'danger' 
                       ? 'bg-red-600 hover:bg-red-700 text-white' 
                       : confirmModalData.type === 'info'
@@ -9012,26 +9584,26 @@ export const Vendor = () => {
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto"
           onClick={handleClosePaymentProofModal}
         >
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-full overflow-y-auto my-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto my-2 sm:my-4" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-3 sm:p-4 border-b">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payment Proof</h3>
+            <div className="flex justify-between items-center p-2 sm:p-3 lg:p-4 border-b">
+              <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900">Payment Proof</h3>
               <button
                 onClick={() => setShowPaymentProofModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             
             {/* Modal Content */}
-            <div className="p-3 sm:p-4">
+            <div className="p-2 sm:p-3 lg:p-4">
               {/* Order Information */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <h4 className="font-medium text-gray-900 mb-2">Order Information</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+              <div className="bg-gray-50 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4">
+                <h4 className="font-medium text-gray-900 mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">Order Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
                   <p><span className="font-medium">Order ID:</span> #{selectedOrderForPaymentProof.order_id}</p>
                   <p><span className="font-medium">Customer:</span> {selectedOrderForPaymentProof.customer_fname} {selectedOrderForPaymentProof.customer_lname}</p>
                   {selectedOrderForPaymentProof.payment_status === 'partial' && selectedOrderForPaymentProof.payment_amount ? (
@@ -9053,7 +9625,7 @@ export const Vendor = () => {
               {/* Payment Screenshot */}
               {selectedOrderForPaymentProof.payment_confirmation_image && (
                 <div className="text-center">
-                  <h4 className="font-medium text-gray-900 mb-3">Payment Confirmation Screenshot</h4>
+                  <h4 className="font-medium text-gray-900 mb-2 sm:mb-3 text-xs sm:text-sm lg:text-base">Payment Confirmation Screenshot</h4>
                   <img 
                     src={selectedOrderForPaymentProof.payment_confirmation_image} 
                     alt="Payment Proof" 
@@ -9064,29 +9636,122 @@ export const Vendor = () => {
 
               {/* Customer Notes */}
               {selectedOrderForPaymentProof.payment_notes && (
-                <div className="mt-4 bg-blue-50 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 mb-2">Customer Notes</h4>
-                  <p className="text-sm text-blue-800">{selectedOrderForPaymentProof.payment_notes}</p>
+                <div className="mt-3 sm:mt-4 bg-blue-50 rounded-lg p-2 sm:p-3 lg:p-4">
+                  <h4 className="font-medium text-blue-900 mb-1.5 sm:mb-2 text-xs sm:text-sm lg:text-base">Customer Notes</h4>
+                  <p className="text-xs sm:text-sm text-blue-800">{selectedOrderForPaymentProof.payment_notes}</p>
                 </div>
               )}
 
               {/* No Payment Proof Message */}
               {!selectedOrderForPaymentProof.payment_confirmation_image && (
-                <div className="text-center py-8">
-                  <div className="text-gray-400 text-4xl mb-4">📱</div>
-                  <p className="text-gray-600">No payment proof available for this order.</p>
+                <div className="text-center py-6 sm:py-8">
+                  <div className="text-gray-400 text-3xl sm:text-4xl mb-3 sm:mb-4">📱</div>
+                  <p className="text-xs sm:text-sm text-gray-600">No payment proof available for this order.</p>
                 </div>
               )}
             </div>
             
             {/* Modal Footer */}
-            <div className="flex justify-end p-3 sm:p-4 border-t">
+            <div className="flex justify-end p-2 sm:p-3 lg:p-4 border-t">
               <button
                 onClick={() => setShowPaymentProofModal(false)}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-xs sm:text-sm lg:text-base"
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Walk-in Order Modal */}
+      {showCancelWalkInModal && orderToCancel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-3 lg:p-4">
+          <div className="bg-white rounded-lg max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-3 sm:p-4 lg:p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">Cancel Walk-in Order</h2>
+                <button 
+                  onClick={() => {
+                    setShowCancelWalkInModal(false);
+                    setOrderToCancel(null);
+                    setCancelReason('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Warning Icon and Message */}
+              <div className="text-center mb-3 sm:mb-4">
+                <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-red-100 mb-2 sm:mb-3">
+                  <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
+                  Cancel Order #{orderToCancel.order_id}?
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">
+                  Are you sure you want to cancel this walk-in order?
+                </p>
+                <p className="text-xs text-gray-500 mb-3 sm:mb-4">
+                  This action will release reserved drums and cannot be undone.
+                </p>
+              </div>
+
+              {/* Cancel Reason Input */}
+              <div className="mb-3 sm:mb-4">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                  Reason for Cancellation (Optional)
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g., Customer requested cancellation, Order mistake, etc."
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-xs sm:text-sm resize-none"
+                  rows={3}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This reason will be recorded for record-keeping purposes.
+                </p>
+              </div>
+
+              {/* Order Summary */}
+              <div className="bg-gray-50 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+                <p className="text-xs font-medium text-gray-700 mb-1">Order Summary:</p>
+                <p className="text-xs sm:text-sm text-gray-900">Total: ₱{parseFloat(orderToCancel.total_amount || 0).toFixed(2)}</p>
+                {orderToCancel.payment_status === 'partial' && orderToCancel.payment_amount && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Paid: ₱{parseFloat(orderToCancel.payment_amount).toFixed(2)} | 
+                    Remaining: ₱{parseFloat(orderToCancel.remaining_balance || (orderToCancel.total_amount - orderToCancel.payment_amount)).toFixed(2)}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => {
+                    setShowCancelWalkInModal(false);
+                    setOrderToCancel(null);
+                    setCancelReason('');
+                  }}
+                  className="flex-1 px-3 sm:px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors text-xs sm:text-sm lg:text-base"
+                >
+                  Keep Order
+                </button>
+                <button
+                  onClick={handleCancelWalkInOrder}
+                  className="flex-1 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors text-xs sm:text-sm lg:text-base"
+                >
+                  Confirm Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>

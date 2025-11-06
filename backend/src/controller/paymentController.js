@@ -189,17 +189,65 @@ const handleWebhook = async (req, res) => {
 
       // If payment succeeded, update order status
       if (processedEvent.status === 'PAID') {
-        await pool.execute(
-          `UPDATE orders 
-           SET payment_status = 'paid', 
-               payment_method = 'gcash',
-               payment_intent_id = ?,
-               updated_at = NOW() 
+        const orderId = processedEvent.metadata?.order_id;
+        
+        // Get order details to check if it's a partial payment (50%)
+        const [orderDetails] = await pool.execute(
+          `SELECT total_amount, payment_amount, payment_status, status 
+           FROM orders 
            WHERE order_id = ?`,
-          [processedEvent.invoice_id, processedEvent.metadata?.order_id]
+          [orderId]
         );
+        
+        if (orderDetails.length > 0) {
+          const order = orderDetails[0];
+          const totalAmount = parseFloat(order.total_amount);
+          const paymentAmount = parseFloat(order.payment_amount || 0);
+          const invoiceAmount = parseFloat(processedEvent.amount || 0);
+          
+          // Check if this is a 50% partial payment
+          // If payment_amount exists and is approximately 50% of total (within 1% tolerance)
+          // or invoice amount is approximately 50% of total
+          const isPartialPayment = (paymentAmount > 0 && paymentAmount < totalAmount && 
+                                    Math.abs(paymentAmount - totalAmount * 0.5) < totalAmount * 0.01) || 
+                                   (invoiceAmount > 0 && Math.abs(invoiceAmount - totalAmount * 0.5) < totalAmount * 0.01);
+          
+          const newPaymentStatus = isPartialPayment ? 'partial' : 'paid';
+          
+          // Update order: set payment_status and status to 'confirmed' if currently 'pending'
+          await pool.execute(
+            `UPDATE orders 
+             SET payment_status = ?, 
+                 status = CASE 
+                   WHEN status = 'pending' THEN 'confirmed'
+                   ELSE status
+                 END,
+                 payment_method = 'gcash',
+                 payment_intent_id = ?,
+                 updated_at = NOW() 
+             WHERE order_id = ?`,
+            [newPaymentStatus, processedEvent.invoice_id, orderId]
+          );
 
-        console.log(`✅ Payment succeeded for order ${processedEvent.metadata?.order_id}`);
+          console.log(`✅ Payment succeeded for order ${orderId} - Payment status: ${newPaymentStatus}, Order status updated to confirmed`);
+        } else {
+          // Fallback: if order not found, just update payment status
+          await pool.execute(
+            `UPDATE orders 
+             SET payment_status = 'paid', 
+                 status = CASE 
+                   WHEN status = 'pending' THEN 'confirmed'
+                   ELSE status
+                 END,
+                 payment_method = 'gcash',
+                 payment_intent_id = ?,
+                 updated_at = NOW() 
+             WHERE order_id = ?`,
+            [processedEvent.invoice_id, orderId]
+          );
+          
+          console.log(`✅ Payment succeeded for order ${orderId} (order details not found, using fallback)`);
+        }
       } else if (processedEvent.status === 'EXPIRED') {
         await pool.execute(
           `UPDATE orders 

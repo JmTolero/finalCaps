@@ -95,11 +95,36 @@ const completeVendorRegistration = async (req, res) => {
             }
         }
         
+        // Check current user role and vendor status
+        const [currentUser] = await pool.query(
+            'SELECT role FROM users WHERE user_id = ?',
+            [user_id]
+        );
+        
+        if (currentUser.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if user is already a vendor
+        if (currentUser[0].role === 'vendor') {
+            return res.status(400).json({ error: 'User is already registered as a vendor' });
+        }
+        
+        // Check if vendor record already exists
+        const [existingVendor] = await pool.query(
+            'SELECT vendor_id FROM vendors WHERE user_id = ?',
+            [user_id]
+        );
+        
+        if (existingVendor.length > 0) {
+            return res.status(400).json({ error: 'Vendor application already exists for this user' });
+        }
+        
         // Check if vendor_id is provided (for new users)
         let finalVendorId = vendor_id;
         
         if (!vendor_id) {
-            // Create vendor record for existing user
+            // Create vendor record for existing customer converting to vendor
             const [vendorResult] = await pool.query(
                 'INSERT INTO vendors (store_name, business_permit_url, valid_id_url, proof_image_url, status, user_id, primary_address_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
                 [null, null, null, null, 'pending', user_id, null]
@@ -107,16 +132,16 @@ const completeVendorRegistration = async (req, res) => {
             finalVendorId = vendorResult.insertId;
         }
         
-        // Update user with additional information
+        // Update user with additional information and change role to vendor
         if (username) {
             await pool.query(
-                'UPDATE users SET username = ?, birth_date = ?, gender = ?, contact_no = ? WHERE user_id = ?',
-                [username, birth_date, gender, contact_no || null, user_id]
+                'UPDATE users SET username = ?, birth_date = ?, gender = ?, contact_no = ?, role = ? WHERE user_id = ?',
+                [username, birth_date, gender, contact_no || null, 'vendor', user_id]
             );
         } else {
             await pool.query(
-                'UPDATE users SET birth_date = ?, gender = ?, contact_no = ? WHERE user_id = ?',
-                [birth_date, gender, contact_no || null, user_id]
+                'UPDATE users SET birth_date = ?, gender = ?, contact_no = ?, role = ? WHERE user_id = ?',
+                [birth_date, gender, contact_no || null, 'vendor', user_id]
             );
         }
         

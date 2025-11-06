@@ -109,6 +109,15 @@ export const Customer = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
   
+  // Cancel order confirmation modal state
+  const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [isCancellingOrder, setIsCancellingOrder] = useState(false);
+  
+  // Cash on Delivery confirmation modal state
+  const [showCODModal, setShowCODModal] = useState(false);
+  const [codAmount, setCodAmount] = useState(null);
+  
   // Feedback modal state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
@@ -309,7 +318,7 @@ export const Customer = () => {
   // Render star rating
   const renderStarRating = (isEditable = false) => {
     return (
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -318,8 +327,8 @@ export const Customer = () => {
             onClick={() => isEditable && setReviewRating(star)}
             onMouseEnter={() => isEditable && setHoveredStar(star)}
             onMouseLeave={() => isEditable && setHoveredStar(0)}
-            className={`text-3xl transition-all ${
-              isEditable ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+            className={`text-2xl sm:text-3xl md:text-4xl transition-all ${
+              isEditable ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-default'
             } ${
               star <= (hoveredStar || reviewRating)
                 ? 'text-yellow-400'
@@ -730,7 +739,7 @@ export const Customer = () => {
       if (!userRaw) {
         console.error('No user session found');
         setOrders([]);
-        return;
+        return [];
       }
       
       const user = JSON.parse(userRaw);
@@ -741,12 +750,15 @@ export const Customer = () => {
       if (response.data.success) {
         setOrders(response.data.orders);
         console.log('📦 Customer orders fetched:', response.data.orders.length);
+        return response.data.orders;
       } else {
         setOrders([]);
+        return [];
       }
     } catch (error) {
       console.error('Error fetching customer orders:', error);
       setOrders([]);
+      return [];
     } finally {
       setOrdersLoading(false);
     }
@@ -769,8 +781,17 @@ export const Customer = () => {
       });
 
       if (response.data.success) {
+        // Update selectedOrder immediately if it's the same order
+        if (selectedOrder && selectedOrder.order_id === orderId) {
+          setSelectedOrder({
+            ...selectedOrder,
+            remaining_payment_method: paymentMethod,
+            remaining_balance: response.data.remaining_balance || selectedOrder.remaining_balance
+          });
+        }
+        
         // Refresh orders to show updated payment method
-        fetchCustomerOrders();
+        await fetchCustomerOrders();
         
         // If GCash selected, navigate to payment page
         if (paymentMethod === 'gcash') {
@@ -778,15 +799,24 @@ export const Customer = () => {
           setShowOrderModal(false);
           navigateOptimized(`/customer/gcash-account/${orderId}?remaining=true`);
         } else {
-          // Show success message for COD
-          alert(`Payment method selected: Cash on Delivery. Please prepare ₱${response.data.remaining_balance.toFixed(2)} cash when your order arrives.`);
+          // Show custom modal for COD
+          setCodAmount(response.data.remaining_balance);
+          setShowCODModal(true);
         }
       } else {
-        alert(response.data.error || 'Failed to select payment method');
+        // Show error info modal
+        setInfoModalTitle('Payment Method Selection Failed');
+        setInfoModalMessage(response.data.error || 'Failed to select payment method');
+        setInfoModalType('error');
+        setShowInfoModal(true);
       }
     } catch (error) {
       console.error('Error selecting payment method:', error);
-      alert(error.response?.data?.error || 'Failed to select payment method. Please try again.');
+      // Show error info modal
+      setInfoModalTitle('Payment Method Selection Failed');
+      setInfoModalMessage(error.response?.data?.error || 'Failed to select payment method. Please try again.');
+      setInfoModalType('error');
+      setShowInfoModal(true);
     }
   };
 
@@ -795,28 +825,53 @@ export const Customer = () => {
     navigateOptimized(`/customer/gcash-account/${order.order_id}?remaining=true`);
   };
 
-  // Handle cancel order
-  const handleCancelOrder = async (orderId) => {
+  // Handle cancel order button click - show confirmation modal
+  const handleCancelOrderClick = (orderId) => {
     console.log('🚫 Cancel order button clicked for order:', orderId);
+    setOrderToCancel(orderId);
+    setShowCancelOrderModal(true);
+  };
+
+  // Handle cancel order confirmation
+  const handleCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    setIsCancellingOrder(true);
     
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      console.log('🚫 Making API call to:', `${apiBase}/api/orders/${orderId}/status`);
+      console.log('🚫 Making API call to:', `${apiBase}/api/orders/${orderToCancel}/status`);
       
-      const response = await axios.put(`${apiBase}/api/orders/${orderId}/status`, {
+      const response = await axios.put(`${apiBase}/api/orders/${orderToCancel}/status`, {
         status: 'cancelled'
       });
       
       console.log('🚫 API response:', response.data);
       
       if (response.data.success) {
-        console.log('Order cancelled successfully:', orderId);
+        console.log('Order cancelled successfully:', orderToCancel);
         
-        // Refresh orders to show updated status
-        fetchCustomerOrders();
+        // Update selectedOrder immediately to reflect cancelled status in modal
+        if (selectedOrder && selectedOrder.order_id === orderToCancel) {
+          setSelectedOrder({ ...selectedOrder, status: 'cancelled' });
+        }
         
+        // Refresh orders to show updated status in the list
+        await fetchCustomerOrders();
+        
+        // Close confirmation modal
+        setShowCancelOrderModal(false);
+        setOrderToCancel(null);
+        
+        // Show success message
         setStatus({ type: 'success', message: 'Order cancelled successfully!' });
+        
+        // Show success info modal
+        setInfoModalTitle('Order Cancelled');
+        setInfoModalMessage('Your order has been cancelled successfully. The order status has been updated.');
+        setInfoModalType('success');
+        setShowInfoModal(true);
       } else {
         throw new Error(response.data.error || 'Failed to cancel order');
       }
@@ -824,6 +879,14 @@ export const Customer = () => {
       console.error('Error cancelling order:', error);
       console.error('Error details:', error.response?.data);
       setStatus({ type: 'error', message: `Failed to cancel order: ${error.response?.data?.error || error.message}` });
+      
+      // Show error info modal
+      setInfoModalTitle('Cancellation Failed');
+      setInfoModalMessage(error.response?.data?.error || error.message || 'Failed to cancel order. Please try again.');
+      setInfoModalType('error');
+      setShowInfoModal(true);
+    } finally {
+      setIsCancellingOrder(false);
     }
   };
 
@@ -1473,11 +1536,11 @@ export const Customer = () => {
 
         {/* Review Modal */}
         {showReviewModal && selectedOrderForReview && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-2 sm:p-4">
+            <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-6 max-w-lg w-full mx-2 sm:mx-4 shadow-2xl max-h-[95vh] overflow-y-auto">
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 pr-2">
                     Leave a Review
                   </h3>
                   <button
@@ -1487,28 +1550,28 @@ export const Customer = () => {
                       setReviewRating(0);
                       setReviewComment('');
                     }}
-                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                    className="text-gray-400 hover:text-gray-600 transition-colors text-xl sm:text-2xl flex-shrink-0"
                   >
                     ×
                   </button>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-5 md:space-y-6">
                   {/* Shop Info */}
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">You're reviewing</p>
-                    <p className="font-semibold text-gray-900">{selectedOrderForReview.vendor_name}</p>
-                    <p className="text-xs text-gray-500">Order #{selectedOrderForReview.order_id}</p>
+                  <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">You're reviewing</p>
+                    <p className="text-sm sm:text-base font-semibold text-gray-900 break-words">{selectedOrderForReview.vendor_name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Order #{selectedOrderForReview.order_id}</p>
                   </div>
 
                   {/* Star Rating */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                       Rate your experience <span className="text-red-500">*</span>
                     </label>
                     {renderStarRating(true)}
                     {reviewRating > 0 && (
-                      <p className="text-sm text-gray-600 mt-2">
+                      <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center sm:text-left">
                         {reviewRating === 1 && '⭐ Poor'}
                         {reviewRating === 2 && '⭐⭐ Fair'}
                         {reviewRating === 3 && '⭐⭐⭐ Good'}
@@ -1520,7 +1583,7 @@ export const Customer = () => {
 
                   {/* Comment */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                       Share your thoughts (Optional)
                     </label>
                     <textarea
@@ -1528,16 +1591,16 @@ export const Customer = () => {
                       onChange={(e) => setReviewComment(e.target.value)}
                       placeholder="Tell us about your experience with this shop..."
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                       maxLength={500}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-1 text-right">
                       {reviewComment.length}/500 characters
                     </p>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex space-x-3 pt-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                     <button
                       onClick={() => {
                         setShowReviewModal(false);
@@ -1545,7 +1608,7 @@ export const Customer = () => {
                         setReviewRating(0);
                         setReviewComment('');
                       }}
-                      className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                      className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors duration-200 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={submittingReview}
                     >
                       Cancel
@@ -1553,13 +1616,13 @@ export const Customer = () => {
                     <button
                       onClick={submitReview}
                       disabled={submittingReview || reviewRating === 0}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center"
                     >
                       {submittingReview ? (
-                        <span className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                          Submitting...
-                        </span>
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                          <span className="text-xs sm:text-base">Submitting...</span>
+                        </>
                       ) : (
                         'Submit Review'
                       )}
@@ -1599,9 +1662,108 @@ export const Customer = () => {
           </div>
         )}
 
+        {/* Cancel Order Confirmation Modal */}
+        {showCancelOrderModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                  <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Cancel Order?
+                </h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  Are you sure you want to cancel this order?
+                </p>
+                <p className="text-sm text-red-600 font-medium mb-6">
+                  This action cannot be undone.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => {
+                      setShowCancelOrderModal(false);
+                      setOrderToCancel(null);
+                    }}
+                    disabled={isCancellingOrder}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    No, Keep Order
+                  </button>
+                  <button
+                    onClick={handleCancelOrder}
+                    disabled={isCancellingOrder}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isCancellingOrder ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Cancelling...
+                      </>
+                    ) : (
+                      'Yes, Cancel Order'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cash on Delivery Confirmation Modal */}
+        {showCODModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+                  <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Payment Method Selected
+                </h3>
+                <p className="text-sm text-gray-700 mb-2 font-medium">
+                  Cash on Delivery
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Please prepare <span className="font-bold text-blue-600">₱{codAmount ? parseFloat(codAmount).toFixed(2) : '0.00'}</span> cash when your order arrives.
+                </p>
+                <p className="text-xs text-gray-500 mb-6">
+                  The delivery person will collect the payment upon delivery.
+                </p>
+                
+                <button
+                  onClick={async () => {
+                    setShowCODModal(false);
+                    setCodAmount(null);
+                    
+                    // Refresh orders and update selectedOrder immediately
+                    const updatedOrders = await fetchCustomerOrders();
+                    
+                    // Update selectedOrder if modal is still open with the latest order data
+                    if (selectedOrder && showOrderModal && updatedOrders.length > 0) {
+                      const updatedOrder = updatedOrders.find(o => o.order_id === selectedOrder.order_id);
+                      if (updatedOrder) {
+                        setSelectedOrder(updatedOrder);
+                      }
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-200"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info Modal (Success/Error for Reviews) - Orders View */}
         {showInfoModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10001] p-4">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <div className="text-center">
                 <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${
@@ -1654,9 +1816,19 @@ export const Customer = () => {
               <div className="p-3 sm:p-6">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <h2 className="text-lg sm:text-2xl font-bold text-gray-900 pr-2">
-                    Order #{selectedOrder.order_id} Details
-                  </h2>
+                  <div className="flex-1 pr-2">
+                    <h2 className="text-lg sm:text-2xl font-bold text-gray-900">
+                      Order #{selectedOrder.order_id} Details
+                    </h2>
+                    {selectedOrder.status === 'cancelled' && (
+                      <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-red-100 border border-red-300">
+                        <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-semibold text-red-800">Order Cancelled</span>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => {
                       setShowOrderModal(false);
@@ -1798,29 +1970,36 @@ export const Customer = () => {
                       
                 <div className="mb-4">
                   <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Payment</h4>
-                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-600 text-sm sm:text-base">Initial Payment Method:</span>
-                      <span className="font-medium text-sm sm:text-base">
-                        {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
-                          ? 'GCash' 
-                          : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
-                      </span>
+                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-600 text-sm sm:text-base">Initial Payment Method:</span>
+                        <span className="font-medium text-sm sm:text-base">
+                          {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
+                            ? 'GCash' 
+                            : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-600 text-sm sm:text-base">Status:</span>
+                        <span className={`font-medium text-sm sm:text-base ${
+                          selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
+                          selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
+                          selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
+                        }`}>
+                          {selectedOrder.payment_status?.charAt(0).toUpperCase() + selectedOrder.payment_status?.slice(1) || 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-600 text-sm sm:text-base">Status:</span>
-                      <span className={`font-medium text-sm sm:text-base ${
-                        selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
-                        selectedOrder.payment_status === 'paid' ? 'text-green-600' : 
-                        selectedOrder.payment_status === 'partial' ? 'text-orange-600' : 'text-red-600'
-                      }`}>
-                        {selectedOrder.payment_status?.charAt(0).toUpperCase() + selectedOrder.payment_status?.slice(1) || 'N/A'}
-                      </span>
-                    </div>
-                    {selectedOrder.payment_status === 'partial' && selectedOrder.payment_amount && (
+                    {/* Only show "Amount Paid" if payment_status is 'partial' or 'paid' (meaning payment was actually received) */}
+                    {(selectedOrder.payment_status === 'partial' || selectedOrder.payment_status === 'paid') && 
+                     selectedOrder.payment_amount && 
+                     parseFloat(selectedOrder.payment_amount) > 0 && (
                       <div className="pt-2 border-t border-gray-200">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-gray-600 text-sm sm:text-base">Amount Paid (50%):</span>
+                          <span className="text-gray-600 text-sm sm:text-base">
+                            {selectedOrder.payment_status === 'partial' ? 'Amount Paid (50%):' : 'Amount Paid:'}
+                          </span>
                           <span className="font-medium text-green-600 text-sm sm:text-base">₱{parseFloat(selectedOrder.payment_amount).toFixed(2)}</span>
                         </div>
                       </div>
@@ -1828,21 +2007,21 @@ export const Customer = () => {
                   </div>
                   {/* Show remaining balance if partial payment */}
                   {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0 && (
-                    <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-orange-800 font-medium text-sm sm:text-base">Remaining Balance:</span>
-                        <span className="text-orange-900 font-bold text-base sm:text-lg">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
+                    <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-2 sm:mb-3">
+                        <span className="text-orange-800 font-medium text-xs sm:text-sm md:text-base">Remaining Balance:</span>
+                        <span className="text-orange-900 font-bold text-lg sm:text-xl md:text-2xl">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
                       </div>
-                      <div className="mt-2">
+                      <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                         <span className="text-orange-700 text-xs sm:text-sm font-medium">Remaining Payment Method:</span>
-                        <span className="text-orange-800 text-xs sm:text-sm font-semibold ml-2">
+                        <span className="text-orange-800 text-xs sm:text-sm md:text-base font-semibold">
                           {selectedOrder.remaining_payment_method 
                             ? selectedOrder.remaining_payment_method.toUpperCase() 
                             : 'Not Selected'}
                         </span>
                       </div>
                       {selectedOrder.status === 'delivered' && !selectedOrder.remaining_payment_method && (
-                        <p className="text-xs sm:text-sm text-orange-700 mt-2 italic">
+                        <p className="text-xs sm:text-sm text-orange-700 mt-2 sm:mt-3 italic">
                           Payment method was not selected. If you haven't paid yet, please contact the vendor.
                         </p>
                       )}
@@ -1855,28 +2034,26 @@ export const Customer = () => {
                  selectedOrder.payment_status === 'partial' && 
                  selectedOrder.remaining_balance > 0 && 
                  !selectedOrder.remaining_payment_method && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4">
-                    <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">Choose Payment Method for Remaining Balance</p>
-                    <p className="text-blue-700 text-xs sm:text-sm mb-3 sm:mb-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 md:p-5 mb-4">
+                    <p className="text-blue-800 font-medium mb-2 sm:mb-3 text-sm sm:text-base md:text-lg">Choose Payment Method for Remaining Balance</p>
+                    <p className="text-blue-700 text-xs sm:text-sm md:text-base mb-3 sm:mb-4 leading-relaxed">
                       {selectedOrder.status === 'out_for_delivery' 
                         ? `Your order is on the way! Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)}:`
                         : `Choose how you'd like to pay the remaining balance of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)} when your order is delivered:`}
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 md:gap-4">
                       <button 
                         onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'gcash')}
-                        className="bg-green-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1"
+                        className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1.5 sm:space-y-1 min-h-[60px] sm:min-h-0"
                       >
-                       
-                        <span className="font-medium">Pay via GCash</span>
+                        <span className="font-semibold">Pay via GCash</span>
                         <span className="text-xs opacity-90">Pay Now</span>
                       </button>
                       <button 
                         onClick={() => handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'cod')}
-                        className="bg-blue-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1"
+                        className="bg-blue-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base flex flex-col items-center justify-center space-y-1.5 sm:space-y-1 min-h-[60px] sm:min-h-0"
                       >
-                     
-                        <span className="font-medium">Cash on Delivery</span>
+                        <span className="font-semibold">Cash on Delivery</span>
                         <span className="text-xs opacity-90">Pay when arrives</span>
                       </button>
                     </div>
@@ -1888,17 +2065,22 @@ export const Customer = () => {
                  selectedOrder.payment_status === 'partial' && 
                  selectedOrder.remaining_balance > 0 && 
                  selectedOrder.remaining_payment_method === 'gcash' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4">
-                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Remaining Balance Due</p>
-                    <p className="text-green-700 text-xs sm:text-sm mb-3">
-                      Payment method: GCash<br/>
-                      Amount: <span className="font-bold">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
-                    </p>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 md:p-5 mb-4">
+                    <p className="text-green-800 font-medium mb-2 sm:mb-3 text-sm sm:text-base md:text-lg">Remaining Balance Due</p>
+                    <div className="mb-3 sm:mb-4 space-y-1.5 sm:space-y-2">
+                      <p className="text-green-700 text-xs sm:text-sm md:text-base">
+                        <span className="font-medium">Payment method:</span> GCash
+                      </p>
+                      <p className="text-green-700 text-xs sm:text-sm md:text-base">
+                        <span className="font-medium">Amount:</span> <span className="font-bold text-base sm:text-lg md:text-xl">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span>
+                      </p>
+                    </div>
                     <button 
                       onClick={() => handlePayRemainingBalance(selectedOrder)}
-                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                      className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors text-sm sm:text-base md:text-lg font-semibold w-full sm:w-auto flex items-center justify-center space-x-2 min-h-[48px] sm:min-h-0"
                     >
-                      💳 Pay Remaining Balance via GCash
+                      <span className="text-lg sm:text-xl">💳</span>
+                      <span>Pay Remaining Balance via GCash</span>
                     </button>
                   </div>
                 )}
@@ -1907,95 +2089,160 @@ export const Customer = () => {
                  selectedOrder.payment_status === 'partial' && 
                  selectedOrder.remaining_balance > 0 && 
                  selectedOrder.remaining_payment_method === 'cod' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4">
-                    <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">Cash on Delivery Selected</p>
-                    <p className="text-blue-700 text-xs sm:text-sm">
-                      You've selected Cash on Delivery. Please prepare ₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)} cash when your order arrives. The delivery person will collect the payment.
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 md:p-5 mb-4">
+                    <p className="text-blue-800 font-medium mb-2 sm:mb-3 text-sm sm:text-base md:text-lg flex items-center space-x-2">
+                      <span>💰</span>
+                      <span>Cash on Delivery Selected</span>
+                    </p>
+                    <p className="text-blue-700 text-xs sm:text-sm md:text-base leading-relaxed">
+                      You've selected Cash on Delivery. Please prepare <span className="font-bold text-base sm:text-lg">₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}</span> cash when your order arrives. The delivery person will collect the payment.
                     </p>
                   </div>
                 )}
 
                 {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'awaiting_payment') && selectedOrder.payment_status === 'unpaid' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
-                    <p className="text-green-800 font-medium mb-2 text-sm sm:text-base">Payment Required</p>
-                    <p className="text-green-700 text-xs sm:text-sm mb-3">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 md:p-5">
+                    <p className="text-green-800 font-medium mb-2 sm:mb-3 text-sm sm:text-base md:text-lg">Payment Required</p>
+                    <p className="text-green-700 text-xs sm:text-sm md:text-base mb-3 sm:mb-4 leading-relaxed">
                       Please proceed with payment via GCash to confirm your order. The vendor will start preparing your ice cream once payment is received.
                     </p>
                     <button 
                       onClick={() => handlePayment(selectedOrder)}
-                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base w-full sm:w-auto"
+                      className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors text-sm sm:text-base md:text-lg font-semibold w-full sm:w-auto flex items-center justify-center space-x-2 min-h-[48px] sm:min-h-0"
                     >
-                      💳 Pay Now via GCash
+                      <span className="text-lg sm:text-xl">💳</span>
+                      <span>Pay Now via GCash</span>
                     </button>
                   </div>
                 )}
 
-                {selectedOrder.status === 'pending' && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-3 sm:space-y-0">
+                {/* Show generic "Order Confirmed" for pending orders only if payment_amount is NOT set (full payment orders) */}
+                {/* If payment_amount is set, the more specific section below will handle it */}
+                {selectedOrder.status === 'pending' && 
+                 (!selectedOrder.payment_amount || parseFloat(selectedOrder.payment_amount || 0) === 0 || parseFloat(selectedOrder.payment_amount) >= parseFloat(selectedOrder.total_amount)) && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col mb-3 sm:mb-4 space-y-3">
                       <div className="flex-1">
-                        <p className="text-green-800 font-medium mb-1 text-sm sm:text-base">✅ Order Confirmed</p>
-                        <p className="text-green-700 text-xs sm:text-sm">
-                          Your order has been confirmed! Please pay now to start preparation.
+                        <p className="text-green-800 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg">✅ Order Confirmed</p>
+                        <p className="text-green-700 text-xs sm:text-sm md:text-base leading-relaxed">
+                          Your order has been confirmed! {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0
+                            ? 'Please pay the remaining balance now to start preparation.'
+                            : 'Please pay now to start preparation.'}
                         </p>
                       </div>
-                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                        {selectedOrder.payment_status === 'unpaid' && (
+                      <div className="flex flex-col md:flex-row gap-2.5 sm:gap-3 w-full">
+                        {(selectedOrder.payment_status === 'unpaid' || 
+                          (selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0)) && (
                           <button 
-                            onClick={() => handlePayment(selectedOrder)}
-                            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                            onClick={() => {
+                              if (selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0) {
+                                // If partial payment and remaining balance exists, check if payment method is selected
+                                if (selectedOrder.remaining_payment_method === 'gcash') {
+                                  handlePayRemainingBalance(selectedOrder);
+                                } else {
+                                  handleSelectRemainingPaymentMethod(selectedOrder.order_id, 'gcash');
+                                }
+                              } else {
+                                handlePayment(selectedOrder);
+                              }
+                            }}
+                            className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
                           >
-                            <span>💳</span>
-                            <span>Pay via GCash</span>
+                            <span className="text-lg sm:text-xl">💳</span>
+                            <span>{selectedOrder.payment_status === 'partial' ? 'Pay Now via GCash' : 'Pay via GCash'}</span>
                           </button>
                         )}
                         <button 
                           onClick={() => {
                             console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
-                            handleCancelOrder(selectedOrder.order_id);
+                            handleCancelOrderClick(selectedOrder.order_id);
                           }}
-                          className="bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                          className="bg-red-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
                         >
-                          <span>❌</span>
+                          <span className="text-lg sm:text-xl">❌</span>
                           <span>Cancel Order</span>
                         </button>
                       </div>
                     </div>
-                    <p className="text-green-600 text-xs sm:text-sm">
-                      Order was automatically confirmed because drums were available. Pay now to proceed.
+                    <p className="text-green-600 text-xs sm:text-sm md:text-base leading-relaxed">
+                      {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_balance > 0
+                        ? `Remaining balance: ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)}. Pay now to proceed.`
+                        : 'Order was automatically confirmed because drums were available. Pay now to proceed.'}
                     </p>
                   </div>
                 )}
 
-                {selectedOrder.status === 'delivered' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 space-y-3 sm:space-y-0">
+                {/* Pay Now button for orders with payment_amount set (50% option) but payment_status is 'unpaid' (clicked Pay Later) */}
+                {/* This means 50% payment option was selected but no payment was made yet */}
+                {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'pending') && 
+                 selectedOrder.payment_status === 'unpaid' && 
+                 selectedOrder.payment_amount && 
+                 parseFloat(selectedOrder.payment_amount) > 0 &&
+                 parseFloat(selectedOrder.payment_amount) < parseFloat(selectedOrder.total_amount) && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col mb-3 sm:mb-4 space-y-3">
                       <div className="flex-1">
-                        <p className="text-blue-800 font-medium mb-1 text-sm sm:text-base">🎉 Order Delivered Successfully!</p>
-                        <p className="text-blue-700 text-xs sm:text-sm">Your ice cream order has been delivered. Enjoy!</p>
+                         <p className="text-yellow-800 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg">⏳ Order Not Yet Confirmed</p>
+                         <p className="text-yellow-700 text-xs sm:text-sm md:text-base leading-relaxed">
+                           Your order has not yet been confirmed! Please pay the initial 50% payment now to be confirmed by vendor.
+                         </p>
+                      </div>
+                      <div className="flex flex-col md:flex-row gap-2.5 sm:gap-3 w-full">
+                        <button 
+                          onClick={() => handlePayment(selectedOrder)}
+                          className="bg-green-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-green-700 active:bg-green-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
+                        >
+                          <span className="text-lg sm:text-xl">💳</span>
+                          <span>Pay Now via GCash</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            console.log('🚫 Cancel button clicked for order:', selectedOrder.order_id);
+                            handleCancelOrderClick(selectedOrder.order_id);
+                          }}
+                          className="bg-red-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full md:flex-1 min-h-[48px] sm:min-h-0"
+                        >
+                          <span className="text-lg sm:text-xl">❌</span>
+                          <span>Cancel Order</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-green-600 text-xs sm:text-sm md:text-base leading-relaxed">
+                      Initial payment (50%): <span className="font-bold">₱{parseFloat(selectedOrder.total_amount * 0.5).toFixed(2)}</span>. Pay now to proceed. Remaining balance will be collected on delivery.
+                    </p>
+                  </div>
+                )}
+
+
+                {selectedOrder.status === 'delivered' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col mb-3 sm:mb-4 space-y-3">
+                      <div className="flex-1">
+                        <p className="text-blue-800 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg">🎉 Order Delivered Successfully!</p>
+                        <p className="text-blue-700 text-xs sm:text-sm md:text-base leading-relaxed">Your ice cream order has been delivered. Enjoy!</p>
                       </div>
                       {selectedOrder.drum_status === 'return_requested' ? (
-                        <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto justify-center">
+                        <span className="inline-flex px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-medium rounded-full bg-yellow-100 text-yellow-800 w-full sm:w-auto justify-center">
                           📦 Return Requested
                         </span>
                       ) : selectedOrder.drum_status === 'returned' ? (
-                        <span className="inline-flex px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded-full bg-green-100 text-green-800 w-full sm:w-auto justify-center">
+                        <span className="inline-flex px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-medium rounded-full bg-green-100 text-green-800 w-full sm:w-auto justify-center">
                           ✅ Container Returned
                         </span>
                       ) : (
                         <button 
                           onClick={() => handleDrumReturn(selectedOrder)}
                           disabled={drumReturnLoading === selectedOrder.order_id}
-                          className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                          className="bg-orange-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-orange-700 active:bg-orange-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full sm:w-auto min-h-[48px] sm:min-h-0"
                         >
                           {drumReturnLoading === selectedOrder.order_id ? (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
                               <span>Requesting...</span>
                             </>
                           ) : (
                             <>
-                              <span>📦</span>
+                              <span className="text-lg sm:text-xl">📦</span>
                               <span>Return Container</span>
                             </>
                           )}
@@ -2003,7 +2250,7 @@ export const Customer = () => {
                       )}
                     </div>
                     {selectedOrder.drum_status === 'return_requested' && (
-                      <p className="text-blue-600 text-xs sm:text-sm">
+                      <p className="text-blue-600 text-xs sm:text-sm md:text-base leading-relaxed">
                         The vendor has been notified to pick up the container. They will contact you to schedule the pickup.
                       </p>
                     )}
@@ -2012,7 +2259,7 @@ export const Customer = () => {
 
                 {/* Review Section - Only for delivered orders */}
                 {selectedOrder.status === 'delivered' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mt-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 md:p-5 mt-4">
                     {orderReviews[selectedOrder.order_id] ? (
                       <div>
                         <p className="text-blue-800 font-medium mb-2 text-sm sm:text-base">⭐ Your Review</p>
@@ -2040,12 +2287,12 @@ export const Customer = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                      <div className="flex flex-col mb-3 sm:mb-4 space-y-3">
                         <div className="flex-1">
-                          <p className="text-blue-800 font-medium mb-1 text-sm sm:text-base">
+                          <p className="text-blue-800 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base md:text-lg">
                             ⭐ How was your experience?
                           </p>
-                          <p className="text-blue-700 text-xs sm:text-sm">
+                          <p className="text-blue-700 text-xs sm:text-sm md:text-base leading-relaxed">
                             Share your feedback about this shop
                           </p>
                         </div>
@@ -2056,9 +2303,9 @@ export const Customer = () => {
                             setReviewComment('');
                             setShowReviewModal(true);
                           }}
-                          className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                          className="bg-blue-600 text-white px-4 sm:px-5 py-3 sm:py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base md:text-lg font-semibold w-full sm:w-auto min-h-[48px] sm:min-h-0"
                         >
-                          <span>⭐</span>
+                          <span className="text-lg sm:text-xl">⭐</span>
                           <span>Leave Review</span>
                         </button>
                       </div>
@@ -2067,25 +2314,45 @@ export const Customer = () => {
                 )}
 
                 {selectedOrder.status === 'cancelled' && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-5 mb-4">
+                    <div className="flex items-start mb-3">
+                      <div className="flex-shrink-0 mr-3">
+                        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
                       <div className="flex-1">
                         {selectedOrder.decline_reason ? (
                           <>
-                            <p className="text-red-800 font-medium mb-1 text-sm sm:text-base">❌ Order Declined by Vendor</p>
-                            <p className="text-red-700 text-xs sm:text-sm">This order has been declined by the vendor.</p>
-                            <div className="mt-2 p-2 sm:p-3 bg-red-100 rounded-lg">
-                              <p className="text-red-800 text-xs sm:text-sm font-medium mb-1">Reason for decline:</p>
-                              <p className="text-red-700 text-xs sm:text-sm break-words">{selectedOrder.decline_reason}</p>
+                            <p className="text-red-900 font-bold text-base sm:text-lg mb-2">❌ Order Declined by Vendor</p>
+                            <p className="text-red-800 text-sm sm:text-base mb-3">This order has been declined by the vendor and cannot be processed.</p>
+                            <div className="mt-3 p-3 sm:p-4 bg-red-100 border border-red-200 rounded-lg">
+                              <p className="text-red-900 text-sm sm:text-base font-semibold mb-2">Reason for decline:</p>
+                              <p className="text-red-800 text-sm sm:text-base break-words">{selectedOrder.decline_reason}</p>
                             </div>
                           </>
                         ) : (
                           <>
-                            <p className="text-red-800 font-medium mb-1 text-sm sm:text-base">❌ Order Cancelled</p>
-                            <p className="text-red-700 text-xs sm:text-sm">This order has been cancelled.</p>
+                            <p className="text-red-900 font-bold text-base sm:text-lg mb-2">❌ Order Cancelled</p>
+                            <p className="text-red-800 text-sm sm:text-base mb-2">This order has been cancelled successfully.</p>
+                            <p className="text-red-700 text-xs sm:text-sm italic">
+                              The order was cancelled on {selectedOrder.updated_at ? new Date(selectedOrder.updated_at).toLocaleString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : 'recently'}.
+                            </p>
                           </>
                         )}
                       </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-red-200">
+                      <p className="text-red-700 text-xs sm:text-sm">
+                        💡 <strong>Note:</strong> If you made a payment, please contact support for refund processing.
+                      </p>
                     </div>
                   </div>
                 )}

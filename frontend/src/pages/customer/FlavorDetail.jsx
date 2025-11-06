@@ -561,9 +561,24 @@ export const FlavorDetail = () => {
       return 0;
     }
     
-    // If we have date-specific availability, use that
-    if (dateAvailability && dateAvailability[selectedSize] !== undefined) {
-      return dateAvailability[selectedSize];
+    // Normalize selectedSize to lowercase for consistent lookup
+    const normalizedSize = selectedSize.toLowerCase();
+    
+    // If we have date-specific availability, use that (with case-insensitive lookup)
+    if (dateAvailability) {
+      // Try direct lookup first, then try normalized lowercase
+      let dateAvail = dateAvailability[selectedSize] ?? dateAvailability[normalizedSize];
+      
+      // If still not found, try other case variations
+      if (dateAvail === undefined || dateAvail === null) {
+        const capitalized = selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1).toLowerCase();
+        dateAvail = dateAvailability[capitalized] ?? dateAvailability[selectedSize.toLowerCase()];
+      }
+      
+      // Return the value if found (even if it's 0, which is a valid value)
+      if (dateAvail !== undefined && dateAvail !== null) {
+        return dateAvail;
+      }
     }
     
     // Fallback to flavor's general availability
@@ -572,16 +587,16 @@ export const FlavorDetail = () => {
     }
     
     // Get availability for the selected size - handle case sensitivity
-    let availability = flavor.drum_availability[selectedSize];
+    let availability = flavor.drum_availability[selectedSize] ?? flavor.drum_availability[normalizedSize];
     
     // Fallback: try with different cases if not found
     if (availability === undefined || availability === null) {
-      const lowerCase = selectedSize.toLowerCase();
-      const upperCase = selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1);
-      availability = flavor.drum_availability[lowerCase] || flavor.drum_availability[upperCase];
+      const capitalized = selectedSize.charAt(0).toUpperCase() + selectedSize.slice(1).toLowerCase();
+      availability = flavor.drum_availability[capitalized] || flavor.drum_availability[normalizedSize];
     }
     
-    return availability || 0;
+    // Return availability (0 is a valid value, so we check for null/undefined)
+    return (availability !== undefined && availability !== null) ? availability : 0;
   };
 
   if (loading) {

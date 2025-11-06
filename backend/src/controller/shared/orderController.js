@@ -320,11 +320,18 @@ const createOrder = async (req, res) => {
             `, [vendor_id]);
             
             if (vendorUser.length > 0) {
+                // Check if this is a walk-in order (walk-in orders have "Customer: " in delivery_address)
+                const isWalkInOrder = delivery_address && delivery_address.includes('Customer: ');
+                const orderTypeText = isWalkInOrder ? 'walk-in' : 'online';
+                const message = isWalkInOrder 
+                    ? `You have received a new walk-in order #${orderId}. ${payment_status === 'paid' || payment_status === 'partial' ? 'Payment has been received. You can start preparing the order.' : 'Please confirm payment to proceed.'}`
+                    : `You have received a new order #${orderId} from a customer. ${payment_status === 'paid' || payment_status === 'partial' ? 'Payment has been received. You can start preparing the order.' : 'The order will be confirmed once payment is received.'}`;
+                
                 await createNotification({
                     user_id: vendorUser[0].user_id,
                     user_type: 'vendor',
                     title: 'New Order Received',
-                    message: `You have received a new order #${orderId} from a customer. The order will be confirmed once payment is received.`,
+                    message: message,
                     notification_type: 'order_placed',
                     related_order_id: orderId,
                     related_vendor_id: vendor_id,
@@ -478,6 +485,66 @@ const createOrder = async (req, res) => {
                             WHERE availability_id = ? AND available_count >= ?
                         `, [orderItem.quantity, orderItem.quantity, currentState.availability_id, orderItem.quantity]);
                     }
+                }
+            }
+            
+            // If order is created with payment already confirmed (paid or partial),
+            // convert reserved drums to booked immediately
+            // This is important for walk-in orders that are created with payment already received
+            if (payment_status === 'paid' || payment_status === 'partial') {
+                console.log(`🔄 Converting reserved drums to booked for order #${orderId} (payment already confirmed)`);
+                
+                try {
+                    const [orderItemsForConversion] = await pool.query(`
+                        SELECT oi.quantity, cd.size, o.delivery_datetime, o.vendor_id
+                        FROM order_items oi
+                        JOIN orders o ON oi.order_id = o.order_id
+                        JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+                        WHERE oi.order_id = ?
+                    `, [orderId]);
+                    
+                    for (const item of orderItemsForConversion) {
+                        const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                        
+                        // Convert reserved to booked
+                        const [result] = await pool.query(`
+                            UPDATE daily_drum_availability
+                            SET reserved_count = reserved_count - ?,
+                                booked_count = booked_count + ?
+                            WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                              AND reserved_count >= ?
+                        `, [item.quantity, item.quantity, item.vendor_id, deliveryDate, item.size, item.quantity]);
+                        
+                        if (result.affectedRows > 0) {
+                            console.log(`✅ Converted ${item.quantity} ${item.size} reserved drum(s) to booked for order #${orderId}`);
+                        } else {
+                            console.warn(`⚠️ Could not convert reserved to booked for order #${orderId} - may already be booked or not reserved`);
+                            // Try to check if drums are already booked or need to be booked from available
+                            const [currentState] = await pool.query(`
+                                SELECT reserved_count, booked_count, available_count, total_capacity
+                                FROM daily_drum_availability
+                                WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                            `, [item.vendor_id, deliveryDate, item.size]);
+                            
+                            if (currentState.length > 0) {
+                                const state = currentState[0];
+                                // If reserved_count is less than needed, drums might be in available_count
+                                // Move from available to booked directly
+                                if (state.reserved_count < item.quantity && state.available_count >= item.quantity) {
+                                    await pool.query(`
+                                        UPDATE daily_drum_availability
+                                        SET available_count = available_count - ?,
+                                            booked_count = booked_count + ?
+                                        WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                                    `, [item.quantity, item.quantity, item.vendor_id, deliveryDate, item.size]);
+                                    console.log(`✅ Moved ${item.quantity} ${item.size} available drum(s) directly to booked for order #${orderId}`);
+                                }
+                            }
+                        }
+                    }
+                } catch (conversionError) {
+                    console.error(`❌ Error converting reserved to booked for order #${orderId}:`, conversionError);
+                    // Don't fail the order creation - log error and continue
                 }
             }
         }
@@ -705,6 +772,90 @@ const updateOrderStatus = async (req, res) => {
             });
         }
 
+        // If order is being cancelled, release drums immediately
+        if (status === 'cancelled') {
+            console.log(`🔄 Releasing drums for cancelled order #${order_id}...`);
+            
+            try {
+                // Get order details including payment status and items
+                const [orderInfo] = await pool.query(`
+                    SELECT o.payment_status, oi.quantity, cd.size, o.delivery_datetime, o.vendor_id
+                    FROM orders o
+                    JOIN order_items oi ON o.order_id = oi.order_id
+                    JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+                    WHERE o.order_id = ?
+                `, [order_id]);
+
+                if (orderInfo.length > 0) {
+                    const paymentStatus = orderInfo[0].payment_status;
+                    
+                    // Group items by delivery date and size for efficient updates
+                    const itemsByDateSize = {};
+                    for (const item of orderInfo) {
+                        const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                        const key = `${item.vendor_id}_${deliveryDate}_${item.size}`;
+                        
+                        if (!itemsByDateSize[key]) {
+                            itemsByDateSize[key] = {
+                                vendor_id: item.vendor_id,
+                                delivery_date: deliveryDate,
+                                drum_size: item.size,
+                                quantity: 0
+                            };
+                        }
+                        itemsByDateSize[key].quantity += item.quantity;
+                    }
+
+                    // Release drums based on payment status
+                    // If payment is received (paid or partial), drums are booked
+                    // If unpaid, drums are still reserved
+                    const isPaidOrPartial = paymentStatus === 'paid' || paymentStatus === 'partial';
+                    
+                    for (const key in itemsByDateSize) {
+                        const item = itemsByDateSize[key];
+                        
+                        if (isPaidOrPartial) {
+                            // Drums are booked, release them from booked_count
+                            const [result] = await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET booked_count = booked_count - ?,
+                                    available_count = available_count + ?
+                                WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                            `, [item.quantity, item.quantity, item.vendor_id, item.delivery_date, item.drum_size]);
+                            
+                            if (result.affectedRows > 0) {
+                                console.log(`↩️ Released ${item.quantity} ${item.drum_size} booked drum(s) from order #${order_id} back to available`);
+                            } else {
+                                console.warn(`⚠️ Failed to release booked drums for order #${order_id} - record may not exist`);
+                            }
+                        } else {
+                            // Drums are reserved, release them from reserved_count
+                            const [result] = await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET reserved_count = reserved_count - ?,
+                                    available_count = available_count + ?
+                                WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                            `, [item.quantity, item.quantity, item.vendor_id, item.delivery_date, item.drum_size]);
+                            
+                            if (result.affectedRows > 0) {
+                                console.log(`↩️ Released ${item.quantity} ${item.drum_size} reserved drum(s) from order #${order_id} back to available`);
+                            } else {
+                                console.warn(`⚠️ Failed to release reserved drums for order #${order_id} - record may not exist`);
+                            }
+                        }
+                    }
+                    
+                    console.log(`✅ Drums released for cancelled order #${order_id}`);
+                } else {
+                    console.warn(`⚠️ No items found for order #${order_id} - cannot release drums`);
+                }
+            } catch (drumReleaseError) {
+                console.error(`❌ Error releasing drums for cancelled order #${order_id}:`, drumReleaseError);
+                // Continue with order cancellation even if drum release fails
+                // The order should still be cancelled
+            }
+        }
+
         // If status is cancelled and decline_reason is provided, include it in the update
         let updateQuery, updateParams;
         if (status === 'cancelled' && decline_reason) {
@@ -835,11 +986,17 @@ const updatePaymentStatus = async (req, res) => {
             });
         }
 
+        // Update payment status and set order status to 'confirmed' if payment is confirmed (partial or paid)
+        // and current status is 'pending'
         const [result] = await pool.query(`
             UPDATE orders 
-            SET payment_status = ? 
+            SET payment_status = ?,
+                status = CASE 
+                    WHEN ? IN ('partial', 'paid') AND status = 'pending' THEN 'confirmed'
+                    ELSE status
+                END
             WHERE order_id = ?
-        `, [payment_status, order_id]);
+        `, [payment_status, payment_status, order_id]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
@@ -850,7 +1007,7 @@ const updatePaymentStatus = async (req, res) => {
 
         // Get order details for notification
         const [orderDetails] = await pool.query(`
-            SELECT customer_id, vendor_id, payment_status 
+            SELECT customer_id, vendor_id, payment_status, payment_amount, remaining_balance, total_amount, delivery_address 
             FROM orders 
             WHERE order_id = ?
         `, [order_id]);
@@ -868,17 +1025,19 @@ const updatePaymentStatus = async (req, res) => {
                         title = 'Payment Confirmed';
                         message = `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`;
                         
-                        // Create notification for customer
-                        await createNotification({
-                            user_id: customer_id,
-                            user_type: 'customer',
-                            title,
-                            message,
-                            notification_type: notificationType,
-                            related_order_id: parseInt(order_id),
-                            related_vendor_id: vendor_id,
-                            related_customer_id: customer_id
-                        });
+                        // Create notification for customer (only if customer_id exists - walk-in orders may not have customer_id)
+                        if (customer_id) {
+                            await createNotification({
+                                user_id: customer_id,
+                                user_type: 'customer',
+                                title,
+                                message,
+                                notification_type: notificationType,
+                                related_order_id: parseInt(order_id),
+                                related_vendor_id: vendor_id,
+                                related_customer_id: customer_id
+                            });
+                        }
 
                         // Create notification for vendor - get vendor's user_id first
                         const [vendorUser] = await pool.query(`
@@ -886,11 +1045,20 @@ const updatePaymentStatus = async (req, res) => {
                         `, [vendor_id]);
                         
                         if (vendorUser.length > 0) {
+                            const order = orderDetails[0];
+                            const isWalkInOrder = order.delivery_address && order.delivery_address.includes('Customer: ');
+                            const orderTypeText = isWalkInOrder ? 'walk-in order' : 'order';
+                            const formattedAmount = new Intl.NumberFormat('en-PH', { 
+                                style: 'currency', 
+                                currency: 'PHP',
+                                minimumFractionDigits: 2 
+                            }).format(order.total_amount || 0);
+                            
                             await createNotification({
                                 user_id: vendorUser[0].user_id,
                                 user_type: 'vendor',
                                 title: 'Payment Received',
-                                message: `Payment confirmed for order #${order_id}. You can now start preparing the order.`,
+                                message: `Full payment of ${formattedAmount} confirmed for ${orderTypeText} #${order_id}. You can now start preparing the order.`,
                                 notification_type: 'payment_confirmed',
                                 related_order_id: parseInt(order_id),
                                 related_vendor_id: vendor_id,
@@ -900,19 +1068,61 @@ const updatePaymentStatus = async (req, res) => {
                         break;
                     case 'partial':
                         notificationType = 'payment_confirmed';
-                        title = 'Partial Payment Received';
-                        message = `Partial payment received for order #${order_id}. Remaining balance due on delivery.`;
+                        const order = orderDetails[0];
+                        const paymentAmount = parseFloat(order.payment_amount || 0);
+                        const remainingBalance = parseFloat(order.remaining_balance || 0);
+                        const totalAmount = parseFloat(order.total_amount || 0);
+                        const paymentPercentage = totalAmount > 0 ? Math.round((paymentAmount / totalAmount) * 100) : 0;
                         
-                        await createNotification({
-                            user_id: customer_id,
-                            user_type: 'customer',
-                            title,
-                            message,
-                            notification_type: notificationType,
-                            related_order_id: parseInt(order_id),
-                            related_vendor_id: vendor_id,
-                            related_customer_id: customer_id
-                        });
+                        const formattedPaymentAmount = new Intl.NumberFormat('en-PH', { 
+                            style: 'currency', 
+                            currency: 'PHP',
+                            minimumFractionDigits: 2 
+                        }).format(paymentAmount);
+                        
+                        const formattedRemainingBalance = new Intl.NumberFormat('en-PH', { 
+                            style: 'currency', 
+                            currency: 'PHP',
+                            minimumFractionDigits: 2 
+                        }).format(remainingBalance);
+                        
+                        title = 'Partial Payment Received';
+                        message = `Customer has paid ${paymentPercentage}% (${formattedPaymentAmount}) for order #${order_id}. Remaining balance of ${formattedRemainingBalance} due on delivery.`;
+                        
+                        // Create notification for customer (only if customer_id exists - walk-in orders may not have customer_id)
+                        if (customer_id) {
+                            await createNotification({
+                                user_id: customer_id,
+                                user_type: 'customer',
+                                title,
+                                message: `Your partial payment of ${formattedPaymentAmount} for order #${order_id} has been confirmed. Remaining balance of ${formattedRemainingBalance} is due on delivery.`,
+                                notification_type: notificationType,
+                                related_order_id: parseInt(order_id),
+                                related_vendor_id: vendor_id,
+                                related_customer_id: customer_id
+                            });
+                        }
+                        
+                        // Create notification for vendor
+                        const [vendorUserPartial] = await pool.query(`
+                            SELECT user_id FROM vendors WHERE vendor_id = ?
+                        `, [vendor_id]);
+                        
+                        if (vendorUserPartial.length > 0) {
+                            const isWalkInOrder = order.delivery_address && order.delivery_address.includes('Customer: ');
+                            const orderTypeText = isWalkInOrder ? 'walk-in order' : 'order';
+                            
+                            await createNotification({
+                                user_id: vendorUserPartial[0].user_id,
+                                user_type: 'vendor',
+                                title: 'Partial Payment Received',
+                                message: `Customer has paid ${paymentPercentage}% (${formattedPaymentAmount}) for ${orderTypeText} #${order_id}. Remaining balance of ${formattedRemainingBalance} due on delivery. You can now start preparing the order.`,
+                                notification_type: 'payment_confirmed',
+                                related_order_id: parseInt(order_id),
+                                related_vendor_id: vendor_id,
+                                related_customer_id: customer_id
+                            });
+                        }
                         break;
                     default:
                         // No notification for other payment statuses
@@ -951,7 +1161,7 @@ const updateQRPaymentStatus = async (req, res) => {
         
         // Get order details
         const [orderDetails] = await pool.query(`
-            SELECT customer_id, vendor_id, total_amount, status, payment_status, payment_amount, remaining_balance 
+            SELECT customer_id, vendor_id, total_amount, status, payment_status, payment_amount, remaining_balance, delivery_address 
             FROM orders 
             WHERE order_id = ?
         `, [order_id]);
@@ -1099,30 +1309,62 @@ const updateQRPaymentStatus = async (req, res) => {
         try {
             // Determine notification messages based on payment type
             const isPartialPayment = (newPaymentStatus === 'partial' && order.payment_amount);
-            const customerMessage = isPartialPayment 
-                ? `Your 50% payment (₱${parseFloat(order.payment_amount).toFixed(2)}) for order #${order_id} has been confirmed. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery. The vendor will now start preparing your order.`
-                : `Your payment for order #${order_id} has been confirmed. The vendor will now start preparing your order.`;
-            const vendorMessage = isPartialPayment
-                ? `Customer has paid 50% (₱${parseFloat(order.payment_amount).toFixed(2)}) for order #${order_id}. Remaining balance of ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery. You can now start preparing the order.`
-                : `Customer has paid for order #${order_id}. You can now start preparing the order.`;
+            const paymentAmount = parseFloat(order.payment_amount || 0);
+            const remainingBalance = parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount) || 0);
+            const totalAmount = parseFloat(order.total_amount || 0);
+            const paymentPercentage = totalAmount > 0 ? Math.round((paymentAmount / totalAmount) * 100) : 0;
             
-            // Notification for customer
-            await pool.query(`
-                INSERT INTO notifications (
-                    user_id, user_type, title, message, notification_type, is_read, created_at,
-                    related_order_id, related_vendor_id, related_customer_id
-                ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
-            `, [
-                order.customer_id,
-                'customer',
-                isPartialPayment ? 'Partial Payment Confirmed' : 'Payment Confirmed',
-                customerMessage,
-                'payment_confirmed',
-                false,
-                order_id,
-                order.vendor_id,
-                order.customer_id
-            ]);
+            const formattedPaymentAmount = new Intl.NumberFormat('en-PH', { 
+                style: 'currency', 
+                currency: 'PHP',
+                minimumFractionDigits: 2 
+            }).format(paymentAmount);
+            
+            const formattedRemainingBalance = new Intl.NumberFormat('en-PH', { 
+                style: 'currency', 
+                currency: 'PHP',
+                minimumFractionDigits: 2 
+            }).format(remainingBalance);
+            
+            const formattedTotalAmount = new Intl.NumberFormat('en-PH', { 
+                style: 'currency', 
+                currency: 'PHP',
+                minimumFractionDigits: 2 
+            }).format(totalAmount);
+            
+            // Customer notification message
+            const customerMessage = isPartialPayment 
+                ? `Your partial payment of ${formattedPaymentAmount} for order #${order_id} has been confirmed. Remaining balance of ${formattedRemainingBalance} is due on delivery. The vendor will now start preparing your order.`
+                : `Your payment of ${formattedTotalAmount} for order #${order_id} has been confirmed. The vendor will now start preparing your order.`;
+            
+            // Check if this is a walk-in order
+            const isWalkInOrder = order.delivery_address && order.delivery_address.includes('Customer: ');
+            const orderTypeText = isWalkInOrder ? 'walk-in order' : 'order';
+            
+            // Vendor notification message
+            const vendorMessage = isPartialPayment
+                ? `Customer has paid ${paymentPercentage}% (${formattedPaymentAmount}) for ${orderTypeText} #${order_id}. Remaining balance of ${formattedRemainingBalance} due on delivery. You can now start preparing the order.`
+                : `Full payment of ${formattedTotalAmount} confirmed for ${orderTypeText} #${order_id}. You can now start preparing the order.`;
+            
+            // Notification for customer (only if customer_id exists - walk-in orders may not have customer_id)
+            if (order.customer_id) {
+                await pool.query(`
+                    INSERT INTO notifications (
+                        user_id, user_type, title, message, notification_type, is_read, created_at,
+                        related_order_id, related_vendor_id, related_customer_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
+                `, [
+                    order.customer_id,
+                    'customer',
+                    isPartialPayment ? 'Partial Payment Confirmed' : 'Payment Confirmed',
+                    customerMessage,
+                    'payment_confirmed',
+                    false,
+                    order_id,
+                    order.vendor_id,
+                    order.customer_id
+                ]);
+            }
             
             // Notification for vendor - get vendor's user_id first
             const [vendorUser] = await pool.query(`
@@ -1249,9 +1491,16 @@ const updateDrumReturnStatus = async (req, res) => {
         }
 
         // Convert ISO datetime to MySQL format
-        const mysqlDateTime = return_requested_at ? 
-            new Date(return_requested_at).toISOString().slice(0, 19).replace('T', ' ') : 
-            null;
+        // The frontend sends UTC time, but MySQL is configured with timezone '+08:00'
+        // So we need to convert UTC to Philippines time before storing
+        let mysqlDateTime = null;
+        if (return_requested_at) {
+            const date = new Date(return_requested_at);
+            // Convert UTC to Philippines time (UTC+8)
+            const philippineTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+            // Format as MySQL DATETIME (YYYY-MM-DD HH:mm:ss)
+            mysqlDateTime = philippineTime.toISOString().slice(0, 19).replace('T', ' ');
+        }
 
         // Update drum status in order_items table for all items in this order
         const [result] = await pool.query(`
@@ -1338,6 +1587,96 @@ const updateDrumReturnStatus = async (req, res) => {
         }
 
         console.log(`Updated drum return status for order ${order_id}: ${drum_status}`);
+
+        // If drum is returned, update drum availability to make drums available again
+        if (drum_status === 'returned') {
+            console.log(`🔄 Processing drum return for order ${order_id} - returning drums to available inventory`);
+            
+            // Get order items with drum details to update availability
+            const [orderItems] = await pool.query(`
+                SELECT oi.quantity, cd.size, o.delivery_datetime, o.vendor_id
+                FROM order_items oi
+                JOIN orders o ON oi.order_id = o.order_id
+                JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+                WHERE oi.order_id = ?
+            `, [order_id]);
+
+            if (orderItems.length > 0) {
+                const today = new Date().toISOString().split('T')[0]; // Today's date for immediate availability
+                
+                for (const item of orderItems) {
+                    const originalDeliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                    
+                    // Return drums from booked_count back to available_count
+                    // First, try to return to original delivery date if it's in the future
+                    let availabilityUpdated = false;
+                    
+                    if (originalDeliveryDate >= today) {
+                        // Original date is today or in the future - return to that date
+                        const [availabilityResult] = await pool.query(`
+                            UPDATE daily_drum_availability
+                            SET booked_count = booked_count - ?,
+                                available_count = available_count + ?
+                            WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                        `, [item.quantity, item.quantity, item.vendor_id, originalDeliveryDate, item.size]);
+                        
+                        if (availabilityResult.affectedRows > 0) {
+                            console.log(`✅ Returned ${item.quantity} ${item.size} drum(s) from order #${order_id} back to available inventory for ${originalDeliveryDate}`);
+                            availabilityUpdated = true;
+                        }
+                    }
+                    
+                    // If original date is in the past or update failed, make available for today (immediate availability)
+                    if (!availabilityUpdated) {
+                        // Ensure today's availability record exists
+                        const [todayRecord] = await pool.query(`
+                            SELECT availability_id FROM daily_drum_availability
+                            WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                        `, [item.vendor_id, today, item.size]);
+                        
+                        if (todayRecord.length === 0) {
+                            // Create today's availability record if it doesn't exist
+                            await pool.query(`
+                                INSERT INTO daily_drum_availability 
+                                (vendor_id, delivery_date, drum_size, total_capacity, booked_count, available_count)
+                                VALUES (?, ?, ?, 0, 0, ?)
+                            `, [item.vendor_id, today, item.size, item.quantity]);
+                            console.log(`✅ Created availability record for ${today} and returned ${item.quantity} ${item.size} drum(s) immediately`);
+                        } else {
+                            // Update today's availability
+                            const [todayResult] = await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET booked_count = GREATEST(0, booked_count - ?),
+                                    available_count = available_count + ?,
+                                    total_capacity = total_capacity + ?
+                                WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                            `, [item.quantity, item.quantity, item.quantity, item.vendor_id, today, item.size]);
+                            
+                            if (todayResult.affectedRows > 0) {
+                                console.log(`✅ Returned ${item.quantity} ${item.size} drum(s) from order #${order_id} to today's available inventory (${today}) - drums now immediately available`);
+                            } else {
+                                console.warn(`⚠️ Could not update today's availability for ${item.size} drums`);
+                            }
+                        }
+                        
+                        // Also try to update original date if it's different from today and exists
+                        if (originalDeliveryDate !== today) {
+                            const [originalResult] = await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET booked_count = GREATEST(0, booked_count - ?)
+                                WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                            `, [item.quantity, item.vendor_id, originalDeliveryDate, item.size]);
+                            
+                            if (originalResult.affectedRows > 0) {
+                                console.log(`✅ Also reduced booked_count for original delivery date ${originalDeliveryDate}`);
+                            }
+                        }
+                    }
+                }
+            } else {
+                console.warn(`⚠️ No order items found for order ${order_id} to update availability`);
+            }
+        }
 
         // If this is a drum return request, notify the vendor
         if (drum_status === 'return_requested') {

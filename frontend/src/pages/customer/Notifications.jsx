@@ -394,7 +394,7 @@ export const Notifications = () => {
   // Render star rating
   const renderStarRating = (isEditable = false) => {
     return (
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -403,8 +403,8 @@ export const Notifications = () => {
             onClick={() => isEditable && setReviewRating(star)}
             onMouseEnter={() => isEditable && setHoveredStar(star)}
             onMouseLeave={() => isEditable && setHoveredStar(0)}
-            className={`text-3xl transition-all ${
-              isEditable ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+            className={`text-2xl sm:text-3xl md:text-4xl transition-all ${
+              isEditable ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-default'
             } ${
               star <= (hoveredStar || reviewRating)
                 ? 'text-yellow-400'
@@ -1189,11 +1189,11 @@ export const Notifications = () => {
 
       {/* Review Modal */}
       {showReviewModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4">
+          <div className="bg-white rounded-lg sm:rounded-2xl p-4 sm:p-6 max-w-lg w-full mx-2 sm:mx-4 shadow-2xl max-h-[95vh] overflow-y-auto">
             <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 pr-2">
                   Leave a Review
                 </h3>
                 <button
@@ -1202,28 +1202,28 @@ export const Notifications = () => {
                     setReviewRating(0);
                     setReviewComment('');
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-gray-600 transition-colors text-xl sm:text-2xl flex-shrink-0"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-5 md:space-y-6">
                 {/* Shop Info */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">You're reviewing</p>
-                  <p className="font-semibold text-gray-900">{selectedOrder.vendor_name}</p>
-                  <p className="text-xs text-gray-500">Order #{selectedOrder.order_id}</p>
+                <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-gray-600 mb-1">You're reviewing</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 break-words">{selectedOrder.vendor_name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Order #{selectedOrder.order_id}</p>
                 </div>
 
                 {/* Star Rating */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                     Rate your experience <span className="text-red-500">*</span>
                   </label>
                   {renderStarRating(true)}
                   {reviewRating > 0 && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center sm:text-left">
                       {reviewRating === 1 && '⭐ Poor'}
                       {reviewRating === 2 && '⭐⭐ Fair'}
                       {reviewRating === 3 && '⭐⭐⭐ Good'}
@@ -1235,7 +1235,7 @@ export const Notifications = () => {
 
                 {/* Comment */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                     Share your thoughts (Optional)
                   </label>
                   <textarea
@@ -1243,23 +1243,23 @@ export const Notifications = () => {
                     onChange={(e) => setReviewComment(e.target.value)}
                     placeholder="Tell us about your experience with this shop..."
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     maxLength={500}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 mt-1 text-right">
                     {reviewComment.length}/500 characters
                   </p>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                   <button
                     onClick={() => {
                       setShowReviewModal(false);
                       setReviewRating(0);
                       setReviewComment('');
                     }}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors duration-200 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={submittingReview}
                   >
                     Cancel
@@ -1267,13 +1267,13 @@ export const Notifications = () => {
                   <button
                     onClick={submitReview}
                     disabled={submittingReview || reviewRating === 0}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 sm:py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base flex items-center justify-center"
                   >
                     {submittingReview ? (
-                      <span className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Submitting...
-                      </span>
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                        <span className="text-xs sm:text-base">Submitting...</span>
+                      </>
                     ) : (
                       'Submit Review'
                     )}

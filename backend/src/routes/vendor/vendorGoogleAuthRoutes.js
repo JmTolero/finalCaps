@@ -4,23 +4,41 @@ const router = express.Router();
 const vendorGoogleAuthController = require('../../controller/vendor/vendorGoogleAuthController');
 const multer = require('multer');
 const path = require('path');
+const cloudinary = require('../../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/vendor-documents/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+// Configure Cloudinary storage for file uploads
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'vendor-documents', // Folder in Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+    resource_type: 'auto', // Allows images and PDFs
+    public_id: (req, file) => {
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return `${file.fieldname}-${uniqueSuffix}`;
+    }
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  // Check file type
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
-    cb(null, true);
+  console.log('[Cloudinary Upload] Field name:', file.fieldname);
+  console.log('[Cloudinary Upload] Original name:', file.originalname);
+  console.log('[Cloudinary Upload] MIME type:', file.mimetype);
+  
+  const allowedTypes = /jpeg|jpg|png|pdf/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+  
+  console.log('[Cloudinary Upload] Extension check:', extname);
+  console.log('[Cloudinary Upload] MIME type check:', mimetype);
+  
+  if (mimetype && extname) {
+    console.log('[Cloudinary Upload] File accepted ✅');
+    return cb(null, true);
   } else {
+    console.log('[Cloudinary Upload] File rejected ❌');
     cb(new Error('Only images and PDF files are allowed'));
   }
 };

@@ -41,16 +41,46 @@ const VendorGCashAccount = () => {
 
       if (response.data.success) {
         setQrCode(response.data.qrCode);
+        // Use business_name from QR code if available, otherwise use store_name from vendor
+        const shopName = response.data.qrCode?.business_name || response.data.store_name || '';
         setFormData({
           qr_code_image: null, // Always start with null for new uploads
           gcash_number: response.data.qrCode?.gcash_number || '',
-          business_name: response.data.qrCode?.business_name || ''
+          business_name: shopName
         });
       }
     } catch (err) {
       console.error('Error fetching QR code:', err);
-      if (err.response?.status !== 404) {
+      // Even on 404, get store_name for auto-population
+      if (err.response?.status === 404 && err.response?.data?.store_name) {
+        setFormData({
+          qr_code_image: null,
+          gcash_number: '',
+          business_name: err.response.data.store_name // Auto-populate with store_name
+        });
+      } else if (err.response?.status !== 404) {
         setError(err.response?.data?.error || 'Failed to fetch QR code');
+      } else {
+        // If 404 but no store_name, try to fetch from vendor endpoint
+        try {
+          const userRaw = sessionStorage.getItem('user');
+          const user = JSON.parse(userRaw);
+          const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+          const vendorResponse = await axios.get(`${apiBase}/api/vendor/current`, {
+            headers: {
+              'x-user-id': user.id
+            }
+          });
+          if (vendorResponse.data.success && vendorResponse.data.vendor?.store_name) {
+            setFormData({
+              qr_code_image: null,
+              gcash_number: '',
+              business_name: vendorResponse.data.vendor.store_name
+            });
+          }
+        } catch (vendorErr) {
+          console.error('Error fetching vendor info:', vendorErr);
+        }
       }
     } finally {
       setLoading(false);
@@ -104,7 +134,7 @@ const VendorGCashAccount = () => {
       }
 
       if (!formData.business_name.trim()) {
-        throw new Error('Please enter your shop name');
+        throw new Error('Shop name is required. Please ensure your store name is set in vendor setup.');
       }
 
       if (!formData.qr_code_image || !(formData.qr_code_image instanceof File)) {
@@ -364,9 +394,10 @@ const VendorGCashAccount = () => {
                         value={formData.business_name}
                         onChange={handleInputChange}
                         placeholder="Your shop/store name"
-                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        readOnly
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm cursor-not-allowed"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Enter your shop name for payment identification</p>
+                      <p className="text-xs text-gray-500 mt-1">Shop name is automatically fetched from your store information</p>
                     </div>
                   </div>
                   

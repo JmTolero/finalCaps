@@ -11,42 +11,58 @@ passport.use(new GoogleStrategy({
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         console.log('Google OAuth profile:', profile);
+        const email = profile.emails[0].value;
         
-        // Check if user already exists with this Google ID
-        const [existingUser] = await pool.query(
-            'SELECT * FROM users WHERE google_id = ? OR (email = ? AND auth_provider = "google")',
-            [profile.id, profile.emails[0].value]
+        // Check if user already exists with this email (regardless of auth_provider)
+        // This handles cases where user registered manually and then tries Google sign-in
+        const [existingUserByEmail] = await pool.query(
+            'SELECT * FROM users WHERE email = ?',
+            [email]
         );
 
-        if (existingUser.length > 0) {
-            // User exists, update their Google ID if needed
-            const user = existingUser[0];
-            if (!user.google_id) {
+        // Also check if user exists with this Google ID
+        const [existingUserByGoogleId] = await pool.query(
+            'SELECT * FROM users WHERE google_id = ?',
+            [profile.id]
+        );
+
+        // Priority: Google ID match > Email match
+        const existingUser = existingUserByGoogleId.length > 0 
+            ? existingUserByGoogleId[0] 
+            : (existingUserByEmail.length > 0 ? existingUserByEmail[0] : null);
+
+        if (existingUser) {
+            // User exists - link Google account if not already linked
+            if (!existingUser.google_id) {
+                // User registered manually, now linking Google account
                 await pool.query(
-                    'UPDATE users SET google_id = ?, auth_provider = "google" WHERE user_id = ?',
-                    [profile.id, user.user_id]
+                    'UPDATE users SET google_id = ?, auth_provider = "google", profile_image_url = ? WHERE user_id = ?',
+                    [profile.id, profile.photos[0]?.value || existingUser.profile_image_url, existingUser.user_id]
                 );
+            } else if (existingUser.google_id !== profile.id) {
+                // Google ID mismatch - this shouldn't happen, but handle it
+                console.warn(`Google ID mismatch for user ${existingUser.user_id}. Existing: ${existingUser.google_id}, New: ${profile.id}`);
             }
             
             const userData = {
-                id: user.user_id,
-                username: user.username,
-                firstName: user.fname,
-                lastName: user.lname,
-                email: user.email,
-                contact_no: user.contact_no,
-                role: user.role || 'customer',
+                id: existingUser.user_id,
+                username: existingUser.username,
+                firstName: existingUser.fname,
+                lastName: existingUser.lname,
+                email: existingUser.email,
+                contact_no: existingUser.contact_no,
+                role: existingUser.role || 'customer',
                 auth_provider: 'google',
-                profile_image_url: user.profile_image_url
+                profile_image_url: profile.photos[0]?.value || existingUser.profile_image_url
             };
             
             return done(null, userData);
         } else {
-            // Create new user
-            const email = profile.emails[0].value;
+            // Create new user (email doesn't exist in database)
             const firstName = profile.name.givenName || '';
             const lastName = profile.name.familyName || '';
-            const username = email.split('@')[0] + '_' + profile.id.slice(-4); // Generate unique username
+            // Use email local part as username, replace dots with underscores for validation
+            const username = email.split('@')[0].replace(/\./g, '_');
             
             // Check if username already exists and make it unique
             let finalUsername = username;
