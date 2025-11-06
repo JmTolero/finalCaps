@@ -48,7 +48,16 @@ const requestPasswordReset = async (req, res) => {
         );
         
         // Generate reset link
-        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+        
+        // Log configuration for debugging
+        console.log('🔐 Password reset request:', {
+            email: email,
+            frontendUrl: frontendUrl,
+            nodeEnv: process.env.NODE_ENV,
+            emailService: process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'production' ? 'resend' : 'gmail')
+        });
         
         // Send reset email
         const emailResult = await sendEmail(
@@ -58,11 +67,18 @@ const requestPasswordReset = async (req, res) => {
         );
         
         if (!emailResult.success) {
-            console.error('Failed to send password reset email:', emailResult.error);
+            console.error('❌ Failed to send password reset email:', {
+                error: emailResult.error,
+                email: email,
+                frontendUrl: frontendUrl,
+                nodeEnv: process.env.NODE_ENV
+            });
             return res.status(500).json({ 
                 error: 'Failed to send reset email. Please try again later.' 
             });
         }
+        
+        console.log('✅ Password reset email sent successfully to:', email);
         
         return res.json({ 
             message: 'If an account with that email exists, a password reset link has been sent.' 

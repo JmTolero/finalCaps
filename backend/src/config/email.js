@@ -1,19 +1,67 @@
 const nodemailer = require('nodemailer');
 
-// Create email transporter
+// Create email transporter with production-ready configuration
 const createTransporter = () => {
-  
-
+    // Auto-detect environment: Gmail for localhost, Resend for production
+    const service = process.env.NODE_ENV === 'production' 
+        ? (process.env.EMAIL_SERVICE || 'resend')
+        : (process.env.EMAIL_SERVICE || 'gmail');
     
-    const transporter = nodemailer.createTransport({
-        service: 'gmail', // You can change this to other services
-        auth: {
-            user: process.env.EMAIL_USER, // Your email
-            pass: process.env.EMAIL_PASSWORD // Your app password (not regular password)
+    console.log(`📧 Password reset using email service: ${service} (NODE_ENV: ${process.env.NODE_ENV})`);
+    
+    if (service === 'sendgrid') {
+        return nodemailer.createTransport({
+            host: 'smtp.sendgrid.net',
+            port: 587,
+            secure: false,
+            auth: {
+                user: 'apikey',
+                pass: process.env.EMAIL_PASSWORD
+            }
+        });
+    } else if (service === 'resend') {
+        // Use Resend API - much more reliable and developer-friendly
+        const { Resend } = require('resend');
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error('RESEND_API_KEY is required when using Resend service');
         }
-    });
-
-    return transporter;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        return {
+            sendMail: async (mailOptions) => {
+                const data = {
+                    from: mailOptions.from,
+                    to: mailOptions.to,
+                    subject: mailOptions.subject,
+                    text: mailOptions.text,
+                    html: mailOptions.html
+                };
+                const result = await resend.emails.send(data);
+                // Resend returns { id: '...' }, convert to nodemailer format
+                return { messageId: result.id || result.data?.id };
+            }
+        };
+    } else {
+        // Gmail with port 465 (SSL) - works better on cloud platforms
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+            throw new Error('EMAIL_USER and EMAIL_PASSWORD are required when using Gmail service');
+        }
+        return nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // true for 465, false for other ports
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASSWORD
+            },
+            tls: {
+                rejectUnauthorized: false
+            },
+            connectionTimeout: 15000, // 15 seconds
+            greetingTimeout: 10000,    // 10 seconds
+            socketTimeout: 15000,      // 15 seconds
+            pool: false // Disable pooling for cloud platforms
+        });
+    }
 };
 
 // Email templates
@@ -90,22 +138,50 @@ const emailTemplates = {
 // Send email function
 const sendEmail = async (to, template, data) => {
     try {
+        // Check if email notifications are enabled
+        if (process.env.ENABLE_EMAIL_NOTIFICATIONS === 'false') {
+            console.log('📧 Email notifications disabled, skipping password reset email');
+            return { success: true, message: 'Email notifications disabled' };
+        }
+
         const transporter = createTransporter();
         const emailContent = emailTemplates[template](...data);
         
+        // Determine sender email based on service
+        const service = process.env.NODE_ENV === 'production' 
+            ? (process.env.EMAIL_SERVICE || 'resend')
+            : (process.env.EMAIL_SERVICE || 'gmail');
+        
+        let fromEmail;
+        if (service === 'resend') {
+            // Resend requires verified domain or uses onboarding@resend.dev
+            fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM || 'onboarding@resend.dev';
+        } else if (service === 'sendgrid') {
+            fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@chillnet.com';
+        } else {
+            fromEmail = process.env.EMAIL_FROM || `"ChillNet Ice Cream" <${process.env.EMAIL_USER}>`;
+        }
+        
         const mailOptions = {
-            from: `"ChillNet Ice Cream" <${process.env.EMAIL_USER}>`,
+            from: fromEmail,
             to: to,
             subject: emailContent.subject,
             html: emailContent.html,
             text: emailContent.text
         };
 
+        console.log('📧 Sending password reset email:', {
+            to: to,
+            from: fromEmail,
+            service: service
+        });
+
         const result = await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully:', result.messageId);
-        return { success: true, messageId: result.messageId };
+        console.log('✅ Password reset email sent successfully:', result.messageId || result.id);
+        return { success: true, messageId: result.messageId || result.id };
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('❌ Error sending password reset email:', error.message);
+        console.error('Full error:', error);
         return { success: false, error: error.message };
     }
 };
