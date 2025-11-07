@@ -48,6 +48,14 @@ export const BecomeVendor = () => {
     }));
   };
 
+  const handleBackClick = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/customer');
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({
@@ -185,6 +193,26 @@ export const BecomeVendor = () => {
       
       <main className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-8 px-4 sm:px-6 mt-16">
         <div className="max-w-2xl mx-auto">
+          <div className="mb-4 sm:mb-6">
+            <button
+              type="button"
+              onClick={handleBackClick}
+              className="group inline-flex items-center gap-2 text-sm sm:text-base text-blue-700 hover:text-blue-900 font-semibold transition-colors"
+            >
+              <span className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white shadow-sm border border-blue-100 group-hover:border-blue-300 group-hover:bg-blue-50 group-active:bg-blue-100 transition-colors">
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 group-hover:text-blue-800"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </span>
+              <span className="hidden sm:inline-block">Back</span>
+            </button>
+          </div>
+
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8">
             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
