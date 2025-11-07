@@ -1911,7 +1911,31 @@ export const Vendor = () => {
       }
     } catch (error) {
       console.error("Error updating flavor store status:", error);
-      updateStatus("error", "Failed to update flavor status. Please try again.");
+      const apiError = error?.response?.data;
+      const isUpgradeRequired = error?.response?.status === 403 && apiError?.upgrade_required;
+
+      if (isUpgradeRequired) {
+        setConfirmModalData({
+          title: 'Upgrade Required',
+          message: apiError?.error || 'You reached your free plan limit. Upgrade your subscription to publish more flavors.',
+          confirmText: 'Go to Subscription',
+          cancelText: 'Maybe Later',
+          type: 'warning',
+          onConfirm: () => {
+            setActiveView('subscription');
+            setShowConfirmModal(false);
+          }
+        });
+        setShowConfirmModal(true);
+        updateStatus(
+          "error",
+          apiError?.error || "You reached your free plan limit. Upgrade your subscription to publish more flavors."
+        );
+      } else if (apiError?.error) {
+        updateStatus("error", apiError.error);
+      } else {
+        updateStatus("error", "Failed to update flavor status. Please try again.");
+      }
     }
   };
 

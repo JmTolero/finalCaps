@@ -4,6 +4,11 @@ const path = require('path');
 const fs = require('fs');
 const cloudinary = require('../../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const {
+  hasSubscriptionExpired,
+  downgradeVendorToFree,
+  FREE_PLAN_LIMITS
+} = require('../../services/subscriptionMaintenance');
 
 // Configure Cloudinary storage for flavor image uploads
 const storage = new CloudinaryStorage({
@@ -481,9 +486,9 @@ const updateFlavorStoreStatus = async (req, res) => {
       });
     }
 
-    // Check if flavor exists
+    // Check if flavor exists and get vendor + lock info
     const [existingFlavor] = await pool.query(`
-      SELECT flavor_id FROM flavors 
+      SELECT flavor_id, vendor_id, locked_by_subscription FROM flavors 
       WHERE flavor_id = ?
     `, [flavor_id]);
 
@@ -492,6 +497,67 @@ const updateFlavorStoreStatus = async (req, res) => {
         success: false,
         error: 'Flavor not found'
       });
+    }
+
+    if (store_status === 'published') {
+      if (existingFlavor[0].locked_by_subscription) {
+        return res.status(403).json({
+          success: false,
+          error: 'This flavor is locked due to your current subscription limits. Upgrade your plan to publish it again.',
+          upgrade_required: true
+        });
+      }
+
+      const vendorId = existingFlavor[0].vendor_id;
+
+      const [vendorRows] = await pool.query(`
+        SELECT vendor_id, subscription_plan, subscription_end_date, flavor_limit
+        FROM vendors
+        WHERE vendor_id = ?
+      `, [vendorId]);
+
+      if (!vendorRows.length) {
+        return res.status(404).json({
+          success: false,
+          error: 'Vendor not found'
+        });
+      }
+
+      let vendor = vendorRows[0];
+
+      if (hasSubscriptionExpired(vendor.subscription_end_date) && vendor.subscription_plan !== 'free') {
+        await downgradeVendorToFree(vendor.vendor_id);
+        const [refetched] = await pool.query(`
+          SELECT vendor_id, subscription_plan, subscription_end_date, flavor_limit
+          FROM vendors
+          WHERE vendor_id = ?
+        `, [vendorId]);
+        if (!refetched.length) {
+          return res.status(404).json({
+            success: false,
+            error: 'Vendor not found'
+          });
+        }
+        vendor = refetched[0];
+      }
+
+      const flavorLimit = vendor.flavor_limit ?? FREE_PLAN_LIMITS.flavors;
+
+      if (flavorLimit !== -1) {
+        const [publishedCountRows] = await pool.query(`
+          SELECT COUNT(*) as published_count
+          FROM flavors
+          WHERE vendor_id = ? AND store_status = 'published' AND flavor_id <> ?
+        `, [vendorId, flavor_id]);
+
+        if (publishedCountRows[0].published_count >= flavorLimit) {
+          return res.status(403).json({
+            success: false,
+            error: `You reached your publish limit of ${flavorLimit} flavors. Upgrade your subscription to publish more flavors.`,
+            upgrade_required: true
+          });
+        }
+      }
     }
 
     // Update store status

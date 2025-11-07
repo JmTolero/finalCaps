@@ -278,6 +278,13 @@ const upgradeVendorPlan = async (vendor_id, plan_name) => {
             WHERE vendor_id = ?
         `, [plan_name, expires_at, features.max_flavors, features.max_drums, features.max_orders_per_month, vendor_id]);
 
+        // Unlock any flavors that were hidden due to subscription downgrade
+        await pool.query(`
+            UPDATE flavors
+            SET locked_by_subscription = 0
+            WHERE vendor_id = ?
+        `, [vendor_id]);
+
         console.log('✅ Vendor plan upgraded successfully:', {
             vendor_id,
             plan_name,

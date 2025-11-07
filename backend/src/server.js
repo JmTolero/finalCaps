@@ -5,9 +5,12 @@ const app = require('./app')
 
 const PORT = process.env.PORT || 3001;
 
-// Start reservation release job
+// Start background jobs
 require('./services/reservationReleaseJob');
 console.log('🔄 Reservation release job started');
+
+require('./services/subscriptionExpiryJob');
+console.log('📅 Subscription expiry job started');
 
 // Listen on all network interfaces (0.0.0.0) to allow access from other devices
 app.listen(PORT, '0.0.0.0', () => {

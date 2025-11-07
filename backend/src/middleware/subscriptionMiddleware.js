@@ -1,4 +1,49 @@
 const pool = require('../db/config');
+const {
+    hasSubscriptionExpired,
+    downgradeVendorToFree,
+    FREE_PLAN_LIMITS
+} = require('../services/subscriptionMaintenance');
+
+const buildSubscriptionContext = async (vendor_id) => {
+    const [vendors] = await pool.query(`
+        SELECT 
+            vendor_id,
+            subscription_plan,
+            subscription_start_date,
+            subscription_end_date,
+            flavor_limit,
+            drum_limit,
+            order_limit
+        FROM vendors 
+        WHERE vendor_id = ?
+    `, [vendor_id]);
+
+    if (vendors.length === 0) {
+        return null;
+    }
+
+    const vendor = vendors[0];
+    const expired = hasSubscriptionExpired(vendor.subscription_end_date);
+
+    if (expired && vendor.subscription_plan !== 'free') {
+        try {
+            await downgradeVendorToFree(vendor.vendor_id);
+            vendor.subscription_plan = 'free';
+            vendor.flavor_limit = FREE_PLAN_LIMITS.flavors;
+            vendor.drum_limit = FREE_PLAN_LIMITS.drums;
+            vendor.order_limit = FREE_PLAN_LIMITS.orders;
+            vendor.subscription_start_date = new Date();
+        } catch (error) {
+            console.error('Error downgrading expired vendor subscription:', error);
+        }
+    }
+
+    return {
+        vendor,
+        expired
+    };
+};
 
 // Check if vendor can add more flavors
 const checkFlavorLimit = async (req, res, next) => {
@@ -13,18 +58,16 @@ const checkFlavorLimit = async (req, res, next) => {
         }
 
         // Get vendor subscription info
-        const [vendors] = await pool.query(`
-            SELECT flavor_limit FROM vendors WHERE vendor_id = ?
-        `, [vendor_id]);
+        const context = await buildSubscriptionContext(vendor_id);
 
-        if (vendors.length === 0) {
+        if (!context) {
             return res.status(404).json({
                 success: false,
                 error: 'Vendor not found'
             });
         }
 
-        const flavor_limit = vendors[0].flavor_limit;
+        const flavor_limit = context.vendor.flavor_limit;
 
         // If unlimited (-1), allow
         if (flavor_limit === -1) {
@@ -54,7 +97,8 @@ const checkFlavorLimit = async (req, res, next) => {
         req.subscription_info = {
             current_flavors: currentCount,
             flavor_limit: flavor_limit,
-            remaining: flavor_limit - currentCount
+            remaining: flavor_limit - currentCount,
+            status: context.expired ? 'expired' : 'active'
         };
 
         next();
@@ -81,18 +125,16 @@ const checkDrumLimit = async (req, res, next) => {
         }
 
         // Get vendor subscription info
-        const [vendors] = await pool.query(`
-            SELECT drum_limit FROM vendors WHERE vendor_id = ?
-        `, [vendor_id]);
+        const context = await buildSubscriptionContext(vendor_id);
 
-        if (vendors.length === 0) {
+        if (!context) {
             return res.status(404).json({
                 success: false,
                 error: 'Vendor not found'
             });
         }
 
-        const drum_limit = vendors[0].drum_limit;
+        const drum_limit = context.vendor.drum_limit;
 
         // If unlimited (-1), allow
         if (drum_limit === -1) {
@@ -119,7 +161,8 @@ const checkDrumLimit = async (req, res, next) => {
         req.subscription_info = {
             new_drums: newTotal,
             drum_limit: drum_limit,
-            remaining: drum_limit - newTotal
+            remaining: drum_limit - newTotal,
+            status: context.expired ? 'expired' : 'active'
         };
 
         next();
@@ -146,18 +189,16 @@ const checkOrderLimit = async (req, res, next) => {
         }
 
         // Get vendor subscription info
-        const [vendors] = await pool.query(`
-            SELECT order_limit FROM vendors WHERE vendor_id = ?
-        `, [vendor_id]);
+        const context = await buildSubscriptionContext(vendor_id);
 
-        if (vendors.length === 0) {
+        if (!context) {
             return res.status(404).json({
                 success: false,
                 error: 'Vendor not found'
             });
         }
 
-        const order_limit = vendors[0].order_limit;
+        const order_limit = context.vendor.order_limit;
 
         // If unlimited (-1), allow
         if (order_limit === -1) {
@@ -189,7 +230,8 @@ const checkOrderLimit = async (req, res, next) => {
         req.subscription_info = {
             current_orders: currentCount,
             order_limit: order_limit,
-            remaining: order_limit - currentCount
+            remaining: order_limit - currentCount,
+            status: context.expired ? 'expired' : 'active'
         };
 
         next();
@@ -216,25 +258,16 @@ const getVendorSubscriptionStatus = async (req, res, next) => {
         }
 
         // Get vendor subscription info
-        const [vendors] = await pool.query(`
-            SELECT 
-                subscription_plan,
-                flavor_limit,
-                drum_limit,
-                order_limit,
-                subscription_start_date,
-                subscription_end_date
-            FROM vendors WHERE vendor_id = ?
-        `, [vendor_id]);
+        const context = await buildSubscriptionContext(vendor_id);
 
-        if (vendors.length === 0) {
+        if (!context) {
             return res.status(404).json({
                 success: false,
                 error: 'Vendor not found'
             });
         }
 
-        const vendor = vendors[0];
+        const vendor = context.vendor;
 
         // Get current usage
         const [flavorCount] = await pool.query(
@@ -269,6 +302,7 @@ const getVendorSubscriptionStatus = async (req, res, next) => {
                 drums: drumCount[0].count,
                 orders_this_month: orderCount[0].count
             },
+            status: context.expired ? 'expired' : 'active',
             subscription_dates: {
                 start: vendor.subscription_start_date,
                 end: vendor.subscription_end_date
