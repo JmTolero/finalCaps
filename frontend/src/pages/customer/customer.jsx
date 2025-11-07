@@ -1209,6 +1209,103 @@ export const Customer = () => {
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
 
+  // Calculate reservation expiry time (24 hours before delivery)
+  const getReservationExpiry = (deliveryDatetime) => {
+    if (!deliveryDatetime) return null;
+    const deliveryDate = new Date(deliveryDatetime);
+    const expiryDate = new Date(deliveryDate);
+    expiryDate.setHours(expiryDate.getHours() - 24);
+    return expiryDate;
+  };
+
+  // Countdown timer component for payment deadline
+  const PaymentCountdownTimer = ({ order }) => {
+    const [timeRemaining, setTimeRemaining] = useState(null);
+    const [isExpired, setIsExpired] = useState(false);
+    const [shouldShow, setShouldShow] = useState(false);
+
+    useEffect(() => {
+      if (!order.delivery_datetime) return;
+
+      const calculateTimeRemaining = () => {
+        const expiryTime = order.reservation_expires_at 
+          ? new Date(order.reservation_expires_at)
+          : getReservationExpiry(order.delivery_datetime);
+        
+        if (!expiryTime) return;
+
+        const now = new Date();
+        const diff = expiryTime - now;
+        const hoursRemaining = diff / (1000 * 60 * 60);
+
+        // Only show timer when within 24 hours (1 day) of the deadline
+        // You can change this to 12 hours if preferred
+        const SHOW_THRESHOLD_HOURS = 24; // Show when 24 hours or less remaining
+        
+        if (hoursRemaining > SHOW_THRESHOLD_HOURS) {
+          setShouldShow(false);
+          return;
+        }
+
+        setShouldShow(true);
+
+        if (diff <= 0) {
+          setIsExpired(true);
+          setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+          return;
+        }
+
+        setIsExpired(false);
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        setTimeRemaining({ hours, minutes, seconds });
+      };
+
+      calculateTimeRemaining();
+      const interval = setInterval(calculateTimeRemaining, 1000);
+
+      return () => clearInterval(interval);
+    }, [order.delivery_datetime, order.reservation_expires_at]);
+
+    // Don't show if we're more than 24 hours away from deadline
+    if (!shouldShow) return null;
+    
+    // Show loading state briefly
+    if (!timeRemaining && !isExpired) return null;
+
+    if (isExpired) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-red-600 text-lg sm:text-xl">⏰</span>
+            <div className="flex-1">
+              <p className="text-red-800 font-semibold text-xs sm:text-sm">Payment Deadline Expired</p>
+              <p className="text-red-700 text-[10px] sm:text-xs">Order will be auto-cancelled soon</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-orange-600 text-base sm:text-lg">⏰</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-orange-800 font-semibold text-xs sm:text-sm mb-0.5">
+              Payment Deadline: {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
+            </p>
+            <p className="text-orange-700 text-[10px] sm:text-xs">
+              Pay within {timeRemaining.hours}h {timeRemaining.minutes}m or order will be auto-cancelled
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Save customer profile
   const saveProfile = async () => {
     try {
@@ -1393,6 +1490,13 @@ export const Customer = () => {
                     <div key={order.order_id} className="p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors active:bg-gray-100">
                       {/* Condensed Order Summary */}
                       <div className="flex flex-col space-y-3 sm:space-y-4">
+                        {/* Payment Countdown Timer - Show for pending/confirmed orders with unpaid status */}
+                        {((order.status === 'pending' || order.status === 'confirmed') && 
+                          order.payment_status === 'unpaid' && 
+                          order.delivery_datetime) && (
+                          <PaymentCountdownTimer order={order} />
+                        )}
+
                         {/* Top Row: Order ID, Status, Price */}
                         <div className="flex items-start justify-between gap-2 sm:gap-3">
                           <div className="flex-1 min-w-0">
@@ -1450,7 +1554,7 @@ export const Customer = () => {
                           >
                             View Details
                           </button>
-                          {order.status === 'confirmed' && order.payment_status === 'unpaid' && (
+                          {((order.status === 'pending' || order.status === 'confirmed') && order.payment_status === 'unpaid') && (
                             <button
                               onClick={() => handlePayment(order)}
                               className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 active:bg-green-800 text-white px-4 sm:px-3 lg:px-4 py-2 sm:py-1.5 lg:py-2 rounded-lg text-xs sm:text-sm transition-colors active:scale-95"
@@ -1831,11 +1935,11 @@ export const Customer = () => {
                       Order #{selectedOrder.order_id} Details
                     </h2>
                     {selectedOrder.status === 'cancelled' && (
-                      <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full bg-red-100 border border-red-300">
-                        <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mt-2 inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-red-100 border border-red-300">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 mr-1.5 sm:mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-sm font-semibold text-red-800">Order Cancelled</span>
+                        <span className="text-xs sm:text-sm font-semibold text-red-800">Order Cancelled</span>
                       </div>
                     )}
                   </div>
@@ -1982,9 +2086,9 @@ export const Customer = () => {
                       
                 <div className="mb-3 sm:mb-4">
                   <h4 className="font-medium text-gray-900 mb-2 text-xs sm:text-sm lg:text-base">Payment</h4>
-                  <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3 lg:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 sm:gap-2">
                         <span className="text-gray-600 text-xs sm:text-sm lg:text-base">Initial Payment Method:</span>
                         <span className="font-medium text-xs sm:text-sm lg:text-base">
                           {selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'gcaash' || selectedOrder.payment_method?.toLowerCase() === 'gcash_qr'
@@ -1992,7 +2096,7 @@ export const Customer = () => {
                             : selectedOrder.payment_method?.toUpperCase() || 'GCash'}
                         </span>
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 sm:gap-2">
                         <span className="text-gray-600 text-xs sm:text-sm lg:text-base">Status:</span>
                         <span className={`font-medium text-xs sm:text-sm lg:text-base ${
                           selectedOrder.payment_status === 'unpaid' ? 'text-yellow-600' : 
@@ -2186,6 +2290,15 @@ export const Customer = () => {
 
                 {/* Pay Now button for orders with payment_amount set (50% option) but payment_status is 'unpaid' (clicked Pay Later) */}
                 {/* This means 50% payment option was selected but no payment was made yet */}
+                {/* Payment Countdown Timer in Modal */}
+                {((selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed') && 
+                  selectedOrder.payment_status === 'unpaid' && 
+                  selectedOrder.delivery_datetime) && (
+                  <div className="mb-3 sm:mb-4">
+                    <PaymentCountdownTimer order={selectedOrder} />
+                  </div>
+                )}
+
                 {(selectedOrder.status === 'confirmed' || selectedOrder.status === 'pending') && 
                  selectedOrder.payment_status === 'unpaid' && 
                  selectedOrder.payment_amount && 
@@ -2354,28 +2467,28 @@ export const Customer = () => {
                 )}
 
                 {selectedOrder.status === 'cancelled' && (
-                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-5 mb-4">
-                    <div className="flex items-start mb-3">
-                      <div className="flex-shrink-0 mr-3">
-                        <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 sm:p-4 lg:p-5 mb-3 sm:mb-4">
+                    <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                      <div className="flex-shrink-0">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         {selectedOrder.decline_reason ? (
                           <>
-                            <p className="text-red-900 font-bold text-base sm:text-lg mb-2">❌ Order Declined by Vendor</p>
-                            <p className="text-red-800 text-sm sm:text-base mb-3">This order has been declined by the vendor and cannot be processed.</p>
-                            <div className="mt-3 p-3 sm:p-4 bg-red-100 border border-red-200 rounded-lg">
-                              <p className="text-red-900 text-sm sm:text-base font-semibold mb-2">Reason for decline:</p>
-                              <p className="text-red-800 text-sm sm:text-base break-words">{selectedOrder.decline_reason}</p>
+                            <p className="text-red-900 font-bold text-sm sm:text-base lg:text-lg mb-1.5 sm:mb-2">❌ Order Declined by Vendor</p>
+                            <p className="text-red-800 text-xs sm:text-sm lg:text-base mb-2 sm:mb-3 leading-relaxed">This order has been declined by the vendor and cannot be processed.</p>
+                            <div className="mt-2 sm:mt-3 p-2.5 sm:p-3 lg:p-4 bg-red-100 border border-red-200 rounded-lg">
+                              <p className="text-red-900 text-xs sm:text-sm lg:text-base font-semibold mb-1.5 sm:mb-2">Reason for decline:</p>
+                              <p className="text-red-800 text-xs sm:text-sm lg:text-base break-words leading-relaxed">{selectedOrder.decline_reason}</p>
                             </div>
                           </>
                         ) : (
                           <>
-                            <p className="text-red-900 font-bold text-base sm:text-lg mb-2">❌ Order Cancelled</p>
-                            <p className="text-red-800 text-sm sm:text-base mb-2">This order has been cancelled successfully.</p>
-                            <p className="text-red-700 text-xs sm:text-sm italic">
+                            <p className="text-red-900 font-bold text-sm sm:text-base lg:text-lg mb-1.5 sm:mb-2">❌ Order Cancelled</p>
+                            <p className="text-red-800 text-xs sm:text-sm lg:text-base mb-2 leading-relaxed">This order has been cancelled successfully.</p>
+                            <p className="text-red-700 text-[10px] sm:text-xs lg:text-sm italic leading-relaxed">
                               The order was cancelled on {selectedOrder.updated_at ? new Date(selectedOrder.updated_at).toLocaleString('en-US', {
                                 weekday: 'long',
                                 year: 'numeric',
@@ -2389,8 +2502,8 @@ export const Customer = () => {
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-red-200">
-                      <p className="text-red-700 text-xs sm:text-sm">
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-red-200">
+                      <p className="text-red-700 text-[10px] sm:text-xs lg:text-sm leading-relaxed">
                         💡 <strong>Note:</strong> If you made a payment, please contact support for refund processing.
                       </p>
                     </div>

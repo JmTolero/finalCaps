@@ -244,25 +244,52 @@ const createOrder = async (req, res) => {
                         // Check if enough available
                         const avail = availability[0];
                         
-                        if (avail.available_count < item.quantity) {
+                        // Calculate actual available count: total - booked - reserved
+                        // This ensures we use the correct calculation, not just the stored value
+                        const totalCapacity = Number(avail.total_capacity) || 0;
+                        const bookedCount = Number(avail.booked_count) || 0;
+                        const reservedCount = Number(avail.reserved_count) || 0;
+                        const calculatedAvailable = Math.max(0, totalCapacity - bookedCount - reservedCount);
+                        
+                        console.log(`📊 Availability check for ${drumSize} on ${deliveryDate}:`, {
+                            total_capacity: totalCapacity,
+                            booked_count: bookedCount,
+                            reserved_count: reservedCount,
+                            calculated_available: calculatedAvailable,
+                            requested_quantity: item.quantity
+                        });
+                        
+                        if (calculatedAvailable < item.quantity) {
                             return res.status(400).json({
                                 success: false,
-                                error: `Only ${avail.available_count} ${drumSize} drums available for ${deliveryDate}. Another customer may have reserved them.`
+                                error: `Only ${calculatedAvailable} ${drumSize} drum(s) available for ${deliveryDate}. Another customer may have reserved them.`
                             });
                         }
                         
-                        // Reserve drums
+                        // Reserve drums - update both reserved_count and recalculate available_count
                         await pool.query(`
                             UPDATE daily_drum_availability
                             SET reserved_count = reserved_count + ?,
-                                available_count = available_count - ?
+                                available_count = total_capacity - booked_count - (reserved_count + ?)
                             WHERE availability_id = ?
                         `, [item.quantity, item.quantity, avail.availability_id]);
+                        
+                        console.log(`✅ Reserved ${item.quantity} ${drumSize} drum(s) for ${deliveryDate}`);
                     }
                 } catch (reservationError) {
-                    console.error('Error reserving inventory for item:', reservationError);
-                    // Don't fail the entire order - log error and continue
-                    // The verification step later will catch and fix missing reservations
+                    console.error('❌ Error reserving inventory for item:', reservationError);
+                    console.error('Reservation error details:', {
+                        item: item.name || item.flavor_id,
+                        size: item.size || drumSize,
+                        deliveryDate: deliveryDate,
+                        vendor_id: vendor_id,
+                        error: reservationError.message
+                    });
+                    // Fail the order if reservation fails - this prevents overbooking
+                    return res.status(500).json({
+                        success: false,
+                        error: `Failed to reserve inventory for ${item.name || 'item'}. Please try again or contact support if the problem persists.`
+                    });
                 }
             }
         }
@@ -986,6 +1013,23 @@ const updatePaymentStatus = async (req, res) => {
             });
         }
 
+        // Get order details first to check current payment status
+        const [currentOrder] = await pool.query(`
+            SELECT customer_id, vendor_id, payment_status, payment_amount, remaining_balance, total_amount, delivery_address, delivery_datetime
+            FROM orders 
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (currentOrder.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        const oldPaymentStatus = currentOrder[0].payment_status;
+        const order = currentOrder[0];
+
         // Update payment status and set order status to 'confirmed' if payment is confirmed (partial or paid)
         // and current status is 'pending'
         const [result] = await pool.query(`
@@ -1005,7 +1049,74 @@ const updatePaymentStatus = async (req, res) => {
             });
         }
 
-        // Get order details for notification
+        // Convert reservation to booking when payment is received
+        // Only do this if payment status changed from unpaid/partial to paid, or from unpaid to partial
+        if ((oldPaymentStatus === 'unpaid' && (payment_status === 'paid' || payment_status === 'partial')) ||
+            (oldPaymentStatus === 'partial' && payment_status === 'paid')) {
+            
+            try {
+                console.log(`💰 Converting reservation to booking for order ${order_id}`);
+                
+                // Get order items to convert reservations
+                const [orderItems] = await pool.query(`
+                    SELECT oi.quantity, cd.size, o.delivery_datetime
+                    FROM order_items oi
+                    JOIN orders o ON oi.order_id = o.order_id
+                    JOIN container_drum cd ON oi.containerDrum_id = cd.drum_id
+                    WHERE oi.order_id = ?
+                `, [order_id]);
+
+                for (const item of orderItems) {
+                    const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                    const drumSize = item.size.toLowerCase();
+                    const quantity = item.quantity;
+
+                    // Get current availability state
+                    const [availability] = await pool.query(`
+                        SELECT availability_id, reserved_count, booked_count, total_capacity
+                        FROM daily_drum_availability
+                        WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
+                    `, [order.vendor_id, deliveryDate, drumSize]);
+
+                    if (availability.length > 0) {
+                        const avail = availability[0];
+                        const currentReserved = Number(avail.reserved_count) || 0;
+                        const currentBooked = Number(avail.booked_count) || 0;
+                        const totalCapacity = Number(avail.total_capacity) || 0;
+
+                        // Calculate how much to convert (can't convert more than reserved)
+                        const toConvert = Math.min(quantity, currentReserved);
+
+                        if (toConvert > 0) {
+                            // Convert reservation to booking: decrease reserved, increase booked
+                            // In MySQL UPDATE, column references use OLD values, so we need to calculate correctly:
+                            // New reserved = reserved_count - toConvert
+                            // New booked = booked_count + toConvert
+                            // New available = total_capacity - (booked_count + toConvert) - (reserved_count - toConvert)
+                            // Simplifies to: total_capacity - booked_count - reserved_count (same as before, which is correct!)
+                            await pool.query(`
+                                UPDATE daily_drum_availability
+                                SET reserved_count = reserved_count - ?,
+                                    booked_count = booked_count + ?,
+                                    available_count = total_capacity - (booked_count + ?) - (reserved_count - ?)
+                                WHERE availability_id = ?
+                            `, [toConvert, toConvert, toConvert, toConvert, avail.availability_id]);
+
+                            console.log(`✅ Converted ${toConvert} ${drumSize} drum(s) from reserved to booked for order ${order_id}`);
+                        } else {
+                            console.warn(`⚠️ No reserved drums to convert for order ${order_id}, size ${drumSize}. Current reserved: ${currentReserved}, requested: ${quantity}`);
+                        }
+                    } else {
+                        console.warn(`⚠️ No availability record found for order ${order_id}, vendor ${order.vendor_id}, date ${deliveryDate}, size ${drumSize}`);
+                    }
+                }
+            } catch (conversionError) {
+                console.error('❌ Error converting reservation to booking:', conversionError);
+                // Don't fail the payment update if conversion fails - log it for manual review
+            }
+        }
+
+        // Get order details for notification (use updated order)
         const [orderDetails] = await pool.query(`
             SELECT customer_id, vendor_id, payment_status, payment_amount, remaining_balance, total_amount, delivery_address 
             FROM orders 
@@ -1265,14 +1376,41 @@ const updateQRPaymentStatus = async (req, res) => {
                 }
                 
                 const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                const drumSize = item.size.toLowerCase();
                 
-                // Convert reserved to booked
-                await pool.query(`
-                    UPDATE daily_drum_availability
-                    SET reserved_count = reserved_count - ?,
-                        booked_count = booked_count + ?
+                // Get current availability state
+                const [availability] = await pool.query(`
+                    SELECT availability_id, reserved_count, booked_count, total_capacity
+                    FROM daily_drum_availability
                     WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
-                `, [item.quantity, item.quantity, item.vendor_id, deliveryDate, item.size]);
+                `, [item.vendor_id, deliveryDate, drumSize]);
+                
+                if (availability.length > 0) {
+                    const avail = availability[0];
+                    const currentReserved = Number(avail.reserved_count) || 0;
+                    const quantity = item.quantity;
+                    
+                    // Calculate how much to convert (can't convert more than reserved)
+                    const toConvert = Math.min(quantity, currentReserved);
+                    
+                    if (toConvert > 0) {
+                        // Convert reserved to booked and recalculate available_count
+                        // In MySQL UPDATE, column references use OLD values
+                        await pool.query(`
+                            UPDATE daily_drum_availability
+                            SET reserved_count = reserved_count - ?,
+                                booked_count = booked_count + ?,
+                                available_count = total_capacity - (booked_count + ?) - (reserved_count - ?)
+                            WHERE availability_id = ?
+                        `, [toConvert, toConvert, toConvert, toConvert, avail.availability_id]);
+                        
+                        console.log(`✅ Converted ${toConvert} ${drumSize} drum(s) from reserved to booked for order ${order_id}`);
+                    } else {
+                        console.warn(`⚠️ No reserved drums to convert for order ${order_id}, size ${drumSize}. Current reserved: ${currentReserved}, requested: ${quantity}`);
+                    }
+                } else {
+                    console.warn(`⚠️ No availability record found for order ${order_id}, vendor ${item.vendor_id}, date ${deliveryDate}, size ${drumSize}`);
+                }
             }
         }
         

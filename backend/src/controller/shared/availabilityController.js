@@ -22,11 +22,13 @@ const getAvailabilityByDate = async (req, res) => {
     }
 
     // Get availability from daily_drum_availability, or vendor's total capacity
+    // IMPORTANT: Include reserved_count to properly calculate available_count
     const [availabilityRecords] = await pool.query(`
       SELECT 
         drum_size,
         total_capacity,
         booked_count,
+        reserved_count,
         available_count
       FROM daily_drum_availability
       WHERE vendor_id = ? AND delivery_date = ?
@@ -50,26 +52,39 @@ const getAvailabilityByDate = async (req, res) => {
       small: {
         total_capacity: 0,
         booked_count: 0,
+        reserved_count: 0,
         available_count: baseCapacity.small
       },
       medium: {
         total_capacity: 0,
         booked_count: 0,
+        reserved_count: 0,
         available_count: baseCapacity.medium
       },
       large: {
         total_capacity: 0,
         booked_count: 0,
+        reserved_count: 0,
         available_count: baseCapacity.large
       }
     };
 
     // Update with actual daily records if they exist
+    // Recalculate available_count to ensure it accounts for reserved items
     availabilityRecords.forEach(record => {
+      const totalCapacity = Number(record.total_capacity) || 0;
+      const bookedCount = Number(record.booked_count) || 0;
+      const reservedCount = Number(record.reserved_count) || 0;
+      
+      // Calculate available_count: total - booked - reserved
+      // This ensures reserved items are properly deducted from availability
+      const calculatedAvailable = Math.max(0, totalCapacity - bookedCount - reservedCount);
+      
       availability[record.drum_size] = {
-        total_capacity: record.total_capacity,
-        booked_count: record.booked_count,
-        available_count: record.available_count
+        total_capacity: totalCapacity,
+        booked_count: bookedCount,
+        reserved_count: reservedCount,
+        available_count: calculatedAvailable
       };
     });
 
@@ -112,11 +127,13 @@ const getAvailabilityByDateAndSize = async (req, res) => {
     }
 
     // Get availability from daily_drum_availability
+    // IMPORTANT: Include reserved_count to properly calculate available_count
     const [availabilityRecord] = await pool.query(`
       SELECT 
         drum_size,
         total_capacity,
         booked_count,
+        reserved_count,
         available_count
       FROM daily_drum_availability
       WHERE vendor_id = ? AND delivery_date = ? AND drum_size = ?
@@ -139,19 +156,29 @@ const getAvailabilityByDateAndSize = async (req, res) => {
         size: size.toLowerCase(),
         total_capacity: 0,
         booked_count: 0,
+        reserved_count: 0,
         available_count: baseCapacity
       });
     }
 
     const record = availabilityRecord[0];
+    const totalCapacity = Number(record.total_capacity) || 0;
+    const bookedCount = Number(record.booked_count) || 0;
+    const reservedCount = Number(record.reserved_count) || 0;
+    
+    // Calculate available_count: total - booked - reserved
+    // This ensures reserved items are properly deducted from availability
+    const calculatedAvailable = Math.max(0, totalCapacity - bookedCount - reservedCount);
+    
     res.json({
       success: true,
       vendor_id: parseInt(vendor_id),
       date: date,
       size: size.toLowerCase(),
-      total_capacity: record.total_capacity,
-      booked_count: record.booked_count,
-      available_count: record.available_count
+      total_capacity: totalCapacity,
+      booked_count: bookedCount,
+      reserved_count: reservedCount,
+      available_count: calculatedAvailable
     });
 
   } catch (error) {
