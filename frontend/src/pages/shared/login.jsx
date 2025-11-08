@@ -145,22 +145,27 @@ export const Login = () => {
           console.log('Default fallback: redirecting to vendor dashboard');
           navigate("/vendor");
         } else {
-          // Check if this customer has a rejected vendor application
-          // Only redirect to vendor-pending if they still have vendor role
-          if (data.user.role === 'vendor') {
-            try {
-              const vendorStatusRes = await axios.get(`${apiBase}/api/admin/users/${data.user.id}`);
-              if (vendorStatusRes.data.success) {
-                const userData = vendorStatusRes.data.user;
-                if (userData.vendor_status === 'rejected') {
-                  console.log('Customer has rejected vendor application, redirecting to pending page');
-                  navigate("/vendor-pending");
-                  return;
-                }
+          // Check if this user has a vendor application in pending or rejected status
+          try {
+            const vendorStatusRes = await axios.get(`${apiBase}/api/admin/users/${data.user.id}`);
+            if (vendorStatusRes.data.success) {
+              const userData = vendorStatusRes.data.user;
+              const ackKey = `vendorRejectionAcknowledged_${data.user.id}`;
+              const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
+              
+              if (userData.vendor_status === 'rejected' && !hasAcknowledgedRejection) {
+                console.log('User has rejected vendor application, redirecting to pending page');
+                navigate("/vendor-pending");
+                return;
               }
-            } catch (error) {
-              console.log('Could not check vendor status for customer, proceeding to customer page');
+              if (userData.vendor_status === 'pending') {
+                console.log('User has pending vendor application, redirecting to pending page');
+                navigate("/vendor-pending");
+                return;
+              }
             }
+          } catch (error) {
+            console.log('Could not check vendor status for user, proceeding to customer page');
           }
           
           // Regular customer login

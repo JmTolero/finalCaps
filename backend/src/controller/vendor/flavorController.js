@@ -346,6 +346,23 @@ const deleteFlavor = async (req, res) => {
       });
     }
 
+    // Check if the flavor has sales records
+    console.log('  - Checking for related sales records...');
+    const [salesRecords] = await pool.query(`
+      SELECT COUNT(*) AS saleCount
+      FROM order_items oi
+      INNER JOIN products p ON oi.product_id = p.product_id
+      WHERE p.flavor_id = ?
+    `, [flavor_id]);
+
+    if (salesRecords[0].saleCount > 0) {
+      console.log(`  - Found ${salesRecords[0].saleCount} sales record(s); aborting delete.`);
+      return res.status(400).json({
+        success: false,
+        error: 'Flavor cannot be deleted because it has associated sales records.'
+      });
+    }
+
     // First, delete related products (foreign key constraint)
     console.log('  - Checking for related products...');
     const [relatedProducts] = await pool.query(`
@@ -356,15 +373,7 @@ const deleteFlavor = async (req, res) => {
     if (relatedProducts.length > 0) {
       console.log(`  - Found ${relatedProducts.length} related product(s), deleting...`);
       
-      // Delete order items first (if any) to avoid constraint errors
-      for (const product of relatedProducts) {
-        await pool.query(`
-          DELETE FROM order_items 
-          WHERE product_id = ?
-        `, [product.product_id]);
-      }
-      
-      // Now delete the products
+      // Delete the products (no sales records exist at this point)
       await pool.query(`
         DELETE FROM products 
         WHERE flavor_id = ?

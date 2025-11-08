@@ -259,6 +259,7 @@ export const Vendor = () => {
   });
   const [flavorImages, setFlavorImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [isSavingFlavor, setIsSavingFlavor] = useState(false);
   
   // Saved flavors state
   const [savedFlavors, setSavedFlavors] = useState([]);
@@ -291,6 +292,8 @@ export const Vendor = () => {
   const [isEditingFlavor, setIsEditingFlavor] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [flavorToDelete, setFlavorToDelete] = useState(null);
+
+  const isFlavorLimitReached = !isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit;
   
   // Profile dropdown state
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -1890,7 +1893,12 @@ export const Vendor = () => {
       }
     } catch (error) {
       console.error("Error deleting flavor:", error);
-      updateStatus("error", "Failed to delete flavor. Please try again.");
+      const apiError = error?.response?.data;
+      if (apiError?.error) {
+        updateStatus("error", apiError.error);
+      } else {
+        updateStatus("error", "Failed to delete flavor. Please try again.");
+      }
     }
   };
 
@@ -2359,6 +2367,8 @@ export const Vendor = () => {
   };
 
   const handleSaveFlavor = async () => {
+    if (isSavingFlavor) return;
+
     if (!flavorForm.name.trim()) {
       updateStatus("error", "Please enter a flavor name");
       return;
@@ -2407,6 +2417,7 @@ export const Vendor = () => {
     }
 
     try {
+      setIsSavingFlavor(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       // Create FormData for flavor upload
@@ -2471,6 +2482,8 @@ export const Vendor = () => {
     } catch (error) {
       console.error("Error saving flavor:", error);
       updateStatus("error", `Failed to ${isEditingFlavor ? 'update' : 'save'} flavor. Please try again.`);
+    } finally {
+      setIsSavingFlavor(false);
     }
   };
 
@@ -5911,15 +5924,18 @@ export const Vendor = () => {
                         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
                           <button
                             onClick={handleSaveFlavor}
+                            disabled={isFlavorLimitReached || isSavingFlavor}
                             className={`font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-md transition-colors duration-200 hover:shadow-lg text-xs sm:text-sm ${
-                              !isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit
+                              isFlavorLimitReached
                                 ? 'bg-red-500 hover:bg-red-600 text-white'
                                 : 'bg-blue-500 hover:bg-blue-600 text-white'
-                            }`}
+                            } ${isFlavorLimitReached || isSavingFlavor ? 'cursor-not-allowed opacity-70' : ''}`}
                           >
-                            {!isEditingFlavor && subscriptionLimits.flavor_limit !== -1 && savedFlavors.length >= subscriptionLimits.flavor_limit
+                            {isFlavorLimitReached
                               ? '⚠️ Limit Reached'
-                              : isEditingFlavor ? "Update Flavor" : "Save Flavor"
+                              : isSavingFlavor
+                                ? (isEditingFlavor ? 'Updating...' : 'Saving...')
+                                : isEditingFlavor ? "Update Flavor" : "Save Flavor"
                             }
                           </button>
                           
@@ -9259,22 +9275,18 @@ export const Vendor = () => {
                   </svg>
                   <div>
                     <h4 className="text-xs sm:text-sm font-bold text-red-800 mb-1">
-                      This will permanently delete:
+                      Are you sure you want to delete this flavor?
                     </h4>
-                    <ul className="text-xs sm:text-sm text-red-700 space-y-0.5 sm:space-y-1 list-disc list-inside">
-                      <li>All sales records for this flavor</li>
-                      <li>Order history containing this flavor</li>
-                      <li>Product variations (sizes)</li>
-                      <li>All uploaded images</li>
-                    </ul>
+                    <p className="text-xs sm:text-sm text-red-700">
+                      This action will remove the flavor along with its product sizes and images.
+                    </p>
                   </div>
                 </div>
               </div>
               
               {/* Additional Info */}
               <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-5 lg:mb-6">
-                This action <span className="font-bold text-red-600">cannot be undone</span>. 
-                All data will be permanently removed from the system.
+                This action <span className="font-bold text-red-600">cannot be undone</span>. Please confirm you want to permanently delete this flavor.
               </p>
               
               {/* Action Buttons */}

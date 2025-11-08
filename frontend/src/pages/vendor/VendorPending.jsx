@@ -350,11 +350,11 @@ export const VendorPending = () => {
                 </div>
               </button>
 
-              {/* Go to Customer Page Button - Only show for rejected vendors */}
+              {/* Continue as Customer Button - Only show for rejected vendors */}
               {vendorData?.vendor_status === 'rejected' && (
                 <button
                   onClick={async () => {
-                    console.log('Go to Customer Page button clicked');
+                    console.log('Continue as Customer button clicked');
                     console.log('Current user data:', vendorData);
                     
                     // Refresh user session data to get updated role
@@ -371,17 +371,41 @@ export const VendorPending = () => {
                           // Update session storage with new role
                           const updatedUserData = {
                             ...user,
-                            role: updatedUser.role
+                            role: updatedUser.role || 'customer'
                           };
                           sessionStorage.setItem('user', JSON.stringify(updatedUserData));
                           console.log('Updated user role in session:', updatedUser.role);
                           
                           // Trigger user change event to update app state
                           window.dispatchEvent(new Event('userChanged'));
+                          
+                          // Mark rejection as acknowledged
+                          localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
+                        } else {
+                          // Fallback: force role to customer in session
+                          const updatedUserData = {
+                            ...user,
+                            role: 'customer'
+                          };
+                          sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                          window.dispatchEvent(new Event('userChanged'));
+                          localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
                         }
                       }
                     } catch (error) {
                       console.error('Error refreshing user data:', error);
+                      // Fallback: force role to customer in session
+                      const userRaw = sessionStorage.getItem('user');
+                      if (userRaw) {
+                        const user = JSON.parse(userRaw);
+                        const updatedUserData = {
+                          ...user,
+                          role: 'customer'
+                        };
+                        sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                        window.dispatchEvent(new Event('userChanged'));
+                        localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
+                      }
                     }
                     
                     console.log('Navigating to /customer');
@@ -393,7 +417,7 @@ export const VendorPending = () => {
                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span>Go to Customer Page</span>
+                    <span>Continue as Customer</span>
                   </div>
                 </button>
               )}

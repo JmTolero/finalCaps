@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from 'react-router-dom'; 
+import axios from 'axios';
 import adminIcon from '../../assets/images/administrator.png'
 import usermanagement from '../../assets/images/usermanagement.png'
 import vendorApproval from '../../assets/images/approval.png'
@@ -13,6 +14,7 @@ export const Sidebar = () => {
   // Sidebar state - always closed on initial load for clean login experience
   const [isOpen, setIsOpen] = useState(false); 
   const location = useLocation();
+  const [pendingVendorCount, setPendingVendorCount] = useState(0);
 
   // Helper function to check if link is active
   const isActiveLink = (path) => {
@@ -35,6 +37,27 @@ export const Sidebar = () => {
       window.removeEventListener('closeSidebar', handleClose);
     };
   }, []);
+
+  const fetchPendingVendors = useCallback(async () => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/admin/vendors`);
+      if (response.data?.success && Array.isArray(response.data.vendors)) {
+        const pendingCount = response.data.vendors.filter(
+          (vendor) => (vendor.status || '').toLowerCase() === 'pending'
+        ).length;
+        setPendingVendorCount(pendingCount);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending vendors:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingVendors();
+    const interval = setInterval(fetchPendingVendors, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPendingVendors]);
 
   // Handle window resize for sidebar responsiveness
   useEffect(() => {
@@ -95,10 +118,24 @@ export const Sidebar = () => {
               ? 'bg-blue-500 text-white font-semibold shadow-lg border-l-4 border-blue-700'
               : 'text-gray-700 hover:bg-blue-200 hover:text-gray-900'
           }`}>
-            <img src={vendorApproval} alt="vendorApproval" className={`w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 object-contain ${
-              isActiveLink('/admin/vendor-approval') ? 'brightness-0 invert' : ''
-            }`}/>
-            {isOpen && <span className="font-medium text-xs">Vendor Approval</span>}
+            <div className="relative w-6 h-6 sm:w-8 sm:h-8 inline-flex items-center justify-center">
+              <img src={vendorApproval} alt="vendorApproval" className={`w-full h-full object-contain ${
+                isActiveLink('/admin/vendor-approval') ? 'brightness-0 invert' : ''
+              }`}/>
+              {pendingVendorCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full border border-white animate-pulse"></span>
+              )}
+            </div>
+            {isOpen && (
+              <span className="font-medium text-xs flex items-center gap-1">
+                Vendor Approval
+                {pendingVendorCount > 0 && (
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-red-500 rounded-full">
+                    {pendingVendorCount}
+                  </span>
+                )}
+              </span>
+            )}
           </li>
         </Link>
         

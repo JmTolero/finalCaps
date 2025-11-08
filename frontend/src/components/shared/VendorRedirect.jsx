@@ -45,12 +45,14 @@ export const VendorRedirect = () => {
             setRedirectPath('/vendor-pending');
           }
         } else if (userData.vendor_status === 'rejected') {
-          // If user role is customer (changed after rejection), go to customer page
-          // Otherwise, redirect to vendor registration
-          if (user.role === 'customer') {
+          const ackKey = `vendorRejectionAcknowledged_${user.id}`;
+          const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
+          
+          if (hasAcknowledgedRejection) {
             setRedirectPath('/customer');
           } else {
-            setRedirectPath('/vendor-register');
+            // Show rejection view until acknowledged
+            setRedirectPath('/vendor-pending');
           }
         } else if (userData.vendor_status === 'approved') {
           // Check if setup is complete

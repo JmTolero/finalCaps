@@ -42,7 +42,7 @@ const deleteVendorFiles = async (vendorData) => {
  * Check for vendors that should be automatically returned after 1 week of rejection
  * This function should be called periodically (e.g., daily via cron job)
  */
-const processVendorAutoReturns = async () => {
+const   processVendorAutoReturns = async () => {
     try {
         console.log('🔄 Processing vendor auto-returns...');
         
@@ -73,11 +73,11 @@ const processVendorAutoReturns = async () => {
         for (const rejection of eligibleRejections) {
             try {
                 // STEP 1: Delete physical files first
-                console.log(`🗑️ Deleting physical files for vendor ${rejection.vendor_id}...`);
+                console.log(`Deleting physical files for vendor ${rejection.vendor_id}...`);
                 await deleteVendorFiles(rejection);
                 
                 // STEP 2: Delete related data in proper order to avoid foreign key constraints
-                console.log(`🔄 Cleaning up related data for vendor ${rejection.vendor_id}...`);
+                console.log(` Cleaning up related data for vendor ${rejection.vendor_id}...`);
                 
                 // First, delete order_items that reference this vendor's products
                 await pool.query(`
