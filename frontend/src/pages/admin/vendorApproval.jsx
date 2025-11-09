@@ -28,8 +28,6 @@ export const AdminVendorApproval = () => {
   // Ongoing orders modal states
   const [showOngoingOrdersModal, setShowOngoingOrdersModal] = useState(false);
   const [ongoingOrders, setOngoingOrders] = useState([]);
-  const [checkingOrders, setCheckingOrders] = useState(false);
-
   const fetchVendors = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
@@ -88,7 +86,6 @@ export const AdminVendorApproval = () => {
   
   const checkOngoingOrders = async (vendorId) => {
     try {
-      setCheckingOrders(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const response = await axios.get(`${apiBase}/api/admin/vendors/${vendorId}/ongoing-orders`);
       
@@ -106,7 +103,6 @@ export const AdminVendorApproval = () => {
       // On error, still show confirm modal
       setShowConfirmModal(true);
     } finally {
-      setCheckingOrders(false);
     }
   };
 

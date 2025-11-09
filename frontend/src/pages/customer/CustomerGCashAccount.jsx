@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav';
@@ -20,13 +20,7 @@ const CustomerGCashAccount = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
 
-  useEffect(() => {
-    if (orderId) {
-      fetchOrderAndQR();
-    }
-  }, [orderId]);
-
-  const fetchOrderAndQR = async () => {
+  const fetchOrderAndQR = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -67,7 +61,13 @@ const CustomerGCashAccount = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    if (orderId) {
+      fetchOrderAndQR();
+    }
+  }, [orderId, fetchOrderAndQR]);
 
   const handlePaymentConfirmation = () => {
     // Show confirmation dialog first

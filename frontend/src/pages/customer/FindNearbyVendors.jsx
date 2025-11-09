@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { useCart } from "../../contexts/CartContext";
@@ -41,14 +41,11 @@ export const FindNearbyVendors = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState(""); // Separate input state for non-refreshing input
   const [userLocation, setUserLocation] = useState(null);
-  const [selectedZone, setSelectedZone] = useState(null);
   
   // Reviews state
   const [vendorReviews, setVendorReviews] = useState({});
   
   // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Feedback modal state
@@ -97,33 +94,76 @@ export const FindNearbyVendors = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
 
+  const fetchAllVendorReviews = useCallback(async (vendorsList) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const reviewsData = {};
+
+      await Promise.all(
+        vendorsList.map(async (vendor) => {
+          try {
+            const response = await axios.get(`${apiBase}/api/reviews/vendor/${vendor.vendor_id}`);
+            if (response.data.success) {
+              reviewsData[vendor.vendor_id] = response.data.summary;
+            }
+          } catch (error) {
+            console.error(`Error fetching reviews for vendor ${vendor.vendor_id}:`, error);
+            reviewsData[vendor.vendor_id] = {
+              total_reviews: 0,
+              average_rating: "0.00"
+            };
+          }
+        })
+      );
+
+      setVendorReviews(reviewsData);
+    } catch (error) {
+      console.error("Error fetching vendor reviews:", error);
+    }
+  }, []);
+
+  const fetchVendors = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+      const response = await axios.get(`${apiBase}/api/vendor/with-locations`);
+      if (response.data.success) {
+        setVendors(response.data.vendors);
+        if (response.data.vendors.length > 0) {
+          setSelectedVendor(response.data.vendors[0]);
+        }
+        fetchAllVendorReviews(response.data.vendors);
+      }
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAllVendorReviews]);
+
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [fetchVendors]);
 
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
     try {
-      setNotificationsLoading(true);
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) return;
 
-      const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${JSON.parse(userRaw).id}`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
 
       if (response.data.success) {
-        setNotifications(response.data.notifications || []);
+        console.log('📬 FindNearbyVendors: notifications fetched', response.data.notifications?.length || 0);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
     }
   }, []);
 
@@ -155,62 +195,6 @@ export const FindNearbyVendors = () => {
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
 
-  const fetchVendors = async () => {
-    try {
-      setLoading(true);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-
-      // Fetch vendors with their locations
-      const response = await axios.get(`${apiBase}/api/vendor/with-locations`);
-      if (response.data.success) {
-        setVendors(response.data.vendors);
-        if (response.data.vendors.length > 0) {
-          setSelectedVendor(response.data.vendors[0]);
-        }
-        
-        // Fetch reviews for each vendor
-        fetchAllVendorReviews(response.data.vendors);
-      }
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch reviews for all vendors
-  const fetchAllVendorReviews = async (vendorsList) => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const reviewsData = {};
-
-      // Fetch reviews for each vendor
-      await Promise.all(
-        vendorsList.map(async (vendor) => {
-          try {
-            const response = await axios.get(
-              `${apiBase}/api/reviews/vendor/${vendor.vendor_id}`
-            );
-            if (response.data.success) {
-              reviewsData[vendor.vendor_id] = response.data.summary;
-            }
-          } catch (error) {
-            console.error(`Error fetching reviews for vendor ${vendor.vendor_id}:`, error);
-            // Set default values if fetch fails
-            reviewsData[vendor.vendor_id] = {
-              total_reviews: 0,
-              average_rating: "0.00"
-            };
-          }
-        })
-      );
-
-      setVendorReviews(reviewsData);
-    } catch (error) {
-      console.error("Error fetching vendor reviews:", error);
-    }
-  };
-
   // Calculate distance between two coordinates (in kilometers)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371; // Earth's radius in kilometers
@@ -224,43 +208,37 @@ export const FindNearbyVendors = () => {
   };
 
   // Filter vendors based on location proximity and search term
-  const filteredVendors = vendors.filter((vendor) => {
-    // If no user location, show all vendors (fallback)
-    if (!userLocation) {
-      return (
+  const filteredVendors = useMemo(() => {
+    return vendors.filter((vendor) => {
+      const matchesSearch =
+        !searchTerm ||
         (vendor.store_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (vendor.location?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        (vendor.location?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+
+      if (!userLocation) {
+        return matchesSearch;
+      }
+
+      const vendorLat = parseFloat(vendor.latitude);
+      const vendorLng = parseFloat(vendor.longitude);
+
+      if (Number.isNaN(vendorLat) || Number.isNaN(vendorLng)) {
+        return false;
+      }
+
+      const distance = calculateDistance(
+        userLocation.lat,
+        userLocation.lng,
+        vendorLat,
+        vendorLng
       );
-    }
-    
-    // Calculate distance from user to vendor
-    const vendorLat = parseFloat(vendor.latitude);
-    const vendorLng = parseFloat(vendor.longitude);
-    
-    if (isNaN(vendorLat) || isNaN(vendorLng)) {
-      return false; // Skip vendors without valid coordinates
-    }
-    
-    const distance = calculateDistance(
-      userLocation.lat, 
-      userLocation.lng, 
-      vendorLat, 
-      vendorLng
-    );
-    
-    // Show only vendors within 15km radius
-    const isNearby = distance <= 15;
-    
-    // Also check search term if provided
-    const matchesSearch = !searchTerm || 
-      (vendor.store_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (vendor.location?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    
-    return isNearby && matchesSearch;
-  });
+
+      return distance <= 15 && matchesSearch;
+    });
+  }, [vendors, userLocation, searchTerm, calculateDistance]);
 
   // Handle vendor selection from map
-  const handleVendorSelect = (vendor) => {
+  const handleVendorSelect = useCallback((vendor) => {
     // Find the corresponding vendor from the real vendors list
     const realVendor = vendors.find(v => 
       v.store_name === vendor.name || 
@@ -282,13 +260,12 @@ export const FindNearbyVendors = () => {
         drumSizes: vendor.drumSizes || []
       });
     }
-  };
+  }, [vendors]);
 
   // Handle location change from map
-  const handleLocationChange = (location, zone) => {
+  const handleLocationChange = useCallback((location) => {
     setUserLocation(location);
-    setSelectedZone(zone);
-  };
+  }, []);
 
   return (
     <>

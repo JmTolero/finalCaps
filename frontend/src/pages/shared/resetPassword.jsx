@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav.jsx';
 import axios from 'axios';
-import { handleValidatedChange, validateFormData, trimFormData } from '../../utils/inputValidation';
+import { handleValidatedChange, validateFormData } from '../../utils/inputValidation';
 
 export const ResetPassword = () => {
     const navigate = useNavigate();

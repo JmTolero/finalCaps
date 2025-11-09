@@ -5,8 +5,7 @@ import {
   Gift,
   CheckCircle,
   AlertCircle,
-  CreditCard,
-  DollarSign
+  CreditCard
 } from 'lucide-react';
 import subscriptionService from '../../services/subscriptionService';
 

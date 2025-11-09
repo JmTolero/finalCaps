@@ -440,15 +440,16 @@ const GoogleMapFree = ({
     };
 
     // Small delay to ensure DOM is ready
+    const mapContainer = mapRef.current;
     const timer = setTimeout(initializeMap, 100);
     
     return () => {
       clearTimeout(timer);
-      if (mapRef.current) {
-        mapRef.current.innerHTML = '';
+      if (mapContainer) {
+        mapContainer.innerHTML = '';
       }
     };
-  }, [center, zoom, apiKey, locationPermissionGranted, userLocation]);
+  }, [center, zoom, apiKey, locationPermissionGranted, userLocation, markers, onMarkerClick]);
 
   // Get user's current location
   const getCurrentLocation = () => {

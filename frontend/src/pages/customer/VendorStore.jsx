@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { getImageUrl } from "../../utils/imageUtils";
@@ -26,17 +26,45 @@ export const VendorStore = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
-  
+      
   // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  
-  // Feedback modal state
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  
-  // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        return;
+      }
+
+      const user = JSON.parse(userRaw);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
+        headers: {
+          Authorization: `Bearer ${sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unread_count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notifications count:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    const handleUserChanged = () => {
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('userChanged', handleUserChanged);
+    return () => window.removeEventListener('userChanged', handleUserChanged);
+  }, [fetchUnreadCount]);
 
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
@@ -60,7 +88,6 @@ export const VendorStore = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
 
-  // Shop Reviews state
   const [shopReviews, setShopReviews] = useState([]);
   const [reviewsSummary, setReviewsSummary] = useState({
     total_reviews: 0,
@@ -73,19 +100,7 @@ export const VendorStore = () => {
   });
   const [reviewsLoading, setReviewsLoading] = useState(false);
 
-  useEffect(() => {
-    if (vendorId) {
-      console.log('🚀 VendorStore component mounted with vendorId:', vendorId);
-      fetchVendorData();
-      fetchVendorFlavors();
-      fetchShopReviews();
-    } else {
-      console.log('❌ No vendorId provided');
-    }
-  }, [vendorId]);
-
-  // Fetch shop reviews
-  const fetchShopReviews = async () => {
+  const fetchShopReviews = useCallback(async () => {
     try {
       if (!vendorId) return;
       
@@ -112,64 +127,11 @@ export const VendorStore = () => {
     } finally {
       setReviewsLoading(false);
     }
-  };
+  }, [vendorId]);
 
-  // Fetch notifications for customer
-  const fetchNotifications = async () => {
+  const fetchVendorData = useCallback(async () => {
     try {
-      setNotificationsLoading(true);
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      if (response.data.success) {
-        setNotifications(response.data.notifications || []);
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
-
-  // Fetch unread notification count
-  const fetchUnreadCount = async () => {
-    try {
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      if (response.data.success) {
-        setUnreadCount(response.data.unread_count || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-    fetchUnreadCount();
-  }, []);
-
-  const fetchVendorData = async () => {
-    try {
+      setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       console.log('🔍 Fetching vendor data for vendorId:', vendorId);
       const response = await axios.get(`${apiBase}/api/admin/vendors/${vendorId}`);
@@ -190,10 +152,12 @@ export const VendorStore = () => {
       }
     } catch (error) {
       console.error("Error fetching vendor data:", error);
+      setError("Failed to load vendor information. Please try again.");
+      setLoading(false);
     }
-  };
+  }, [vendorId]);
 
-  const fetchVendorFlavors = async () => {
+  const fetchVendorFlavors = useCallback(async () => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       console.log('🔍 Fetching flavors for vendorId:', vendorId);
@@ -215,7 +179,18 @@ export const VendorStore = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [vendorId]);
+
+  useEffect(() => {
+    if (vendorId) {
+      console.log('🚀 VendorStore component mounted with vendorId:', vendorId);
+      fetchVendorData();
+      fetchVendorFlavors();
+      fetchShopReviews();
+    } else {
+      console.log('❌ No vendorId provided');
+    }
+  }, [vendorId, fetchVendorData, fetchVendorFlavors, fetchShopReviews]);
 
   if (loading) {
     return (

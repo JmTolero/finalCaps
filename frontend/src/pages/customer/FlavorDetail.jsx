@@ -38,15 +38,12 @@ export const FlavorDetail = () => {
   
   // Rating state
   const [ratings, setRatings] = useState([]);
-  const [userRating, setUserRating] = useState(null);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [newRating, setNewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   
   // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Feedback modal state
@@ -94,34 +91,97 @@ export const FlavorDetail = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
 
+  const fetchFlavorDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/flavors/${flavorId}`);
+      
+      if (response.data.success) {
+        const flavorData = response.data.flavor;
+        setFlavor(flavorData);
+        
+        if (flavorData?.images?.length) {
+          setSelectedImages(flavorData.images);
+        } else if (flavorData?.image_url) {
+          try {
+            const images = JSON.parse(flavorData.image_url);
+            setSelectedImages(Array.isArray(images) ? images : [images]);
+          } catch (err) {
+            setSelectedImages([flavorData.image_url]);
+          }
+        } else {
+          setSelectedImages([]);
+        }
+      } else {
+        setError('Flavor not found');
+      }
+    } catch (err) {
+      console.error('Error fetching flavor details:', err);
+      setError('Failed to load flavor details');
+    } finally {
+      setLoading(false);
+    }
+  }, [flavorId]);
+
+  const fetchRatings = useCallback(async () => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/ratings`);
+      
+      if (response.data.success) {
+        setRatings(response.data.ratings);
+      }
+    } catch (error) {
+      console.error('Error fetching ratings:', error);
+    }
+  }, [flavorId]);
+
+  const fetchUserRating = useCallback(async () => {
+    try {
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) return;
+
+      const token = sessionStorage.getItem('token');
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/my-rating`, {
+        headers: { Authorization: `Bearer ${token || userRaw}` }
+      });
+      
+      if (response.data.success) {
+        if (response.data.rating) {
+          setNewRating(response.data.rating.rating);
+          setReviewText(response.data.rating.review_text || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user rating:', error);
+    }
+  }, [flavorId]);
+
   useEffect(() => {
     fetchFlavorDetails();
     fetchRatings();
     fetchUserRating();
-  }, [flavorId]);
+  }, [flavorId, fetchFlavorDetails, fetchRatings, fetchUserRating]);
 
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
     try {
-      setNotificationsLoading(true);
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) {
         console.log('🔔 FlavorDetail: No user found in sessionStorage');
         return;
       }
 
-      const user = JSON.parse(userRaw);
-      console.log('🔔 FlavorDetail: Fetching notifications for user:', user.id);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${JSON.parse(userRaw).id}`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
       });
 
       if (response.data.success) {
-        setNotifications(response.data.notifications || []);
         console.log('📬 FlavorDetail: Fetched notifications:', response.data.notifications?.length || 0);
         console.log('📬 FlavorDetail: Total notifications:', response.data.notifications?.length || 0);
       } else {
@@ -129,8 +189,6 @@ export const FlavorDetail = () => {
       }
     } catch (error) {
       console.error('🔔 FlavorDetail: Error fetching notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
     }
   }, []);
 
@@ -143,11 +201,9 @@ export const FlavorDetail = () => {
         return;
       }
 
-      const user = JSON.parse(userRaw);
-      console.log('🔔 FlavorDetail: Fetching unread count for user:', user.id);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}/unread-count`, {
+      const response = await axios.get(`${apiBase}/api/notifications/customer/${JSON.parse(userRaw).id}/unread-count`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('token')}`
         }
@@ -208,82 +264,6 @@ export const FlavorDetail = () => {
     fetchDateAvailability();
   }, [deliveryDate, flavor?.vendor_id, flavor]); // Add flavor to dependencies
 
-  const fetchFlavorDetails = async () => {
-    try {
-      setLoading(true);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/flavors/${flavorId}`);
-      
-      if (response.data.success) {
-        console.log('🔍 API Response flavor:', response.data.flavor);
-        console.log('🔍 flavor_name from API:', response.data.flavor.flavor_name);
-        setFlavor(response.data.flavor);
-        
-        // Parse and set images
-        console.log('🔍 flavor.image_url from API:', response.data.flavor.image_url);
-        if (response.data.flavor.image_url) {
-          try {
-            const images = JSON.parse(response.data.flavor.image_url);
-            console.log('🔍 Parsed images:', images);
-            setSelectedImages(Array.isArray(images) ? images : [images]);
-          } catch (e) {
-            console.log('🔍 Failed to parse images, using raw image_url:', response.data.flavor.image_url);
-            setSelectedImages([response.data.flavor.image_url]);
-          }
-        } else {
-          console.log('🔍 No image_url found in flavor data');
-          setSelectedImages([]);
-        }
-      } else {
-        setError('Flavor not found');
-      }
-    } catch (err) {
-      console.error('Error fetching flavor details:', err);
-      setError('Failed to load flavor details');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Rating functions
-  const fetchRatings = async () => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/ratings`);
-      
-      if (response.data.success) {
-        setRatings(response.data.ratings);
-      }
-    } catch (error) {
-      console.error('Error fetching ratings:', error);
-    }
-  };
-
-  const fetchUserRating = async () => {
-    try {
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const token = sessionStorage.getItem('token');
-      
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/ratings/flavors/${flavorId}/my-rating`, {
-        headers: { Authorization: `Bearer ${token || userRaw}` }
-      });
-      
-      if (response.data.success) {
-        setUserRating(response.data.rating);
-        if (response.data.rating) {
-          setNewRating(response.data.rating.rating);
-          setReviewText(response.data.rating.review_text || '');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching user rating:', error);
-    }
-  };
-
   const handleRateFlavor = async () => {
     if (newRating === 0) {
       alert('Please select a rating');
@@ -293,7 +273,6 @@ export const FlavorDetail = () => {
     try {
       setRatingLoading(true);
       const userRaw = sessionStorage.getItem('user');
-      const user = JSON.parse(userRaw);
       const token = sessionStorage.getItem('token');
       
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -332,14 +311,33 @@ export const FlavorDetail = () => {
     }
   };
 
+  const getDeliveryDateTime = () => {
+    if (!deliveryDate || !deliveryTime) return null;
+    const [year, month, day] = deliveryDate.split('-').map(Number);
+    const [hours, minutes] = deliveryTime.split(':').map(Number);
+
+    if ([year, month, day, hours, minutes].some((value) => Number.isNaN(value))) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  };
+
+  const calculateHoursUntilDelivery = () => {
+    const deliveryDateTime = getDeliveryDateTime();
+    if (!deliveryDateTime) return null;
+
+    const now = new Date();
+    return (deliveryDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+  };
+
   // Check if delivery time is at least 24 hours away
   const isDeliveryTimeValid = () => {
     if (!deliveryDate || !deliveryTime) return false;
-    
-    const deliveryDateTime = new Date(`${deliveryDate}T${deliveryTime}:00`);
-    const now = new Date();
-    const hoursUntilDelivery = (deliveryDateTime - now) / (1000 * 60 * 60);
-    
+
+    const hoursUntilDelivery = calculateHoursUntilDelivery();
+    if (hoursUntilDelivery === null) return false;
+
     return hoursUntilDelivery >= 24;
   };
 
@@ -405,21 +403,22 @@ export const FlavorDetail = () => {
     }
     
     // Validate: Orders must be placed at least 24 hours before delivery time
-    const deliveryDateTime = new Date(`${deliveryDate}T${deliveryTime}:00`);
-    const now = new Date();
-    const hoursUntilDelivery = (deliveryDateTime - now) / (1000 * 60 * 60);
+    const deliveryDateTime = getDeliveryDateTime();
+    const hoursUntilDelivery = calculateHoursUntilDelivery();
     
-    if (hoursUntilDelivery < 24) {
-      const formattedDateTime = deliveryDateTime.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+    if (!deliveryDateTime || hoursUntilDelivery === null || hoursUntilDelivery < 24) {
+      const formattedDateTime = deliveryDateTime
+        ? deliveryDateTime.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+        : `${deliveryDate} ${deliveryTime}`;
       setValidationMessage(
-        `Orders must be placed at least 24 hours before delivery time. Ice cream preparation requires 24 hours. You selected ${formattedDateTime}, which is ${hoursUntilDelivery.toFixed(1)} hours from now. Please select a delivery time at least 24 hours in the future.`
+        `Orders must be placed at least 24 hours before delivery time. Ice cream preparation requires 24 hours. You selected ${formattedDateTime}, which is ${hoursUntilDelivery !== null ? hoursUntilDelivery.toFixed(1) : 'less than'} hours from now. Please select a delivery time at least 24 hours in the future.`
       );
       setShowValidationModal(true);
       return;
@@ -441,7 +440,9 @@ export const FlavorDetail = () => {
           name: flavor.flavor_name,
           size: selectedSize,
           quantity: quantity,
-          price: parseFloat(getPrice().replace('₱', ''))
+          price: parseFloat(getPrice().replace('₱', '')),
+          vendor_id: flavor.vendor_id,
+          vendor_name: flavor.store_name
         }
       ]
     };
@@ -598,6 +599,8 @@ export const FlavorDetail = () => {
     // Return availability (0 is a valid value, so we check for null/undefined)
     return (availability !== undefined && availability !== null) ? availability : 0;
   };
+
+  const hoursUntilDelivery = calculateHoursUntilDelivery();
 
   if (loading) {
     return (
@@ -1083,11 +1086,19 @@ export const FlavorDetail = () => {
                          />
                        </div>
                      </div>
-                     {(!deliveryDate || !deliveryTime) && (
-                       <p className="text-xs sm:text-sm text-red-600">
-                         Please select both date and time to proceed with booking
-                       </p>
-                     )}
+                    {(!deliveryDate || !deliveryTime) && (
+                      <p className="text-xs sm:text-sm text-red-600">
+                        Please select both date and time to proceed with booking
+                      </p>
+                    )}
+                    {deliveryDate && deliveryTime && !isDeliveryTimeValid() && (
+                      <p className="text-xs sm:text-sm text-red-600">
+                        Orders must be placed at least 24 hours before your selected delivery time
+                        {hoursUntilDelivery !== null
+                          ? `. Your current selection is ${hoursUntilDelivery.toFixed(1)} hour(s) away.`
+                          : '.'}
+                      </p>
+                    )}
                      
                      {/* Date-specific availability display */}
                      {deliveryDate && dateAvailability && (
@@ -1120,14 +1131,28 @@ export const FlavorDetail = () => {
                      >
                        Add to Favorites
                      </button>
-                     <button 
-                       onClick={handleReserveNow}
-                       disabled={!selectedSize || !deliveryDate || !deliveryTime || !isDeliveryTimeValid()}
-                       className="px-4 py-2 sm:px-8 sm:py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                       title={!selectedSize ? 'Please select a size' : !deliveryDate || !deliveryTime ? 'Please select delivery date and time' : !isDeliveryTimeValid() ? 'Orders must be placed at least 24 hours before delivery time' : ''}
-                     >
-                       Reserve
-                     </button>
+                    <button 
+                      onClick={handleReserveNow}
+                      disabled={!selectedSize || !deliveryDate || !deliveryTime}
+                      className={`px-4 py-2 sm:px-8 sm:py-3 rounded-full font-medium transition-colors text-sm sm:text-base ${
+                        !selectedSize || !deliveryDate || !deliveryTime
+                          ? 'bg-blue-200 text-white cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                      } ${deliveryDate && deliveryTime && !isDeliveryTimeValid() ? 'ring-2 ring-red-300' : ''}`}
+                      title={
+                        !selectedSize
+                          ? 'Please select a size'
+                          : !deliveryDate || !deliveryTime
+                            ? 'Please select delivery date and time'
+                            : !isDeliveryTimeValid()
+                              ? `Orders must be placed at least 24 hours before delivery time. Current selection is ${
+                                  hoursUntilDelivery !== null ? hoursUntilDelivery.toFixed(1) : 'less than 24'
+                                } hour(s) ahead.`
+                              : ''
+                      }
+                    >
+                      Reserve
+                    </button>
                    </div>
                 </div>
               </div>

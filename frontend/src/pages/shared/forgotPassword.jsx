@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav.jsx';
 import axios from 'axios';
 import { handleValidatedChange, validateFormData, trimFormData } from '../../utils/inputValidation';
 
 export const ForgotPassword = () => {
-    const navigate = useNavigate();
     const [form, setForm] = useState({ email: '' });
     const [status, setStatus] = useState({ type: null, message: '' });
     const [loading, setLoading] = useState(false);

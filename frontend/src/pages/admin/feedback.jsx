@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export const AdminFeedback = () => {
@@ -27,11 +27,7 @@ export const AdminFeedback = () => {
   const [submittingResponse, setSubmittingResponse] = useState(false);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState(null);
 
-  useEffect(() => {
-    fetchFeedback();
-  }, [filters]);
-
-  const fetchFeedback = async () => {
+  const fetchFeedback = useCallback(async () => {
     try {
       setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -59,7 +55,11 @@ export const AdminFeedback = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    fetchFeedback();
+  }, [fetchFeedback]);
 
   const handleStatusChange = async (feedbackId, newStatus) => {
     try {

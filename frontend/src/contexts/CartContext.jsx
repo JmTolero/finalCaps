@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 
 // Cart context for managing favorites/cart state across the application
@@ -126,7 +126,7 @@ export const CartProvider = ({ children }) => {
   const isLoadingCart = useRef(false);
 
   // Load cart from database on mount
-  const loadCartFromDatabase = async () => {
+  const loadCartFromDatabase = useCallback(async () => {
     const user = getCurrentUser();
     if (!user || !user.id) {
       console.log('🛒 CartContext: No user logged in, skipping database favorites load');
@@ -194,7 +194,7 @@ export const CartProvider = ({ children }) => {
       isLoadingCart.current = false;
       dispatch({ type: CART_ACTIONS.SET_LOADING, payload: false });
     }
-  };
+  }, [dispatch]);
 
   // Load cart from database on mount and when user session changes
   useEffect(() => {
@@ -246,7 +246,7 @@ export const CartProvider = ({ children }) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []); // Empty dependency array - only run on mount
+  }, [loadCartFromDatabase, state.items.length, state.loading, state.syncing]); // Re-run when relevant state changes
 
   // Separate effect for periodic cart check (only when cart is empty and not loaded yet)
   useEffect(() => {
@@ -267,7 +267,7 @@ export const CartProvider = ({ children }) => {
     return () => {
       clearInterval(interval);
     };
-  }, [state.items.length, state.loading, state.syncing]); // Only re-run when these specific values change
+  }, [state.items.length, state.loading, state.syncing, loadCartFromDatabase]); // Only re-run when these specific values change
 
   // Save cart to localStorage whenever items change
   useEffect(() => {

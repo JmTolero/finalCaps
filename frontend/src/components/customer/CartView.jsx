@@ -17,12 +17,9 @@ export const CartView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, totalItems, removeFromCart, clearCart } = useCart();
-  const [searchTerm, setSearchTerm] = useState('');
   const [flavorImages, setFlavorImages] = useState({});
   
   // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Feedback modal state
@@ -70,7 +67,6 @@ export const CartView = () => {
       const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      setNotificationsLoading(true);
       
       const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
         headers: {
@@ -79,13 +75,11 @@ export const CartView = () => {
       });
 
       if (response.data.success) {
-        setNotifications(response.data.notifications);
         console.log('📬 Fetched notifications:', response.data.notifications.length);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
-      setNotificationsLoading(false);
     }
   }, []);
 

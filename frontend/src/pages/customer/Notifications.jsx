@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav';
 import { useCart } from '../../contexts/CartContext';
@@ -77,52 +77,10 @@ export const Notifications = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
 
-  useEffect(() => {
-    // Load user data from session
-    const userRaw = sessionStorage.getItem('user');
-    if (userRaw) {
-      const user = JSON.parse(userRaw);
-      setCustomerData({
-        fname: user.firstName || user.fname || '',
-        lname: user.lastName || user.lname || '',
-        email: user.email || '',
-        contact_no: user.contact_no || '',
-        role: user.role || 'customer'
-      });
-    }
-    
-    fetchNotifications();
-  }, []);
-
-  // Reset modal states when component mounts or unmounts
-  useEffect(() => {
-    setShowDrumReturnModal(false);
-    setShowDrumReturnSuccessModal(false);
-    setShowErrorModal(false);
-    setSelectedOrderForReturn(null);
-    setShowReviewModal(false);
-    setShowInfoModal(false);
-    setSelectedOrder(null);
-    
-    // Cleanup function when component unmounts
-    return () => {
-      setShowReviewModal(false);
-      setShowInfoModal(false);
-      setShowOrderDetails(false);
-    };
-  }, []);
-  
-  // Reset modals when switching between views
-  useEffect(() => {
-    setShowReviewModal(false);
-    setShowInfoModal(false);
-  }, [activeView]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get user ID from sessionStorage
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) {
         setNotifications([]);
@@ -132,7 +90,6 @@ export const Notifications = () => {
       const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // Fetch real notifications from API
       const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
         headers: {
           Authorization: `Bearer ${sessionStorage.getItem('token')}`
@@ -140,7 +97,6 @@ export const Notifications = () => {
       });
 
       if (response.data.success) {
-        // Transform API notifications to match the expected format
         const transformedNotifications = response.data.notifications.map(notification => ({
           id: notification.id,
           type: getNotificationType(notification.notification_type),
@@ -166,7 +122,48 @@ export const Notifications = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const userRaw = sessionStorage.getItem('user');
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      setCustomerData({
+        fname: user.firstName || user.fname || '',
+        lname: user.lastName || user.lname || '',
+        email: user.email || '',
+        contact_no: user.contact_no || '',
+        role: user.role || 'customer'
+      });
+    }
+    
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Reset modal states when component mounts or unmounts
+  useEffect(() => {
+    setShowDrumReturnModal(false);
+    setShowDrumReturnSuccessModal(false);
+    setShowErrorModal(false);
+    setSelectedOrderForReturn(null);
+    setShowReviewModal(false);
+    setShowInfoModal(false);
+    setSelectedOrder(null);
+    
+    // Cleanup function when component unmounts
+    return () => {
+      setShowReviewModal(false);
+      setShowInfoModal(false);
+      setShowOrderDetails(false);
+    };
+  }, []);
+  
+  // Reset modals when switching between views
+  useEffect(() => {
+    setShowReviewModal(false);
+    setShowInfoModal(false);
+  }, [activeView]);
+
 
   // Helper function to map notification types
   const getNotificationType = (notificationType) => {
@@ -237,7 +234,6 @@ export const Notifications = () => {
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) return;
 
-      const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       const response = await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {

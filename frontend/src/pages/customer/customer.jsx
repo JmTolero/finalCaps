@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
@@ -16,6 +16,98 @@ import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
 import shopsIcon from '../../assets/images/customerIcon/shops.png';
 import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.png';
 import locationIcon from '../../assets/images/vendordashboardicon/location.png';
+
+const PAYMENT_DEADLINE_THRESHOLD_HOURS = 24;
+
+const getReservationExpiry = (deliveryDatetime) => {
+  if (!deliveryDatetime) return null;
+  const deliveryDate = new Date(deliveryDatetime);
+  const expiryDate = new Date(deliveryDate);
+  expiryDate.setHours(expiryDate.getHours() - 24);
+  return expiryDate;
+};
+
+const PaymentCountdownTimer = React.memo(({ order }) => {
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const [shouldShow, setShouldShow] = useState(false);
+
+  useEffect(() => {
+    if (!order?.delivery_datetime) return;
+
+    const calculateTimeRemaining = () => {
+      const expiryTime = order.reservation_expires_at
+        ? new Date(order.reservation_expires_at)
+        : getReservationExpiry(order.delivery_datetime);
+
+      if (!expiryTime) return;
+
+      const now = new Date();
+      const diff = expiryTime.getTime() - now.getTime();
+      const hoursRemaining = diff / (1000 * 60 * 60);
+
+      setShouldShow(hoursRemaining <= PAYMENT_DEADLINE_THRESHOLD_HOURS);
+
+      if (hoursRemaining > PAYMENT_DEADLINE_THRESHOLD_HOURS) {
+        return;
+      }
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      setIsExpired(false);
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ hours, minutes, seconds });
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [order?.delivery_datetime, order?.reservation_expires_at]);
+
+  if (!shouldShow) return null;
+  if (!timeRemaining && !isExpired) return null;
+
+  if (isExpired) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-red-600 text-lg sm:text-xl">⏰</span>
+          <div className="flex-1">
+            <p className="text-red-800 font-semibold text-xs sm:text-sm">Payment Deadline Expired</p>
+            <p className="text-red-700 text-[10px] sm:text-xs">Order will be auto-cancelled soon</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3">
+      <div className="flex items-center gap-2">
+        <span className="text-orange-600 text-base sm:text-lg">⏰</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-orange-800 font-semibold text-xs sm:text-sm mb-0.5">
+            Payment Deadline: {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
+          </p>
+          <p className="text-orange-700 text-[10px] sm:text-xs">
+            Pay within {timeRemaining.hours}h {timeRemaining.minutes}m or order will be auto-cancelled
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+PaymentCountdownTimer.displayName = 'PaymentCountdownTimer';
 
 export const Customer = () => {
   const [searchParams] = useSearchParams();
@@ -88,8 +180,6 @@ export const Customer = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [selectedOrderForReturn, setSelectedOrderForReturn] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Review modal state
@@ -164,34 +254,6 @@ export const Customer = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
   
-  // Fetch notifications for customer
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      setNotificationsLoading(true);
-      
-      const response = await axios.get(`${apiBase}/api/notifications/customer/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      if (response.data.success) {
-        setNotifications(response.data.notifications);
-        console.log('📬 Fetched notifications:', response.data.notifications.length);
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  }, []);
-
   // Fetch unread notification count
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -511,11 +573,10 @@ export const Customer = () => {
     
     // Fetch notifications only if not already loaded
     if (!dataLoaded.notifications) {
-    fetchNotifications();
-    fetchUnreadCount();
+      fetchUnreadCount();
       setDataLoaded(prev => ({ ...prev, notifications: true }));
     }
-  }, [activeView, fetchNotifications, fetchUnreadCount, dataLoaded]);
+  }, [activeView, fetchUnreadCount, dataLoaded]);
 
   // Auto-refresh orders every 5 minutes when on orders view (reduced frequency to prevent navigation interference)
   useEffect(() => {
@@ -891,55 +952,29 @@ export const Customer = () => {
   };
 
   
-  const updateOrderPaymentStatus = async (orderId, paymentStatus) => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+  // const markNotificationAsRead = async (notificationId) => {
+  //   try {
+  //     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
-      // Update payment status in database
-      const response = await axios.put(`${apiBase}/api/orders/${orderId}/payment-status`, {
-        payment_status: paymentStatus
-      });
-      
-      if (response.data.success) {
-        console.log('Payment status updated successfully for order:', orderId);
-        
-        // Refresh orders to show updated status
-        fetchCustomerOrders();
-        
-        console.log('Payment successful! The vendor has been notified and will start preparing your ice cream.');
-      } else {
-        throw new Error(response.data.error || 'Failed to update payment status');
-      }
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      showError('Payment completed, but failed to update status. Please contact support.');
-    }
-  };
+  //     await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {
+  //       headers: {
+  //         Authorization: `Bearer ${sessionStorage.getItem('token')}`
+  //       }
+  //     });
 
-  // Mark notification as read
-  const markNotificationAsRead = async (notificationId) => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+  //     // // Update local state
+  //     // setNotifications(prev => prev.map(n => 
+  //     //   n.id === notificationId ? { ...n, is_read: true } : n
+  //     // ));
       
-      await axios.put(`${apiBase}/api/notifications/${notificationId}/read`, {}, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      // Update local state
-      setNotifications(prev => prev.map(n => 
-        n.id === notificationId ? { ...n, is_read: true } : n
-      ));
+  //     // Update unread count
+  //     setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Update unread count
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      
-      console.log(`📖 Marked notification ${notificationId} as read`);
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
+  //     console.log(`📖 Marked notification ${notificationId} as read`);
+  //   } catch (error) {
+  //     console.error('Error marking notification as read:', error);
+  //   }
+  // };
 
   const showError = (message) => {
     setErrorMessage(message);
@@ -1133,31 +1168,6 @@ export const Customer = () => {
     }
   };
 
-  const setPrimaryAddress = async (addressId) => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      // Get user ID from sessionStorage
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) {
-        setStatus({ type: 'error', message: 'No user session found. Please log in again.' });
-        return;
-      }
-      const user = JSON.parse(userRaw);
-      const userId = user.id;
-      
-      await axios.put(`${apiBase}/api/addresses/user/${userId}/primary-address/${addressId}`);
-      setStatus({ type: 'success', message: 'Primary address updated!' });
-      fetchAddresses();
-    } catch (error) {
-      setStatus({ 
-        type: 'error', 
-        message: error.response?.data?.error || 'Failed to set primary address' 
-      });
-    }
-  };
-
-
   // Calculate distance for each flavor and sort by nearest vendors
   const filteredFlavors = useMemo(() => {
     let filtered = allFlavors.filter(flavor => 
@@ -1208,103 +1218,6 @@ export const Customer = () => {
   ];
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
-
-  // Calculate reservation expiry time (24 hours before delivery)
-  const getReservationExpiry = (deliveryDatetime) => {
-    if (!deliveryDatetime) return null;
-    const deliveryDate = new Date(deliveryDatetime);
-    const expiryDate = new Date(deliveryDate);
-    expiryDate.setHours(expiryDate.getHours() - 24);
-    return expiryDate;
-  };
-
-  // Countdown timer component for payment deadline
-  const PaymentCountdownTimer = ({ order }) => {
-    const [timeRemaining, setTimeRemaining] = useState(null);
-    const [isExpired, setIsExpired] = useState(false);
-    const [shouldShow, setShouldShow] = useState(false);
-
-    useEffect(() => {
-      if (!order.delivery_datetime) return;
-
-      const calculateTimeRemaining = () => {
-        const expiryTime = order.reservation_expires_at 
-          ? new Date(order.reservation_expires_at)
-          : getReservationExpiry(order.delivery_datetime);
-        
-        if (!expiryTime) return;
-
-        const now = new Date();
-        const diff = expiryTime - now;
-        const hoursRemaining = diff / (1000 * 60 * 60);
-
-        // Only show timer when within 24 hours (1 day) of the deadline
-        // You can change this to 12 hours if preferred
-        const SHOW_THRESHOLD_HOURS = 24; // Show when 24 hours or less remaining
-        
-        if (hoursRemaining > SHOW_THRESHOLD_HOURS) {
-          setShouldShow(false);
-          return;
-        }
-
-        setShouldShow(true);
-
-        if (diff <= 0) {
-          setIsExpired(true);
-          setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
-          return;
-        }
-
-        setIsExpired(false);
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        setTimeRemaining({ hours, minutes, seconds });
-      };
-
-      calculateTimeRemaining();
-      const interval = setInterval(calculateTimeRemaining, 1000);
-
-      return () => clearInterval(interval);
-    }, [order.delivery_datetime, order.reservation_expires_at]);
-
-    // Don't show if we're more than 24 hours away from deadline
-    if (!shouldShow) return null;
-    
-    // Show loading state briefly
-    if (!timeRemaining && !isExpired) return null;
-
-    if (isExpired) {
-      return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
-          <div className="flex items-center gap-2">
-            <span className="text-red-600 text-lg sm:text-xl">⏰</span>
-            <div className="flex-1">
-              <p className="text-red-800 font-semibold text-xs sm:text-sm">Payment Deadline Expired</p>
-              <p className="text-red-700 text-[10px] sm:text-xs">Order will be auto-cancelled soon</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3">
-        <div className="flex items-center gap-2">
-          <span className="text-orange-600 text-base sm:text-lg">⏰</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-orange-800 font-semibold text-xs sm:text-sm mb-0.5">
-              Payment Deadline: {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
-            </p>
-            <p className="text-orange-700 text-[10px] sm:text-xs">
-              Pay within {timeRemaining.hours}h {timeRemaining.minutes}m or order will be auto-cancelled
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Save customer profile
   const saveProfile = async () => {
@@ -1363,6 +1276,12 @@ export const Customer = () => {
       }
     }
   };
+
+  useEffect(() => {
+    if (vendorStatus) {
+      console.log('Current vendor status:', vendorStatus);
+    }
+  }, [vendorStatus]);
 
   if (activeView === 'orders') {
     return (

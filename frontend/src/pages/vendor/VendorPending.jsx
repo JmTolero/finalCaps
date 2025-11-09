@@ -1,89 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logoImage from '../../assets/images/LOGO.png';
 import axios from 'axios';
 
 // Import customer icons for header
-import cartIcon from '../../assets/images/customerIcon/cart.png';
-import notifIcon from '../../assets/images/customerIcon/notifbell.png';
-import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
-import shopsIcon from '../../assets/images/customerIcon/shops.png';
-import feedbackIcon from '../../assets/images/customerIcon/feedbacks.png';
 
 export const VendorPending = () => {
   const navigate = useNavigate();
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    checkVendorStatus();
-    fetchNotifications();
-    fetchUnreadCount();
-
-    // Auto-refresh vendor notifications every 30 seconds for real-time updates
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing vendor pending notifications...');
-      fetchNotifications();
-      fetchUnreadCount();
-    }, 30000); // 30 seconds for notification updates
-
-    // Cleanup interval on component unmount
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-
-  // Fetch notifications for vendor
-  const fetchNotifications = async () => {
-    try {
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/vendor/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      if (response.data.success) {
-        setNotifications(response.data.notifications);
-        console.log('📬 Fetched vendor notifications:', response.data.notifications.length);
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
-
-  // Fetch unread notification count
-  const fetchUnreadCount = async () => {
-    try {
-      const userRaw = sessionStorage.getItem('user');
-      if (!userRaw) return;
-
-      const user = JSON.parse(userRaw);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      const response = await axios.get(`${apiBase}/api/notifications/vendor/${user.id}/unread-count`, {
-        headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('token')}`
-        }
-      });
-
-      if (response.data.success) {
-        setUnreadCount(response.data.unreadCount);
-        console.log('📊 Unread notifications count:', response.data.unreadCount);
-      }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  };
-
-  const checkVendorStatus = async () => {
+  const checkVendorStatus = useCallback(async () => {
     try {
       // Get user from session
       const userRaw = sessionStorage.getItem('user');
@@ -115,7 +41,20 @@ export const VendorPending = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    checkVendorStatus();
+
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing vendor pending status...');
+      checkVendorStatus();
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [checkVendorStatus]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('user');

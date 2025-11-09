@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -10,16 +10,7 @@ const PaymentSuccess = () => {
   const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    if (orderId) {
-      fetchOrderDetails();
-    } else {
-      setError('Order ID not provided');
-      setLoading(false);
-    }
-  }, [orderId]);
-
-  const fetchOrderDetails = async () => {
+  const fetchOrderDetails = useCallback(async () => {
     try {
       setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -36,7 +27,16 @@ const PaymentSuccess = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  useEffect(() => {
+    if (orderId) {
+      fetchOrderDetails();
+    } else {
+      setError('Order ID not provided');
+      setLoading(false);
+    }
+  }, [orderId, fetchOrderDetails]);
 
   const downloadReceipt = () => {
     try {

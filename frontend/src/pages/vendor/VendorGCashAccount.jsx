@@ -30,7 +30,6 @@ const VendorGCashAccount = () => {
         throw new Error('User not logged in');
       }
 
-      const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       const response = await axios.get(`${apiBase}/api/vendor/qr-code`, {
@@ -64,7 +63,7 @@ const VendorGCashAccount = () => {
         // If 404 but no store_name, try to fetch from vendor endpoint
         try {
           const userRaw = sessionStorage.getItem('user');
-          const user = JSON.parse(userRaw);
+          const user = userRaw ? JSON.parse(userRaw) : null;
           const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
           const vendorResponse = await axios.get(`${apiBase}/api/vendor/current`, {
             headers: {
@@ -141,8 +140,6 @@ const VendorGCashAccount = () => {
         throw new Error('Please upload your GCash QR code');
       }
 
-      const userRaw = sessionStorage.getItem('user');
-      const user = JSON.parse(userRaw);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       
       const formDataToSend = new FormData();

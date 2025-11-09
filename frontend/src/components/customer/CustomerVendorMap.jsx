@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import GoogleMapFree from '../shared/GoogleMapFree';
 import axios from 'axios';
 
@@ -15,11 +15,7 @@ const CustomerVendorMap = ({
   const [error, setError] = useState(null);
 
   // Fetch vendors and delivery zones
-  useEffect(() => {
-    fetchVendorData();
-  }, []);
-
-  const fetchVendorData = async () => {
+  const fetchVendorData = useCallback(async () => {
     setLoading(true);
     
     // Fetch real vendor data from API
@@ -291,20 +287,24 @@ const CustomerVendorMap = ({
       setError('Failed to load vendor data');
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchVendorData();
+  }, [fetchVendorData]);
 
   // Handle location change from map
-  const handleLocationChange = (location) => {
+  const handleLocationChange = useCallback((location) => {
     setUserLocation(location);
-    
+
     // Determine which delivery zone the user is in
     const userZone = findUserZone(location);
     setSelectedZone(userZone);
-    
+
     if (onLocationChange) {
       onLocationChange(location, userZone);
     }
-  };
+  }, [onLocationChange, deliveryZones]);
 
   // Find which delivery zone contains the user's location
   const findUserZone = (location) => {
@@ -320,7 +320,7 @@ const CustomerVendorMap = ({
   };
 
   // Handle marker click
-  const handleMarkerClick = (marker, mapMarker) => {
+  const handleMarkerClick = useCallback((marker, mapMarker) => {
     // Call onVendorSelect with the clicked vendor data
     if (marker.vendorData && onVendorSelect) {
       onVendorSelect(marker.vendorData);
@@ -347,7 +347,7 @@ const CustomerVendorMap = ({
         alert('Please enable location to check delivery availability');
       }
     };
-  };
+  }, [vendors, onVendorSelect, selectedZone]);
 
   // Create map markers for vendors with location accuracy visual indicators
   const createVendorMarkers = useMemo(() => {
@@ -455,4 +455,4 @@ const CustomerVendorMap = ({
   );
 };
 
-export default CustomerVendorMap;
+export default memo(CustomerVendorMap);

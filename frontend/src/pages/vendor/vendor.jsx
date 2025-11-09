@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from "react";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AddressForm from "../../components/shared/AddressForm";
 import FeedbackModal from "../../components/shared/FeedbackModal";
@@ -236,7 +237,6 @@ export const Vendor = () => {
   // Orders state
   const [vendorOrders, setVendorOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersRefreshLoading, setOrdersRefreshLoading] = useState(false);
   const [orderFilter, setOrderFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [recentStatusChange, setRecentStatusChange] = useState(null); // For undo functionality
@@ -410,7 +410,7 @@ export const Vendor = () => {
     } catch (error) {
       console.error('Error fetching subscription limits:', error);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   const fetchCurrentVendor = useCallback(async () => {
     try {
@@ -513,7 +513,7 @@ export const Vendor = () => {
     } finally {
       setIsInitialLoading(false);
     }
-  }, [fetchAddresses, navigate, currentVendor]);
+  }, [fetchAddresses, fetchSubscriptionLimits, navigate, currentVendor]);
 
   const fetchDashboardData = useCallback(async (vendorId) => {
     if (!vendorId) return;
@@ -634,7 +634,7 @@ export const Vendor = () => {
     } finally {
       setPublishedFlavorsLoading(false);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   const handleDrumsEdit = () => {
     setIsEditingDrums(true);
@@ -893,7 +893,7 @@ export const Vendor = () => {
       // Set empty array on error
       setDeliveryZones([]);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   const handleDeliveryEdit = () => {
     setIsEditingDelivery(true);
@@ -1093,7 +1093,7 @@ export const Vendor = () => {
     } finally {
       setOrdersLoading(false);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   // Fetch vendor transactions
   const fetchVendorTransactions = useCallback(async () => {
@@ -1131,14 +1131,13 @@ export const Vendor = () => {
     } finally {
       setTransactionsLoading(false);
     }
-  }, [currentVendor?.vendor_id, transactionFilters]);
+  }, [currentVendor, transactionFilters]);
 
    // Manual refresh vendor orders
    const handleRefreshOrders = async () => {
      if (!currentVendor?.vendor_id) return;
      
      try {
-       setOrdersRefreshLoading(true);
        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
        const response = await axios.get(`${apiBase}/api/orders/vendor/${currentVendor.vendor_id}`);
        
@@ -1150,9 +1149,7 @@ export const Vendor = () => {
        }
      } catch (error) {
        console.error('❌ Error refreshing vendor orders:', error);
-     } finally {
-       setOrdersRefreshLoading(false);
-     }
+    }
    };
 
    // Fetch notifications for vendor
@@ -1182,7 +1179,7 @@ export const Vendor = () => {
      } finally {
        setNotificationsLoading(false);
      }
-  }, [currentVendor?.vendor_id, currentVendor?.user_id]);
+  }, [currentVendor]);
 
    // Fetch unread notification count for vendor
   const fetchUnreadCount = useCallback(async () => {
@@ -1203,7 +1200,7 @@ export const Vendor = () => {
      } catch (error) {
        console.error('Error fetching unread count:', error);
      }
-  }, [currentVendor?.vendor_id, currentVendor?.user_id]);
+  }, [currentVendor]);
 
    // Mark notification as read
    const markNotificationAsRead = async (notificationId) => {
@@ -1253,14 +1250,6 @@ export const Vendor = () => {
        alert('Failed to mark all notifications as read. Please try again.');
      }
    };
-
-  // Decline order with reason
-  const declineOrderWithReason = (orderId) => {
-    const order = vendorOrders.find(o => o.order_id === orderId);
-    setSelectedOrder(order);
-    setDeclineReason('');
-    setShowDeclineReasonModal(true);
-  };
 
   // Handle decline reason submission
   const handleDeclineReasonSubmit = () => {
@@ -1814,7 +1803,7 @@ export const Vendor = () => {
     } finally {
       setFlavorsLoading(false);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   // Fetch drum pricing and availability from database
   const fetchDrumData = useCallback(async () => { 
@@ -1851,7 +1840,7 @@ export const Vendor = () => {
     } catch (error) {
       console.error("Error fetching drum data:", error);
     }
-  }, [currentVendor?.vendor_id]);
+  }, [currentVendor]);
 
   const openImageModal = (imageUrls, flavorName) => {
     setSelectedFlavorImages(imageUrls);
@@ -1860,12 +1849,12 @@ export const Vendor = () => {
     setImageModalOpen(true);
   };
 
-  const closeImageModal = () => {
+  const closeImageModal = useCallback(() => {
     setImageModalOpen(false);
     setSelectedFlavorImages([]);
     setSelectedFlavorName("");
     setCurrentImageIndex(0);
-  };
+  }, []);
 
   const handleViewPaymentProof = (order) => {
     setSelectedOrderForPaymentProof(order);
@@ -2022,17 +2011,17 @@ export const Vendor = () => {
     }
   };
 
-  const nextImage = () => {
+  const nextImage = useCallback(() => {
     setCurrentImageIndex((prev) => 
       prev === selectedFlavorImages.length - 1 ? 0 : prev + 1
     );
-  };
+  }, [selectedFlavorImages.length]);
 
-  const prevImage = () => {
+  const prevImage = useCallback(() => {
     setCurrentImageIndex((prev) => 
       prev === 0 ? selectedFlavorImages.length - 1 : prev - 1
     );
-  };
+  }, [selectedFlavorImages.length]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -2050,7 +2039,7 @@ export const Vendor = () => {
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [imageModalOpen, selectedFlavorImages.length]);
+  }, [imageModalOpen, selectedFlavorImages.length, nextImage, prevImage, closeImageModal]);
 
   // Handle window resize for sidebar responsiveness
   useEffect(() => {
@@ -2824,7 +2813,7 @@ export const Vendor = () => {
     };
 
     fetchWalkInDateAvailability();
-  }, [walkInDeliveryDate, currentVendor?.vendor_id, getAvailabilityByDate]);
+  }, [walkInDeliveryDate, currentVendor?.vendor_id]);
 
   // Fetch transactions when transaction history view is active
   useEffect(() => {
@@ -7240,7 +7229,6 @@ export const Vendor = () => {
                             
                             // Check availability for this size
                             const available = walkInDeliveryDate ? getWalkInAvailableDrums(size) : null;
-                            const isAvailable = available !== null && available > 0;
                             const isOutOfStock = available !== null && available === 0;
                             const isDisabled = !hasPrice || !selectedFlavor || isOutOfStock;
 

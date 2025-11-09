@@ -14,12 +14,8 @@ export const Checkout = () => {
   const [deliveryDateTime, setDeliveryDateTime] = useState('');
   const [deliveryPrice, setDeliveryPrice] = useState(null);
   const [vendorDeliveryFees, setVendorDeliveryFees] = useState({});
-  const [deliveryLoading, setDeliveryLoading] = useState({});
-  const [isDeliveryInitialized, setIsDeliveryInitialized] = useState(false);
   const [deliveryCalculationComplete, setDeliveryCalculationComplete] = useState(false);
-  const [deliveryCalculationStarted, setDeliveryCalculationStarted] = useState(false);
   const [addressFetchStarted, setAddressFetchStarted] = useState(false);
-  const [forceRefreshDelivery, setForceRefreshDelivery] = useState(0);
   // const [deliveryAvailable, setDeliveryAvailable] = useState(true); // Removed unused variable
   const [showReceipt, setShowReceipt] = useState(false);
   const [savedOrderId, setSavedOrderId] = useState(null);
@@ -34,8 +30,35 @@ export const Checkout = () => {
     console.log('🔍 Receipt state changed:', showReceipt);
   }, [showReceipt]);
 
+  const groupItemsByVendor = useCallback((items) => {
+    if (!items || !Array.isArray(items)) {
+      return {};
+    }
+
+    return items.reduce((groups, item) => {
+      const vendorId = item.vendor_id;
+      if (vendorId === null || vendorId === undefined) {
+        console.warn('Skipping item with invalid vendor_id:', item);
+        return groups;
+      }
+
+      if (!groups[vendorId]) {
+        groups[vendorId] = {
+          vendor_id: vendorId,
+          vendor_name: item.vendor_name || 'Unknown Vendor',
+          items: [],
+          total_price: 0
+        };
+      }
+
+      groups[vendorId].items.push(item);
+      groups[vendorId].total_price += item.price * item.quantity;
+      return groups;
+    }, {});
+  }, []);
+
   // Get delivery price for a specific vendor and location with fuzzy matching
-  const getVendorDeliveryPrice = async (vendorId, city, province) => {
+  const getVendorDeliveryPrice = useCallback(async (vendorId, city, province) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const url = `${apiBase}/api/vendor/delivery/${vendorId}/price?city=${encodeURIComponent(city)}&province=${encodeURIComponent(province)}`;
@@ -81,7 +104,7 @@ export const Checkout = () => {
         error: error.message
       };
     }
-  };
+  }, []);
 
   const fetchUserAddress = useCallback(async () => {
     // Prevent multiple calls
@@ -217,13 +240,6 @@ export const Checkout = () => {
           
           console.log('🛒 Getting delivery prices for vendors:', vendors.map(v => v.vendor_id));
           
-          // Set loading state for all vendors
-          const loadingState = {};
-          vendors.forEach(vendor => {
-            loadingState[vendor.vendor_id] = true;
-          });
-          setDeliveryLoading(loadingState);
-          
           // Get delivery prices for all vendors
           const getDeliveryPrices = async () => {
             const deliveryFees = {};
@@ -248,7 +264,6 @@ export const Checkout = () => {
             
             console.log('🎉 All delivery prices collected:', deliveryFees);
             setVendorDeliveryFees(deliveryFees);
-            setDeliveryLoading({}); // Clear loading states
           };
           
           getDeliveryPrices();
@@ -256,7 +271,6 @@ export const Checkout = () => {
         } else if (orderData?.vendorId) {
           // Single item checkout - get delivery price for this vendor
           console.log('🛍️ Getting delivery price for single vendor:', orderData.vendorId);
-          setDeliveryLoading({ [orderData.vendorId]: true });
           
           const getSingleDeliveryPrice = async () => {
             try {
@@ -276,14 +290,13 @@ export const Checkout = () => {
               setVendorDeliveryFees({ [orderData.vendorId]: 0 });
               setDeliveryPrice(0);
             }
-            setDeliveryLoading({});
           };
           
           getSingleDeliveryPrice();
         }
       }
     }
-  }, [orderData, userAddress, deliveryCalculationComplete]);
+  }, [orderData, userAddress, deliveryCalculationComplete, groupItemsByVendor, getVendorDeliveryPrice]);
 
   // Reset delivery state when order data changes
   useEffect(() => {
@@ -291,14 +304,19 @@ export const Checkout = () => {
       console.log('🔄 Resetting delivery state for new order');
       setDeliveryCalculationComplete(false);
       setVendorDeliveryFees({});
-      setDeliveryLoading({});
     }
-  }, [orderData?.fromCart, orderData?.items?.length]);
+  }, [orderData]);
 
   useEffect(() => {
     console.log('🔄 Main useEffect triggered');
-    // Get order data from location state
-    if (location.state && !orderData) { // Only process if we don't already have order data
+    // No location state provided – send the user back
+    if (!location.state) {
+      navigate('/customer');
+      return;
+    }
+
+    // We already captured the state on a previous render
+    if (!orderData) {
       if (location.state.fromCart && location.state.items && location.state.items.length > 0) {
         // Handle cart checkout
         const cartOrderData = {
@@ -317,7 +335,7 @@ export const Checkout = () => {
         console.log('🛍️ Setting single item order data:', location.state);
         setOrderData(location.state);
       }
-      
+
       // Format delivery date and time
       if (location.state.deliveryDate && location.state.deliveryTime) {
         const date = new Date(location.state.deliveryDate);
@@ -334,41 +352,11 @@ export const Checkout = () => {
         }) : '';
         setDeliveryDateTime(`${formattedDate} ${formattedTime}`);
       }
-    } else {
-      // If no data, redirect back to customer page
-      navigate('/customer');
     }
-    
+
     // Fetch user's address
     fetchUserAddress();
-  }, [location.state, navigate]); // Removed fetchUserAddress from dependencies to prevent loops
-
-  // Helper function to group items by vendor
-  const groupItemsByVendor = useCallback((items) => {
-    if (!items || !Array.isArray(items)) return {};
-    
-    return items.reduce((groups, item) => {
-      const vendorId = item.vendor_id;
-      
-      // Skip items with invalid vendor_id
-      if (!vendorId || vendorId === null || vendorId === undefined) {
-        console.warn('Skipping item with invalid vendor_id:', item);
-        return groups;
-      }
-      
-      if (!groups[vendorId]) {
-        groups[vendorId] = {
-          vendor_id: vendorId,
-          vendor_name: item.vendor_name || 'Unknown Vendor',
-          items: [],
-          total_price: 0
-        };
-      }
-      groups[vendorId].items.push(item);
-      groups[vendorId].total_price += item.price * item.quantity;
-      return groups;
-    }, {});
-  }, []);
+  }, [location.state, navigate, orderData, fetchUserAddress]);
 
   // Memoized grouped vendors to prevent unnecessary re-renders
   const groupedVendors = useMemo(() => {
@@ -700,169 +688,6 @@ export const Checkout = () => {
     }
   };
 
-  const downloadReceipt = async () => {
-    try {
-      // Try to use html2canvas if available
-      if (window.html2canvas) {
-        const canvas = await window.html2canvas(receiptRef.current, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          useCORS: true,
-          allowTaint: true
-        });
-        
-        // Create download link
-        const link = document.createElement('a');
-        link.download = `GCash-Receipt-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } else {
-        // Fallback: Create a simple text receipt
-        const receiptText = generateTextReceipt();
-        const blob = new Blob([receiptText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `GCash-Receipt-${Date.now()}.txt`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('Error downloading receipt:', error);
-      alert('Failed to download receipt. Please try again.');
-    }
-  };
-
-  const generateTextReceipt = () => {
-    const totalAmount = getTotalAmount();
-    
-    if (Array.isArray(savedOrderId) && savedOrderId.length > 1) {
-      // Multi-vendor order receipt
-      return `
-=================================
-    MULTI-VENDOR ORDER CONFIRMATION
-=================================
-
-Date: ${new Date().toLocaleDateString()}
-Time: ${new Date().toLocaleTimeString()}
-Status: PENDING PAYMENT
-
----------------------------------
-PAYMENT INFORMATION
----------------------------------
-GCash Payment Required
-Note: Please proceed with payment to confirm your order
-
----------------------------------
-ORDER BREAKDOWN BY VENDOR
----------------------------------
-${savedOrderId.map(order => {
-  const vendorGroup = groupedVendors.find(vg => vg.vendor_id === order.vendor_id);
-  const vendorDeliveryFee = getVendorDeliveryFee(order.vendor_id);
-  return `
-${vendorGroup?.vendor_name || 'Unknown Vendor'}:
-Order ID: #${order.order_id}
-Items: ${vendorGroup?.items?.map(item => `${item.name} x${item.quantity}`).join(', ') || 'N/A'}
-Subtotal: ₱${(parseFloat(order.total_amount) - vendorDeliveryFee).toFixed(2)}
-Delivery: ₱${vendorDeliveryFee.toFixed(2)}
-Total: ₱${parseFloat(order.total_amount).toFixed(2)}`;
-}).join('\n')}
-
----------------------------------
-OVERALL SUMMARY
----------------------------------
-${orderData.items?.map(item => 
-  `${item.name} x${item.quantity} - ₱${(item.price * item.quantity).toFixed(2)}`
-).join('\n') || 'No items'}
-
-${orderData?.fromCart ? 
-  Object.entries(vendorDeliveryFees).map(([vendorId, fee]) => {
-    const vendorGroup = groupedVendors.find(vg => vg.vendor_id && vg.vendor_id.toString() === vendorId);
-    return fee > 0 ? `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: Free`;
-  }).join('\n') :
-  (deliveryPrice > 0 ? `Delivery Fee: ₱${deliveryPrice.toFixed(2)}` : '')
-}
-
-Grand Total: ₱${totalAmount.toFixed(2)}
-
----------------------------------
-DELIVERY INFORMATION
----------------------------------
-Address: ${deliveryAddress || userAddress}
-Date & Time: ${deliveryDateTime}
-
----------------------------------
-NEXT STEPS
----------------------------------
-• Your orders have been placed successfully with ${savedOrderId.length} vendor(s)
-• Please proceed with payment via GCash for each order
-• You will receive notifications when payment is received
-• Track each order separately in your order history
-• Keep this confirmation for your records
-
-=================================
-        Thank you for your order!
-=================================
-    `;
-    } else {
-      // Single vendor order receipt
-      const orderId = Array.isArray(savedOrderId) ? savedOrderId[0]?.order_id : savedOrderId;
-      
-      return `
-=================================
-       ORDER CONFIRMATION
-=================================
-
-Date: ${new Date().toLocaleDateString()}
-Time: ${new Date().toLocaleTimeString()}
-Order ID: #${orderId || 'N/A'}
-Status: PENDING PAYMENT
-
----------------------------------
-PAYMENT INFORMATION
----------------------------------
-GCash Payment Required
-Note: Please proceed with payment to confirm your order
-
----------------------------------
-ORDER SUMMARY
----------------------------------
-${orderData.items?.map(item => 
-  `${item.name} x${item.quantity} - ₱${(item.price * item.quantity).toFixed(2)}`
-).join('\n') || 'No items'}
-
-${orderData?.fromCart ? 
-  Object.entries(vendorDeliveryFees).map(([vendorId, fee]) => {
-    const vendorGroup = groupedVendors.find(vg => vg.vendor_id && vg.vendor_id.toString() === vendorId);
-    return fee > 0 ? `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: ₱${fee.toFixed(2)}` : `${vendorGroup?.vendor_name || 'Unknown Vendor'} Delivery: Free`;
-  }).join('\n') :
-  (deliveryPrice > 0 ? `Delivery Fee: ₱${deliveryPrice.toFixed(2)}` : '')
-}
-
-Grand Total: ₱${totalAmount.toFixed(2)}
-
----------------------------------
-DELIVERY INFORMATION
----------------------------------
-Address: ${deliveryAddress || userAddress}
-Date & Time: ${deliveryDateTime}
-
----------------------------------
-NEXT STEPS
----------------------------------
-• Your order has been placed successfully
-• Please proceed with payment via GCash to confirm your order
-• You will receive a notification once payment is received
-• The vendor will start preparing your order after payment confirmation
-• Keep this confirmation for your records
-
-=================================
-        Thank you for your order!
-=================================
-    `;
-    }
-  };
-
   if (!orderData) {
     return (
       <>
@@ -1044,18 +869,13 @@ NEXT STEPS
                               <span className="font-bold text-blue-600">₱{getTotalDeliveryFee().toFixed(2)}</span>
                               <button
                                 onClick={() => {
-                                  setForceRefreshDelivery(prev => prev + 1);
                                   setDeliveryCalculationComplete(false);
-                                  setDeliveryCalculationStarted(false);
                                   setVendorDeliveryFees({});
-                                  setDeliveryLoading({});
-                                  setIsDeliveryInitialized(false);
                                   setAddressFetchStarted(false);
                                   // Trigger address fetch again
                                   setTimeout(() => {
                                     const userRaw = sessionStorage.getItem('user');
                                     if (userRaw) {
-                                      const user = JSON.parse(userRaw);
                                       fetchUserAddress();
                                     }
                                   }, 100);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { NavWithLogo } from "../../components/shared/nav";
 import { useCart } from "../../contexts/CartContext";
 import FeedbackModal from '../../components/shared/FeedbackModal';
@@ -24,8 +24,6 @@ export const AllVendorStores = () => {
   const [searchInput, setSearchInput] = useState(""); // Separate input state for non-refreshing input
   
   // Notification state
-  const [notifications, setNotifications] = useState([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Feedback modal state
@@ -81,7 +79,6 @@ export const AllVendorStores = () => {
   // Fetch notifications for customer
   const fetchNotifications = useCallback(async () => {
     try {
-      setNotificationsLoading(true);
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) return;
 
@@ -95,12 +92,11 @@ export const AllVendorStores = () => {
       });
 
       if (response.data.success) {
-        setNotifications(response.data.notifications || []);
+        console.log('📬 Fetched notifications:', response.data.notifications.length);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
-      setNotificationsLoading(false);
     }
   }, []);
 

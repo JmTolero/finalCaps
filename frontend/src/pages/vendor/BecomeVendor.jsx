@@ -56,14 +56,6 @@ export const BecomeVendor = () => {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   const validateForm = () => {
     // Validate user name
     const firstName = userData?.firstName || userData?.fname || '';

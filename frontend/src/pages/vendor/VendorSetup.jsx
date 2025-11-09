@@ -1,4 +1,4 @@
-    import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import AddressForm from '../../components/shared/AddressForm';
 import logoImage from '../../assets/images/LOGO.png';
@@ -42,25 +42,6 @@ export const VendorSetup = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
 
-  // Get vendor data from URL parameters or session storage
-  useEffect(() => {
-    const vendorId = searchParams.get('vendor_id');
-    const storedVendor = sessionStorage.getItem('pendingVendor');
-    
-    if (vendorId) {
-      // Get vendor_id from URL parameters (from login redirect)
-      fetchVendorData(vendorId);
-    } else if (storedVendor) {
-      // Fallback to session storage (from registration)
-      const vendor = JSON.parse(storedVendor);
-      setVendorData(vendor);
-      fetchVendorData(vendor.vendor_id);
-    } else {
-      // No vendor_id found, redirect to login
-      navigate('/login');
-    }
-  }, [searchParams, navigate]);
-
   // Handle clicks outside profile dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -84,7 +65,37 @@ export const VendorSetup = () => {
   };
 
 
-  const fetchVendorData = async (vendorId) => {
+  const fetchVendorAddress = useCallback(async (userId) => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      if (!userId) {
+        console.log('No user ID available for fetching address');
+        return;
+      }
+      
+      const response = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
+      
+      if (response.data && response.data.length > 0) {
+        const address = response.data[0];
+        setAddressData({
+          unit_number: address.unit_number || '',
+          street_name: address.street_name || '',
+          barangay: address.barangay || '',
+          cityVillage: address.cityVillage || '',
+          province: address.province || '',
+          region: address.region || '',
+          postal_code: address.postal_code || '',
+          landmark: address.landmark || '',
+          address_type: 'business'
+        });
+        console.log('Address data loaded:', address);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor address:', error);
+    }
+  }, []);
+
+  const fetchVendorData = useCallback(async (vendorId) => {
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const response = await axios.get(`${apiBase}/api/vendor/setup/${vendorId}`);
@@ -103,7 +114,7 @@ export const VendorSetup = () => {
         
         // Fetch existing address data if vendor has primary_address_id
         if (vendor.primary_address_id) {
-          await fetchVendorAddress(vendorId);
+          await fetchVendorAddress(vendor.user_id);
         }
         
         console.log('Vendor data loaded:', vendor);
@@ -120,42 +131,28 @@ export const VendorSetup = () => {
           email: storedVendor.email || '',
           contact_no: storedVendor.contact_no || ''
         }));
+        if (storedVendor.user_id) {
+          await fetchVendorAddress(storedVendor.user_id);
+        }
       }
     }
-  };
+  }, [fetchVendorAddress]);
 
-  const fetchVendorAddress = async (vendorId) => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      // Use the user_id from vendorData instead of vendorId
-      const userId = vendorData?.user_id;
-      if (!userId) {
-        console.log('No user ID available for fetching address');
-        return;
-      }
-      
-      const response = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
-      
-      if (response.data && response.data.length > 0) {
-        // Get the first address (primary address)
-        const address = response.data[0];
-        setAddressData({
-          unit_number: address.unit_number || '',
-          street_name: address.street_name || '',
-          barangay: address.barangay || '',
-          cityVillage: address.cityVillage || '',
-          province: address.province || '',
-          region: address.region || '',
-          postal_code: address.postal_code || '',
-          landmark: address.landmark || '',
-          address_type: 'business'
-        });
-        console.log('Address data loaded:', address);
-      }
-    } catch (error) {
-      console.error('Error fetching vendor address:', error);
+  // Get vendor data from URL parameters or session storage
+  useEffect(() => {
+    const vendorId = searchParams.get('vendor_id');
+    const storedVendor = sessionStorage.getItem('pendingVendor');
+    
+    if (vendorId) {
+      fetchVendorData(vendorId);
+    } else if (storedVendor) {
+      const vendor = JSON.parse(storedVendor);
+      setVendorData(vendor);
+      fetchVendorData(vendor.vendor_id);
+    } else {
+      navigate('/login');
     }
-  };
+  }, [searchParams, navigate, fetchVendorData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

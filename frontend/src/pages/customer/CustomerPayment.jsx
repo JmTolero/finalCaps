@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { NavWithLogo } from '../../components/shared/nav';
@@ -6,15 +6,10 @@ import { NavWithLogo } from '../../components/shared/nav';
 const CustomerPayment = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchOrderDetails();
-  }, [orderId]);
-
-  const fetchOrderDetails = async () => {
+  const fetchOrderDetails = useCallback(async () => {
     try {
       setLoading(true);
       const userRaw = sessionStorage.getItem('user');
@@ -40,8 +35,6 @@ const CustomerPayment = () => {
           throw new Error('Order is not eligible for payment');
         }
         
-        setOrder(orderData);
-        
         // Redirect to QR code payment flow
         navigate(`/customer/gcash-account/${orderId}`);
         
@@ -54,7 +47,11 @@ const CustomerPayment = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, orderId]);
+
+  useEffect(() => {
+    fetchOrderDetails();
+  }, [fetchOrderDetails]);
 
   if (loading) {
     return (

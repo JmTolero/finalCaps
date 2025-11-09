@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   PHILIPPINE_CITIES_MUNICIPALITIES, 
-  PHILIPPINE_PROVINCES, 
-  getCitiesByProvince,
-  searchCities,
-  searchProvinces 
+  PHILIPPINE_PROVINCES 
 } from '../../data/philippinesData';
 
 const DropdownSelect = ({ 
