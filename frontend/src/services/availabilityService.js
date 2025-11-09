@@ -35,7 +35,9 @@ export const getAvailabilityByDateAndSize = async (vendorId, date, size) => {
   }
 };
 
-export default {
+const availabilityService = {
   getAvailabilityByDate,
   getAvailabilityByDateAndSize
 };
+
+export default availabilityService;
