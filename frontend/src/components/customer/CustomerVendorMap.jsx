@@ -294,6 +294,18 @@ const CustomerVendorMap = ({
   }, [fetchVendorData]);
 
   // Handle location change from map
+  const findUserZone = useCallback((location) => {
+    // This would typically use a more sophisticated geocoding service
+    // For now, we'll use a simple distance-based approach
+    return deliveryZones.find(zone => {
+      // Simple check - in a real app, you'd use proper polygon containment
+      return zone.boundaries.some(boundary => 
+        Math.abs(boundary.lat - location.lat) < 0.1 && 
+        Math.abs(boundary.lng - location.lng) < 0.1
+      );
+    });
+  }, [deliveryZones]);
+
   const handleLocationChange = useCallback((location) => {
     setUserLocation(location);
 
@@ -304,20 +316,7 @@ const CustomerVendorMap = ({
     if (onLocationChange) {
       onLocationChange(location, userZone);
     }
-  }, [onLocationChange, deliveryZones]);
-
-  // Find which delivery zone contains the user's location
-  const findUserZone = (location) => {
-    // This would typically use a more sophisticated geocoding service
-    // For now, we'll use a simple distance-based approach
-    return deliveryZones.find(zone => {
-      // Simple check - in a real app, you'd use proper polygon containment
-      return zone.boundaries.some(boundary => 
-        Math.abs(boundary.lat - location.lat) < 0.1 && 
-        Math.abs(boundary.lng - location.lng) < 0.1
-      );
-    });
-  };
+  }, [onLocationChange, findUserZone]);
 
   // Handle marker click
   const handleMarkerClick = useCallback((marker, mapMarker) => {
