@@ -515,6 +515,81 @@ export const Vendor = () => {
     }
   }, [fetchAddresses, navigate, currentVendor]);
 
+  const fetchDashboardData = useCallback(async (vendorId) => {
+    if (!vendorId) return;
+    
+    try {
+      setDashboardLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(
+        `${apiBase}/api/vendor/dashboard/${vendorId}`
+      );
+      
+      if (response.data.success) {
+        setDashboardData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setDashboardData({
+        total_orders: 0,
+        total_revenue: 0,
+        pending_orders: 0,
+        confirmed_orders: 0,
+        delivered_orders: 0,
+        sales_today: 0,
+        sales_this_month: 0,
+        top_flavor: "N/A",
+        product_count: 0,
+        upcoming_deliveries: [],
+      });
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, []);
+
+  const fetchCustomerFeedback = useCallback(async (vendorId) => {
+    if (!vendorId) return;
+    
+    try {
+      setFeedbackLoading(true);
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(
+        `${apiBase}/api/reviews/vendor/${vendorId}`
+      );
+      
+      if (response.data.success) {
+        setCustomerFeedback({
+          reviews: response.data.reviews || [],
+          summary: response.data.summary || {
+            total_reviews: 0,
+            average_rating: 0,
+            five_star: 0,
+            four_star: 0,
+            three_star: 0,
+            two_star: 0,
+            one_star: 0
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching customer feedback:", error);
+      setCustomerFeedback({
+        reviews: [],
+        summary: {
+          total_reviews: 0,
+          average_rating: 0,
+          five_star: 0,
+          four_star: 0,
+          three_star: 0,
+          two_star: 0,
+          one_star: 0
+        }
+      });
+    } finally {
+      setFeedbackLoading(false);
+    }
+  }, []);
+
   const fetchPublishedFlavors = useCallback(async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch published flavors: no vendor_id', currentVendor);
@@ -2779,85 +2854,6 @@ export const Vendor = () => {
       }
     };
   }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchNotifications, fetchUnreadCount]);
-
-  // Fetch vendor dashboard data
-  const fetchDashboardData = useCallback(async (vendorId) => {
-    if (!vendorId) return;
-    
-    try {
-      setDashboardLoading(true);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(
-        `${apiBase}/api/vendor/dashboard/${vendorId}`
-      );
-      
-      if (response.data.success) {
-        setDashboardData(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      // Set default values on error
-      setDashboardData({
-        total_orders: 0,
-        total_revenue: 0,
-        pending_orders: 0,
-        confirmed_orders: 0,
-        delivered_orders: 0,
-        sales_today: 0,
-        sales_this_month: 0,
-        top_flavor: "N/A",
-        product_count: 0,
-        upcoming_deliveries: [],
-      });
-    } finally {
-      setDashboardLoading(false);
-    }
-  }, []);
-
-  // Fetch customer feedback/reviews for vendor
-  const fetchCustomerFeedback = useCallback(async (vendorId) => {
-    if (!vendorId) return;
-    
-    try {
-      setFeedbackLoading(true);
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(
-        `${apiBase}/api/reviews/vendor/${vendorId}`
-      );
-      
-      if (response.data.success) {
-        setCustomerFeedback({
-          reviews: response.data.reviews || [],
-          summary: response.data.summary || {
-            total_reviews: 0,
-            average_rating: 0,
-            five_star: 0,
-            four_star: 0,
-            three_star: 0,
-            two_star: 0,
-            one_star: 0
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching customer feedback:", error);
-      // Set default values on error
-      setCustomerFeedback({
-        reviews: [],
-        summary: {
-          total_reviews: 0,
-          average_rating: 0,
-          five_star: 0,
-          four_star: 0,
-          three_star: 0,
-          two_star: 0,
-          one_star: 0
-        }
-      });
-    } finally {
-      setFeedbackLoading(false);
-    }
-  }, []);
 
   // Helper function to generate initials from name
   const getInitials = (firstName, lastName) => {
