@@ -515,7 +515,7 @@ export const Vendor = () => {
     }
   }, [fetchAddresses, navigate, currentVendor]);
 
-  const fetchPublishedFlavors = async () => {
+  const fetchPublishedFlavors = useCallback(async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch published flavors: no vendor_id', currentVendor);
       return;
@@ -559,7 +559,7 @@ export const Vendor = () => {
     } finally {
       setPublishedFlavorsLoading(false);
     }
-  };
+  }, [currentVendor?.vendor_id]);
 
   const handleDrumsEdit = () => {
     setIsEditingDrums(true);
@@ -751,7 +751,7 @@ export const Vendor = () => {
   };
 
   // Delivery pricing functions
-  const fetchDeliveryPricing = async () => {
+  const fetchDeliveryPricing = useCallback(async () => {
     if (!currentVendor?.vendor_id) return;
     
     try {
@@ -818,7 +818,7 @@ export const Vendor = () => {
       // Set empty array on error
       setDeliveryZones([]);
     }
-  };
+  }, [currentVendor?.vendor_id]);
 
   const handleDeliveryEdit = () => {
     setIsEditingDelivery(true);
@@ -979,7 +979,7 @@ export const Vendor = () => {
    };
 
   // Fetch vendor orders
-  const fetchVendorOrders = async () => {
+  const fetchVendorOrders = useCallback(async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch vendor orders: no vendor_id', currentVendor);
       return [];
@@ -1018,10 +1018,10 @@ export const Vendor = () => {
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [currentVendor?.vendor_id]);
 
   // Fetch vendor transactions
-  const fetchVendorTransactions = async () => {
+  const fetchVendorTransactions = useCallback(async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch vendor transactions: no vendor_id', currentVendor);
       return;
@@ -1056,7 +1056,7 @@ export const Vendor = () => {
     } finally {
       setTransactionsLoading(false);
     }
-  };
+  }, [currentVendor?.vendor_id, transactionFilters]);
 
    // Manual refresh vendor orders
    const handleRefreshOrders = async () => {
@@ -1081,7 +1081,7 @@ export const Vendor = () => {
    };
 
    // Fetch notifications for vendor
-   const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async () => {
      try {
        if (!currentVendor?.vendor_id) return;
 
@@ -1107,10 +1107,10 @@ export const Vendor = () => {
      } finally {
        setNotificationsLoading(false);
      }
-   }, [currentVendor?.vendor_id]);
+  }, [currentVendor?.vendor_id, currentVendor?.user_id]);
 
    // Fetch unread notification count for vendor
-   const fetchUnreadCount = useCallback(async () => {
+  const fetchUnreadCount = useCallback(async () => {
      try {
        if (!currentVendor?.vendor_id) return;
 
@@ -1128,7 +1128,7 @@ export const Vendor = () => {
      } catch (error) {
        console.error('Error fetching unread count:', error);
      }
-   }, [currentVendor?.vendor_id]);
+  }, [currentVendor?.vendor_id, currentVendor?.user_id]);
 
    // Mark notification as read
    const markNotificationAsRead = async (notificationId) => {
@@ -1704,7 +1704,7 @@ export const Vendor = () => {
     }));
   };
 
-  const fetchSavedFlavors = async () => {
+  const fetchSavedFlavors = useCallback(async () => {
     if (!currentVendor?.vendor_id) {
       console.log('❌ Cannot fetch saved flavors: no vendor_id', currentVendor);
       return;
@@ -1739,10 +1739,10 @@ export const Vendor = () => {
     } finally {
       setFlavorsLoading(false);
     }
-  };
+  }, [currentVendor?.vendor_id]);
 
   // Fetch drum pricing and availability from database
-  const fetchDrumData = async () => { 
+  const fetchDrumData = useCallback(async () => { 
     if (!currentVendor?.vendor_id) return;
     
     try {
@@ -1776,7 +1776,7 @@ export const Vendor = () => {
     } catch (error) {
       console.error("Error fetching drum data:", error);
     }
-  };
+  }, [currentVendor?.vendor_id]);
 
   const openImageModal = (imageUrls, flavorName) => {
     setSelectedFlavorImages(imageUrls);
@@ -2618,14 +2618,14 @@ export const Vendor = () => {
     if (activeView === "dashboard" && currentVendor?.vendor_id && !isInitialLoading) {
       fetchDashboardData(currentVendor.vendor_id);
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, fetchDashboardData]);
 
   // Fetch customer feedback when feedback view is active and vendor is loaded
   useEffect(() => {
     if (activeView === "feedback" && currentVendor?.vendor_id && !isInitialLoading) {
       fetchCustomerFeedback(currentVendor.vendor_id);
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, fetchCustomerFeedback]);
 
   // Fetch published flavors when my-store view is active and vendor is loaded
   useEffect(() => {
@@ -2638,7 +2638,7 @@ export const Vendor = () => {
       });
       fetchPublishedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchPublishedFlavors]);
 
   // Fetch saved flavors when inventory view is active and vendor is loaded
   useEffect(() => {
@@ -2651,7 +2651,7 @@ export const Vendor = () => {
       });
       fetchSavedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchSavedFlavors]);
 
   // Fetch drum data when vendor is loaded
   useEffect(() => {
@@ -2659,7 +2659,7 @@ export const Vendor = () => {
       fetchDrumData();
       fetchDeliveryPricing();
     }
-  }, [currentVendor?.vendor_id, isInitialLoading]);
+  }, [currentVendor?.vendor_id, isInitialLoading, fetchDrumData, fetchDeliveryPricing]);
 
   // Fetch notifications when vendor is loaded
   useEffect(() => {
@@ -2680,7 +2680,7 @@ export const Vendor = () => {
       });
       fetchVendorOrders();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchVendorOrders]);
 
   // Fetch vendor orders when dashboard view is active (for sidebar order counts)
   useEffect(() => {
@@ -2693,7 +2693,7 @@ export const Vendor = () => {
       });
       fetchVendorOrders();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchVendorOrders]);
 
   // Fetch vendor orders when vendor is first loaded (for sidebar order counts)
   useEffect(() => {
@@ -2706,7 +2706,7 @@ export const Vendor = () => {
       });
       fetchVendorOrders();
     }
-  }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, vendorOrders.length]);
+  }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, vendorOrders.length, fetchVendorOrders]);
 
   // Fetch saved flavors when walk-in order view is active
   useEffect(() => {
@@ -2714,7 +2714,7 @@ export const Vendor = () => {
       console.log('🔄 Loading flavors for walk-in orders');
       fetchSavedFlavors();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchSavedFlavors]);
 
   // Fetch date-specific availability for walk-in orders when delivery date changes
   useEffect(() => {
@@ -2749,7 +2749,7 @@ export const Vendor = () => {
     };
 
     fetchWalkInDateAvailability();
-  }, [walkInDeliveryDate, currentVendor?.vendor_id]);
+  }, [walkInDeliveryDate, currentVendor?.vendor_id, getAvailabilityByDate]);
 
   // Fetch transactions when transaction history view is active
   useEffect(() => {
@@ -2757,7 +2757,7 @@ export const Vendor = () => {
       console.log('🔄 Loading transaction history');
       fetchVendorTransactions();
     }
-  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging]);
+  }, [activeView, currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchVendorTransactions]);
 
   // Auto-refresh vendor notifications every 30 seconds for real-time updates
   useEffect(() => {
@@ -2781,7 +2781,7 @@ export const Vendor = () => {
   }, [currentVendor?.vendor_id, isInitialLoading, isUserChanging, fetchNotifications, fetchUnreadCount]);
 
   // Fetch vendor dashboard data
-  const fetchDashboardData = async (vendorId) => {
+  const fetchDashboardData = useCallback(async (vendorId) => {
     if (!vendorId) return;
     
     try {
@@ -2812,10 +2812,10 @@ export const Vendor = () => {
     } finally {
       setDashboardLoading(false);
     }
-  };
+  }, []);
 
   // Fetch customer feedback/reviews for vendor
-  const fetchCustomerFeedback = async (vendorId) => {
+  const fetchCustomerFeedback = useCallback(async (vendorId) => {
     if (!vendorId) return;
     
     try {
@@ -2857,7 +2857,7 @@ export const Vendor = () => {
     } finally {
       setFeedbackLoading(false);
     }
-  };
+  }, []);
 
   // Helper function to generate initials from name
   const getInitials = (firstName, lastName) => {
@@ -9130,7 +9130,7 @@ export const Vendor = () => {
               <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
                 <img
                   src={getImageUrl(selectedFlavorImages[currentImageIndex], process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${selectedFlavorImages[currentImageIndex]}`}
-                  alt={`${selectedFlavorName} - Image ${currentImageIndex + 1}`}
+                  alt={`${selectedFlavorName} preview ${currentImageIndex + 1}`}
                   className="w-full h-96 object-contain mx-auto"
                   onError={(e) => {
                     e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
@@ -9175,7 +9175,7 @@ export const Vendor = () => {
                     >
                       <img
                         src={getImageUrl(imageUrl, process.env.REACT_APP_API_URL || "http://localhost:3001") || `${process.env.REACT_APP_API_URL || "http://localhost:3001"}/uploads/flavor-images/${imageUrl}`}
-                        alt={`Thumbnail ${index + 1}`}
+                        alt={`${selectedFlavorName} preview option ${index + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk3YTNiNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
