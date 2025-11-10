@@ -120,15 +120,25 @@ export const Checkout = () => {
       const userRaw = sessionStorage.getItem('user');
       if (userRaw) {
         const user = JSON.parse(userRaw);
+        const userId = user?.id ?? user?.user_id ?? user?.userId;
+
+        if (!userId) {
+          console.warn('⚠️ Unable to determine user ID for address fetch. User data:', user);
+          setUserAddress('');
+          setDeliveryAddress('');
+          setDeliveryCalculationComplete(true);
+          return;
+        }
+
         const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
         
         // Get all addresses for the user
-        const response = await axios.get(`${apiBase}/api/addresses/user/${user.id}/addresses`);
+        const response = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
         
         if (response.data && response.data.length > 0) {
           // Get the primary address first, then default, then first address
           const primaryAddress = response.data.find(addr => addr.is_primary) || 
-                                response.data.find(addr => addr.is_default) || 
+                                response.data.find(addr => Boolean(addr.is_default)) || 
                                 response.data[0];
           
           const addressString = [
@@ -160,13 +170,17 @@ export const Checkout = () => {
               cityVillage: primaryAddress?.cityVillage, 
               province: primaryAddress?.province 
             });
-            setUserAddress('');
-            setDeliveryAddress('');
+            // Display whatever address details are available so the user can see it,
+            // but skip delivery calculation to avoid spinner loops.
+            setUserAddress(addressString);
+            setDeliveryAddress(addressString);
+            setDeliveryCalculationComplete(true);
           }
         } else {
           // No addresses found - user needs to add one
           setUserAddress('');
           setDeliveryAddress('');
+          setDeliveryCalculationComplete(true);
           console.warn('No addresses found for user. User needs to add an address.');
         }
       }
@@ -175,6 +189,7 @@ export const Checkout = () => {
       // Set empty address if fetch fails
       setUserAddress('');
       setDeliveryAddress('');
+      setDeliveryCalculationComplete(true);
     }
   }, [addressFetchStarted]);
 

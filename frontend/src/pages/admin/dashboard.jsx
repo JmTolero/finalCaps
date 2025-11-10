@@ -234,20 +234,20 @@ export const AdminDashboard = () => {
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
                           <div className="text-xs md:text-sm font-bold text-blue-600">#{order.order_id}</div>
                         </td>
-                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <div className="text-xs md:text-sm font-medium text-gray-900">
+                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-normal break-words max-w-[200px]">
+                          <div className="text-xs md:text-sm font-medium text-gray-900 leading-snug">
                             {order.customer_fname} {order.customer_lname || ''}
                           </div>
-                          <div className="text-xs text-gray-500">{order.customer_email}</div>
+                          <div className="text-[11px] md:text-xs text-gray-500 break-words">{order.customer_email}</div>
                         </td>
-                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <div className="text-xs md:text-sm font-medium text-gray-900">{order.vendor_name || 'N/A'}</div>
+                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-normal break-words max-w-[180px]">
+                          <div className="text-xs md:text-sm font-medium text-gray-900 leading-snug">{order.vendor_name || 'N/A'}</div>
                         </td>
                         <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
                           <div className="text-xs md:text-sm font-bold text-green-600">₱{parseFloat(order.total_amount || 0).toFixed(2)}</div>
                         </td>
-                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-nowrap">
-                          <div className="text-xs md:text-sm text-gray-500">
+                        <td className="px-3 md:px-4 py-3 md:py-4 border-r border-gray-200 whitespace-normal break-words max-w-[200px]">
+                          <div className="text-xs md:text-sm text-gray-500 leading-snug">
                             {order.delivery_datetime 
                               ? new Date(order.delivery_datetime).toLocaleString()
                               : 'Not scheduled'

@@ -51,6 +51,7 @@ export const FlavorDetail = () => {
   
   // Contact number modal state
   const [showContactNumberModal, setShowContactNumberModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
@@ -341,7 +342,7 @@ export const FlavorDetail = () => {
     return hoursUntilDelivery >= 24;
   };
 
-  const handleReserveNow = () => {
+  const handleReserveNow = async () => {
     if (!flavor) return;
     
     // Check if user has contact number
@@ -350,6 +351,27 @@ export const FlavorDetail = () => {
       const user = JSON.parse(userRaw);
       if (!user.contact_no || user.contact_no.trim() === '') {
         setShowContactNumberModal(true);
+        return;
+      }
+
+      const userId = user.id ?? user.user_id ?? user.userId;
+      if (!userId) {
+        console.warn('⚠️ Unable to determine user ID for address validation. User data:', user);
+        setShowAddressModal(true);
+        return;
+      }
+
+      try {
+        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+        const { data } = await axios.get(`${apiBase}/api/addresses/user/${userId}/addresses`);
+
+        if (!Array.isArray(data) || data.length === 0) {
+          setShowAddressModal(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking user addresses:', error);
+        setShowAddressModal(true);
         return;
       }
     }
@@ -1532,6 +1554,60 @@ export const FlavorDetail = () => {
         onClose={() => setShowFeedbackModal(false)}
         userRole="customer"
       />
+
+      {/* Address Required Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Delivery Address Required</h2>
+                <p className="text-gray-600">Add a delivery address in your profile before reserving an order.</p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium mb-1">How to add your address:</p>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      <li>• Go to your profile settings</li>
+                      <li>• Open the Address tab</li>
+                      <li>• Add a delivery address with city and province</li>
+                      <li>• Return here to reserve your order</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAddressModal(false)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Got it
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddressModal(false);
+                    navigate('/customer?view=settings&tab=addresses');
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Go to Address Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contact Number Modal */}
       <ContactNumberModal 
