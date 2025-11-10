@@ -3,6 +3,84 @@ const { createNotification } = require('../shared/notificationController');
 const { User } = require('../../model/shared/userModel');
 const { sendVendorApprovalEmail, sendVendorRejectionEmail } = require('../../utils/emailService');
 
+const cleanupVendorDataByUserId = async (userId) => {
+    const [vendorInfo] = await pool.query(
+        'SELECT vendor_id FROM vendors WHERE user_id = ?',
+        [userId]
+    );
+
+    if (vendorInfo.length === 0) {
+        return;
+    }
+
+    const vendorId = vendorInfo[0].vendor_id;
+    console.log(`Cleaning up vendor data for vendor ID: ${vendorId}`);
+
+    // Delete order_items that reference this vendor's products
+    await pool.query(`
+        DELETE oi FROM order_items oi 
+        INNER JOIN products p ON oi.product_id = p.product_id 
+        WHERE p.vendor_id = ?
+    `, [vendorId]);
+
+    // Delete order_items from orders directly linked to this vendor
+    await pool.query(`
+        DELETE oi FROM order_items oi 
+        INNER JOIN orders o ON oi.order_id = o.order_id 
+        WHERE o.vendor_id = ?
+    `, [vendorId]);
+
+    // Delete cart_items that reference this vendor's flavors
+    await pool.query(`
+        DELETE ci FROM cart_items ci 
+        INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
+        WHERE f.vendor_id = ?
+    `, [vendorId]);
+
+    // Delete products that reference this vendor's flavors
+    await pool.query(`
+        DELETE p FROM products p 
+        INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
+        WHERE f.vendor_id = ?
+    `, [vendorId]);
+
+    // Delete products directly linked to this vendor
+    await pool.query(
+        'DELETE FROM products WHERE vendor_id = ?',
+        [vendorId]
+    );
+
+    // Delete flavors belonging to this vendor
+    await pool.query(
+        'DELETE FROM flavors WHERE vendor_id = ?',
+        [vendorId]
+    );
+
+    // Delete vendor reviews
+    await pool.query(
+        'DELETE FROM vendor_reviews WHERE vendor_id = ?',
+        [vendorId]
+    );
+
+    // Delete orders from this vendor
+    await pool.query(
+        'DELETE FROM orders WHERE vendor_id = ?',
+        [vendorId]
+    );
+
+    // Delete vendor rejection history
+    await pool.query(
+        'DELETE FROM vendor_rejections WHERE vendor_id = ?',
+        [vendorId]
+    );
+
+    // Delete vendor record
+    await pool.query(
+        'DELETE FROM vendors WHERE vendor_id = ?',
+        [vendorId]
+    );
+};
+
 const countTotal = async (req, res) => {
     try{
         const rows = await User.getAll();
@@ -549,79 +627,8 @@ const deleteUser = async (req, res) => {
         
         const user = userInfo[0];
         
-        // Check if user is a vendor - if so, we need to handle vendor data cleanup
-        if (user.role === 'vendor') {
-            // Get vendor ID
-            const [vendorInfo] = await pool.query(
-                'SELECT vendor_id FROM vendors WHERE user_id = ?',
-                [user_id]
-            );
-            
-            if (vendorInfo.length > 0) {
-                const vendorId = vendorInfo[0].vendor_id;
-                
-                // Delete vendor-related data in proper order to avoid foreign key constraints
-                console.log(`Cleaning up vendor data for vendor ID: ${vendorId}`);
-                
-                // Delete order_items that reference this vendor's products
-                await pool.query(`
-                    DELETE oi FROM order_items oi 
-                    INNER JOIN products p ON oi.product_id = p.product_id 
-                    WHERE p.vendor_id = ?
-                `, [vendorId]);
-                
-                // Delete order_items from orders directly linked to this vendor
-                await pool.query(`
-                    DELETE oi FROM order_items oi 
-                    INNER JOIN orders o ON oi.order_id = o.order_id 
-                    WHERE o.vendor_id = ?
-                `, [vendorId]);
-                
-                // Delete cart_items that reference this vendor's flavors
-                await pool.query(`
-                    DELETE ci FROM cart_items ci 
-                    INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
-                    WHERE f.vendor_id = ?
-                `, [vendorId]);
-                
-                // Delete products that reference this vendor's flavors
-                await pool.query(`
-                    DELETE p FROM products p 
-                    INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
-                    WHERE f.vendor_id = ?
-                `, [vendorId]);
-                
-                // Delete products directly linked to this vendor
-                await pool.query(
-                    'DELETE FROM products WHERE vendor_id = ?',
-                    [vendorId]
-                );
-                
-                // Delete flavors belonging to this vendor
-                await pool.query(
-                    'DELETE FROM flavors WHERE vendor_id = ?',
-                    [vendorId]
-                );
-                
-                // Delete vendor reviews
-                await pool.query(
-                    'DELETE FROM vendor_reviews WHERE vendor_id = ?',
-                    [vendorId]
-                );
-                
-                // Delete orders from this vendor
-                await pool.query(
-                    'DELETE FROM orders WHERE vendor_id = ?',
-                    [vendorId]
-                );
-                
-                // Delete vendor record
-                await pool.query(
-                    'DELETE FROM vendors WHERE vendor_id = ?',
-                    [vendorId]
-                );
-            }
-        }
+        // Always attempt vendor cleanup (covers both vendor users and customers who previously had vendor data)
+        await cleanupVendorDataByUserId(user_id);
         
         // Delete user-related data
         await pool.query('DELETE FROM notifications WHERE user_id = ?', [user_id]);
