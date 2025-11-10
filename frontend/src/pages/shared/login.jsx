@@ -91,6 +91,9 @@ export const Login = () => {
             if (vendorStatusRes.data.success) {
               const userData = vendorStatusRes.data.user;
               console.log('Vendor user data:', userData);
+              const ackKey = `vendorRejectionAcknowledged_${data.user.id}`;
+              const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
+
               if (userData.vendor_status === 'pending') {
                 console.log('Vendor status is pending, checking if they have uploaded documents');
                 // Check if vendor has uploaded documents (business permit and valid ID)
@@ -114,8 +117,20 @@ export const Login = () => {
                 }
               } else if (userData.vendor_status === 'rejected') {
                 console.log('Vendor status is rejected, redirecting to pending page');
-                navigate("/vendor-pending");
-                return;
+                if (hasAcknowledgedRejection) {
+                  console.log('Vendor rejection already acknowledged, switching to customer view');
+                  const updatedUserData = {
+                    ...data.user,
+                    role: 'customer'
+                  };
+                  sessionStorage.setItem("user", JSON.stringify(updatedUserData));
+                  window.dispatchEvent(new Event('userChanged'));
+                  navigate("/customer");
+                  return;
+                } else {
+                  navigate("/vendor-pending");
+                  return;
+                }
               } else if (userData.vendor_status === 'approved') {
                 console.log('Vendor status is approved, checking setup status');
                 // Check if setup is complete

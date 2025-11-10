@@ -47,17 +47,66 @@ export const GoogleCallback = () => {
             message: 'Google authentication successful! Redirecting...' 
           });
 
-          // Redirect based on user role
-          const role = (user?.role || "customer").toLowerCase();
-          setTimeout(() => {
+            const role = (user?.role || "customer").toLowerCase();
+
+          // Determine redirect path similar to manual login (handles rejected vendors)
+          const determineRedirect = async () => {
             if (role === "admin") {
               navigate("/admin");
-            } else if (role === "vendor") {
-              navigate("/vendor");
-            } else {
-              navigate("/customer");
+              return;
             }
-          }, 1500);
+
+            const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+            if (role === "vendor") {
+              try {
+                const statusResponse = await fetch(`${apiBase}/api/admin/users/${user.id}`);
+                if (statusResponse.ok) {
+                  const statusData = await statusResponse.json();
+                  if (statusData.success) {
+                    const userData = statusData.user;
+                    const ackKey = `vendorRejectionAcknowledged_${user.id}`;
+                    const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
+
+                    if (userData.vendor_status === 'rejected' && hasAcknowledgedRejection) {
+                      const updatedUser = {
+                        ...user,
+                        role: 'customer'
+                      };
+                      sessionStorage.setItem("user", JSON.stringify(updatedUser));
+                      window.dispatchEvent(new Event('userChanged'));
+                      navigate("/customer");
+                      return;
+                    }
+
+                    if (userData.vendor_status === 'pending') {
+                      navigate("/vendor-pending");
+                      return;
+                    }
+
+                    if (userData.vendor_status === 'rejected') {
+                      navigate("/vendor-pending");
+                      return;
+                    }
+
+                    // Approved vendors
+                    navigate("/vendor");
+                    return;
+                  }
+                }
+              } catch (error) {
+                console.error('Google callback vendor status check failed:', error);
+              }
+              // Default for vendors on error
+              navigate("/vendor");
+              return;
+            }
+
+            // Customer fallback
+            navigate("/customer");
+          };
+
+          setTimeout(determineRedirect, 1500);
         } else {
           throw new Error('No authentication data received');
         }

@@ -4,9 +4,12 @@ const router = express.Router();
 const googleAuthController = require('../../controller/shared/googleAuthController');
 
 // Google OAuth routes
-router.get('/google', 
-    passport.authenticate('google', { 
-        scope: ['profile', 'email'] 
+router.get(
+    '/google',
+    passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        prompt: 'select_account',
+        session: false
     })
 );
 

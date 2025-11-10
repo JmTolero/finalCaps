@@ -149,20 +149,48 @@ const updateDrumStock = async (req, res) => {
       });
     }
 
-    // Update vendor-specific drum stock
+    // Get existing pricing/capacity so we preserve values when inserting new rows
+    const [existingDrums] = await pool.query(
+      'SELECT drum_size, price, gallons FROM vendor_drum_pricing WHERE vendor_id = ?',
+      [vendor_id]
+    );
+
+    const drumDefaults = {
+      small: { price: 0, gallons: 3 },
+      medium: { price: 0, gallons: 5 },
+      large: { price: 0, gallons: 8 }
+    };
+
+    existingDrums.forEach(drum => {
+      const price = drum.price !== null ? parseFloat(drum.price) : drumDefaults[drum.drum_size].price;
+      const gallons = drum.gallons || drumDefaults[drum.drum_size].gallons;
+
+      drumDefaults[drum.drum_size] = {
+        price: Number.isNaN(price) ? drumDefaults[drum.drum_size].price : price,
+        gallons
+      };
+    });
+
+    // Upsert vendor-specific drum stock (create row if it doesn't exist yet) 
     await pool.query(
-      'UPDATE vendor_drum_pricing SET stock = ? WHERE vendor_id = ? AND drum_size = ?',
-      [small, vendor_id, 'small']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons)
+       VALUES (?, 'small', ?, ?, ?)
+       ON DUPLICATE KEY UPDATE stock = VALUES(stock)`,
+      [vendor_id, drumDefaults.small.price, small, drumDefaults.small.gallons]
     );
     
     await pool.query(
-      'UPDATE vendor_drum_pricing SET stock = ? WHERE vendor_id = ? AND drum_size = ?',
-      [medium, vendor_id, 'medium']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons)
+       VALUES (?, 'medium', ?, ?, ?)
+       ON DUPLICATE KEY UPDATE stock = VALUES(stock)`,
+      [vendor_id, drumDefaults.medium.price, medium, drumDefaults.medium.gallons]
     );
     
     await pool.query(
-      'UPDATE vendor_drum_pricing SET stock = ? WHERE vendor_id = ? AND drum_size = ?',
-      [large, vendor_id, 'large']
+      `INSERT INTO vendor_drum_pricing (vendor_id, drum_size, price, stock, gallons)
+       VALUES (?, 'large', ?, ?, ?)
+       ON DUPLICATE KEY UPDATE stock = VALUES(stock)`,
+      [vendor_id, drumDefaults.large.price, large, drumDefaults.large.gallons]
     );
 
     res.json({

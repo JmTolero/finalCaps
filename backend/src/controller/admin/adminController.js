@@ -178,15 +178,15 @@ Important: To start receiving payments, please complete your GCash QR code setup
                 // Don't fail the approval if email fails
             }
         } else if (status.toLowerCase() === 'rejected') {
-            // Calculate auto-return date (TESTING: 5 seconds from now)
+            // Calculate auto-return date (testing: 1 minute from now)
             const autoReturnDate = new Date();
-            autoReturnDate.setSeconds(autoReturnDate.getSeconds() + 5); // TEST: 5 seconds
-            // autoReturnDate.setDate(autoReturnDate.getDate() + 7); // PRODUCTION: 1 week
+            autoReturnDate.setDate(autoReturnDate.getDate() + 7);
+            // autoReturnDate.setMinutes(autoReturnDate.getMinutes() + 1); for testing
                 
             // Record the rejection for auto-return tracking
             await pool.query(
-                'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, ?)',
-                [vendor_id, vendor.user_id, autoReturnDate]
+                'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 MINUTE))',
+                [vendor_id, vendor.user_id]
             );
             
             // Change user role back to customer when vendor is rejected

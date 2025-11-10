@@ -52,9 +52,12 @@ const upload = multer({
 });
 
 // Vendor Google OAuth routes
-router.get('/google', 
-    passport.authenticate('vendor-google', { 
-        scope: ['profile', 'email'] 
+router.get(
+    '/google',
+    passport.authenticate('vendor-google', {
+        scope: ['profile', 'email'],
+        prompt: 'select_account',
+        session: false
     })
 );
 

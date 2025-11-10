@@ -310,7 +310,7 @@ export const VendorPending = () => {
                           // Update session storage with new role
                           const updatedUserData = {
                             ...user,
-                            role: updatedUser.role || 'customer'
+                            role: 'customer'
                           };
                           sessionStorage.setItem('user', JSON.stringify(updatedUserData));
                           console.log('Updated user role in session:', updatedUser.role);
