@@ -8356,6 +8356,29 @@ export const Vendor = () => {
                                   </div>
                                 )}
                                 
+                                {/* Show proof if remaining balance already paid via GCash */}
+                                {order.payment_status === 'paid' &&
+                                  order.payment_confirmation_image &&
+                                  order.payment_amount &&
+                                  parseFloat(order.payment_amount) > 0 &&
+                                  parseFloat(order.payment_amount) < parseFloat(order.total_amount || 0) &&
+                                  order.remaining_payment_method === 'gcash' && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-1.5 sm:p-2 lg:p-3 mb-2 sm:mb-3">
+                                      <p className="text-green-800 font-medium mb-1 text-xs sm:text-sm">
+                                        Remaining balance paid via GCash
+                                      </p>
+                                      <p className="text-green-700 text-xs sm:text-sm mb-1.5 sm:mb-2">
+                                        Customer submitted proof of the remaining payment. Tap below to review the screenshot before completing delivery.
+                                      </p>
+                                      <button
+                                        onClick={() => handleViewPaymentProof(order)}
+                                        className="bg-green-600 hover:bg-green-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
+                                      >
+                                        📱 View Remaining Balance Proof
+                                      </button>
+                                    </div>
+                                  )}
+                                
                                 <button
                                   onClick={() => handleDeliveredOrder(order)}
                                   disabled={order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0}
