@@ -44,9 +44,21 @@ const PaymentCountdownTimer = React.memo(({ order, onExpired }) => {
     }
 
     const calculateTimeRemaining = () => {
-      const expiryTime = order.reservation_expires_at
+      let expiryTime = order.reservation_expires_at
         ? new Date(order.reservation_expires_at)
-        : getReservationExpiry(order.delivery_datetime);
+        : null;
+
+      const expectedExpiry = getReservationExpiry(order.delivery_datetime);
+
+      if (!expiryTime && expectedExpiry) {
+        expiryTime = expectedExpiry;
+      } else if (expiryTime && expectedExpiry) {
+        const diffMs = Math.abs(expiryTime.getTime() - expectedExpiry.getTime());
+        const toleranceMs = 60 * 1000; // 1 minute tolerance
+        if (diffMs > toleranceMs) {
+          expiryTime = expectedExpiry;
+        }
+      }
 
       if (!expiryTime) return;
 
