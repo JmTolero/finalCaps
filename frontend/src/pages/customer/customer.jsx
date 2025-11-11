@@ -90,16 +90,18 @@ const PaymentCountdownTimer = React.memo(({ order }) => {
     );
   }
 
+  const formatTimeUnit = (value) => String(value).padStart(2, '0');
+
   return (
     <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3">
       <div className="flex items-center gap-2">
         <span className="text-orange-600 text-base sm:text-lg">⏰</span>
         <div className="flex-1 min-w-0">
           <p className="text-orange-800 font-semibold text-xs sm:text-sm mb-0.5">
-            Payment Deadline: {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
+            Payment Deadline: {formatTimeUnit(timeRemaining.hours)}h {formatTimeUnit(timeRemaining.minutes)}m {formatTimeUnit(timeRemaining.seconds)}s
           </p>
           <p className="text-orange-700 text-[10px] sm:text-xs">
-            Pay within {timeRemaining.hours}h {timeRemaining.minutes}m or order will be auto-cancelled
+            Pay within {formatTimeUnit(timeRemaining.hours)}h {formatTimeUnit(timeRemaining.minutes)}m {formatTimeUnit(timeRemaining.seconds)}s or order will be auto-cancelled
           </p>
         </div>
       </div>

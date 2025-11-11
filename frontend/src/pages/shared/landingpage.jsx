@@ -1,14 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import  { Nav } from "../../components/shared/nav"; 
-import logoImage from '../../assets/images/LOGO.png';
 export const LandingPage = () => {
     return (
        <>
        <Nav />
        <div className="scroll-smooth bg-gradient-to-br from-sky-200 to-blue-400">
 
-        <section className="flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 lg:py-20">
+        <section className="flex flex-col lg:flex-row items-center lg:items-start justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 lg:py-20">
             <div className="flex-1 flex flex-col items-center lg:items-start space-y-6 text-center lg:text-left mb-8 lg:mb-0">
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight">
                 <span className="text-pink-500 italic">Chill</span><span className="text-gray-700">Net</span>
@@ -24,9 +23,7 @@ export const LandingPage = () => {
             </div>
             </div>
 
-            <div className="hidden lg:flex flex-1 justify-center lg:justify-end">
-             <img src={logoImage} alt="ChillNet Ice Cream" className="rounded-2xl shadow-2xl w-full max-w-sm lg:max-w-md xl:max-w-lg object-cover" />
-            </div>
+            <div className="hidden lg:flex flex-1 justify-center lg:justify-end" aria-hidden="true" />
         </section>
 
     {/* <!-- Drum Cards Section --> */}
