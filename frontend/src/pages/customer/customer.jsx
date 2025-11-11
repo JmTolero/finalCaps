@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavWithLogo } from "../../components/shared/nav";
 import AddressForm from '../../components/shared/AddressForm';
@@ -18,6 +18,7 @@ import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.p
 import locationIcon from '../../assets/images/vendordashboardicon/location.png';
 
 const PAYMENT_DEADLINE_THRESHOLD_HOURS = 24;
+const AUTO_CANCEL_DECLINE_REASON = 'Payment not received before reservation deadline. Order auto-cancelled and reservation released.';
 
 const getReservationExpiry = (deliveryDatetime) => {
   if (!deliveryDatetime) return null;
@@ -27,13 +28,20 @@ const getReservationExpiry = (deliveryDatetime) => {
   return expiryDate;
 };
 
-const PaymentCountdownTimer = React.memo(({ order }) => {
+const PaymentCountdownTimer = React.memo(({ order, onExpired }) => {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
   const [shouldShow, setShouldShow] = useState(false);
+  const hasTriggeredExpiryRef = useRef(false);
+  const lastOrderIdRef = useRef(null);
 
   useEffect(() => {
-    if (!order?.delivery_datetime) return;
+    if (!order?.delivery_datetime || !order?.order_id) return;
+
+    if (lastOrderIdRef.current !== order.order_id) {
+      lastOrderIdRef.current = order.order_id;
+      hasTriggeredExpiryRef.current = false;
+    }
 
     const calculateTimeRemaining = () => {
       const expiryTime = order.reservation_expires_at
@@ -49,16 +57,29 @@ const PaymentCountdownTimer = React.memo(({ order }) => {
       setShouldShow(hoursRemaining <= PAYMENT_DEADLINE_THRESHOLD_HOURS);
 
       if (hoursRemaining > PAYMENT_DEADLINE_THRESHOLD_HOURS) {
+        if (hasTriggeredExpiryRef.current) {
+          hasTriggeredExpiryRef.current = false;
+        }
         return;
       }
 
       if (diff <= 0) {
         setIsExpired(true);
         setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+
+        if (!hasTriggeredExpiryRef.current) {
+          hasTriggeredExpiryRef.current = true;
+          if (typeof onExpired === 'function') {
+            onExpired(order);
+          }
+        }
         return;
       }
 
       setIsExpired(false);
+      if (hasTriggeredExpiryRef.current) {
+        hasTriggeredExpiryRef.current = false;
+      }
 
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -71,7 +92,7 @@ const PaymentCountdownTimer = React.memo(({ order }) => {
     const interval = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [order?.delivery_datetime, order?.reservation_expires_at]);
+  }, [order, order?.delivery_datetime, order?.reservation_expires_at, order?.order_id, onExpired]);
 
   if (!shouldShow) return null;
   if (!timeRemaining && !isExpired) return null;
@@ -834,6 +855,50 @@ export const Customer = () => {
     navigateOptimized(`/customer/gcash-account/${order.order_id}`);
   };
 
+  const handlePaymentDeadlineExpired = useCallback(async (order) => {
+    if (!order?.order_id) return;
+    if (!['pending', 'confirmed'].includes(order.status)) return;
+    if (order.payment_status && order.payment_status !== 'unpaid') return;
+
+    console.log('⏰ Payment deadline missed, attempting auto-cancel for order:', order.order_id);
+
+    const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+    try {
+      const response = await axios.put(`${apiBase}/api/orders/${order.order_id}/status`, {
+        status: 'cancelled',
+        decline_reason: AUTO_CANCEL_DECLINE_REASON
+      });
+
+      if (response.data?.success) {
+        setOrders(prevOrders =>
+          prevOrders.map(existing =>
+            existing.order_id === order.order_id
+              ? { ...existing, status: 'cancelled', decline_reason: AUTO_CANCEL_DECLINE_REASON }
+              : existing
+          )
+        );
+
+        setStatus({
+          type: 'info',
+          message: `Order #${order.order_id} was auto-cancelled because the payment deadline passed without payment.`
+        });
+
+        if (selectedOrder && selectedOrder.order_id === order.order_id) {
+          setSelectedOrder(prev =>
+            prev
+              ? { ...prev, status: 'cancelled', decline_reason: AUTO_CANCEL_DECLINE_REASON }
+              : prev
+          );
+        }
+      } else {
+        console.warn('Auto-cancel request did not succeed:', response.data);
+      }
+    } catch (error) {
+      console.error('Error auto-cancelling order after payment deadline:', error);
+    }
+  }, [selectedOrder]);
+
   // Handle selecting payment method for remaining balance (GCash or COD)
   const handleSelectRemainingPaymentMethod = async (orderId, paymentMethod) => {
     try {
@@ -1415,7 +1480,7 @@ export const Customer = () => {
                         {((order.status === 'pending' || order.status === 'confirmed') && 
                           order.payment_status === 'unpaid' && 
                           order.delivery_datetime) && (
-                          <PaymentCountdownTimer order={order} />
+                          <PaymentCountdownTimer order={order} onExpired={handlePaymentDeadlineExpired} />
                         )}
 
                         {/* Top Row: Order ID, Status, Price */}

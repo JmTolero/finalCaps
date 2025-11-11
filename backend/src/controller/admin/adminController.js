@@ -263,7 +263,7 @@ Important: To start receiving payments, please complete your GCash QR code setup
                 
             // Record the rejection for auto-return tracking
             await pool.query(
-                'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 MINUTE))',
+                'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
                 [vendor_id, vendor.user_id]
             );
             
