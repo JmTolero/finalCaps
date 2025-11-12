@@ -34,7 +34,9 @@ const downgradeExpiredSubscriptions = async () => {
         continue;
       }
 
-      const { flavorAdjustment } = await downgradeVendorToFree(vendor.vendor_id);
+      const { flavorAdjustment, drumAdjustment } = await downgradeVendorToFree(
+        vendor.vendor_id
+      );
       downgradedCount += 1;
       console.log(
         `${logPrefix} Vendor ${vendor.vendor_id} downgraded to free plan (expired on ${vendor.subscription_end_date}).`
@@ -44,6 +46,26 @@ const downgradeExpiredSubscriptions = async () => {
         console.log(
           `${logPrefix} Removed ${flavorAdjustment.affectedRows} flavor${flavorAdjustment.affectedRows > 1 ? 's' : ''} from store for vendor ${vendor.vendor_id} to satisfy free plan limit.`
         );
+      }
+
+      if (drumAdjustment?.adjustments?.length) {
+        drumAdjustment.adjustments.forEach((adjustment) => {
+          if (adjustment.from === adjustment.to) {
+            return;
+          }
+
+          console.log(
+            `${logPrefix} Adjusted ${adjustment.drum_size} drum stock from ${adjustment.from} to ${adjustment.to} for vendor ${vendor.vendor_id}.`
+          );
+        });
+      }
+
+      if (drumAdjustment?.dailyAdjustments?.length) {
+        drumAdjustment.dailyAdjustments.forEach((adjustment) => {
+          console.log(
+            `${logPrefix} Updated daily availability ${adjustment.availability_id} (${adjustment.delivery_date}, ${adjustment.drum_size}) from total ${adjustment.from.total_capacity} (available ${adjustment.from.available_count}) to total ${adjustment.to.total_capacity} (available ${adjustment.to.available_count}).`
+          );
+        });
       }
     }
 

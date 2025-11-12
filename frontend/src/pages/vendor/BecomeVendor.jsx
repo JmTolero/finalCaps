@@ -141,6 +141,7 @@ export const BecomeVendor = () => {
           role: 'vendor'
         };
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         
         // Dispatch user change event to update navbar
         window.dispatchEvent(new Event('userChanged'));

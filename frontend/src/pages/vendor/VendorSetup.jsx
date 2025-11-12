@@ -57,8 +57,12 @@ export const VendorSetup = () => {
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('pendingVendor');
-    sessionStorage.removeItem('user');
+  sessionStorage.removeItem('pendingVendor');
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  localStorage.removeItem('pendingVendor');
+  localStorage.removeItem('user');
+  localStorage.removeItem('token');
     // Dispatch custom event to notify other components
     window.dispatchEvent(new Event('userChanged'));
     navigate('/login');
@@ -122,7 +126,7 @@ export const VendorSetup = () => {
     } catch (error) {
       console.error('Error fetching vendor data:', error);
       // Use stored data as fallback
-      const storedVendor = JSON.parse(sessionStorage.getItem('pendingVendor'));
+  const storedVendor = JSON.parse(sessionStorage.getItem('pendingVendor') || localStorage.getItem('pendingVendor'));
       if (storedVendor) {
         setVendorData(storedVendor); // Set the vendor data state
         setShopForm(prev => ({
@@ -141,7 +145,7 @@ export const VendorSetup = () => {
   // Get vendor data from URL parameters or session storage
   useEffect(() => {
     const vendorId = searchParams.get('vendor_id');
-    const storedVendor = sessionStorage.getItem('pendingVendor');
+  const storedVendor = sessionStorage.getItem('pendingVendor') || localStorage.getItem('pendingVendor');
     
     if (vendorId) {
       fetchVendorData(vendorId);
@@ -291,6 +295,7 @@ export const VendorSetup = () => {
       
       // Clear pending vendor data
       sessionStorage.removeItem('pendingVendor');
+      localStorage.removeItem('pendingVendor');
       
       // Navigate to vendor dashboard with products tab after a short delay
       setTimeout(() => {

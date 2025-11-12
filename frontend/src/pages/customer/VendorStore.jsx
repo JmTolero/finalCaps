@@ -164,13 +164,19 @@ export const VendorStore = () => {
       const response = await axios.get(`${apiBase}/api/vendor/flavors/${vendorId}`);
       
       if (response.data.success) {
-        console.log('✅ Flavors fetched for vendor', vendorId, ':', response.data.flavors.length, 'flavors');
-        console.log('📦 Flavors data:', response.data.flavors);
-        console.log('🖼️ Flavor images:', response.data.flavors.map(f => ({ 
-          name: f.flavor_name, 
-          image_url: f.image_url 
+        const allFlavors = response.data.flavors || [];
+        const publishedFlavors = allFlavors.filter(
+          (flavor) => flavor.store_status === 'published'
+        );
+
+        console.log('✅ Flavors fetched for vendor', vendorId, ':', allFlavors.length, 'total');
+        console.log('📦 Published flavors:', publishedFlavors.length);
+        console.log('🖼️ Flavor images:', publishedFlavors.map(f => ({
+          name: f.flavor_name,
+          image_url: f.image_url
         })));
-        setFlavors(response.data.flavors);
+
+        setFlavors(publishedFlavors);
       } else {
         console.log('❌ Flavors fetch failed:', response.data);
       }

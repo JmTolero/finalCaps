@@ -69,8 +69,10 @@ export const Login = () => {
         } 
 
         // Save user info and JWT token in sessionStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
         sessionStorage.setItem("user", JSON.stringify(data.user));
         if (data.token) {
+          localStorage.setItem("token", data.token);
           sessionStorage.setItem("token", data.token);
         }
 
@@ -123,6 +125,7 @@ export const Login = () => {
                     ...data.user,
                     role: 'customer'
                   };
+                  localStorage.setItem("user", JSON.stringify(updatedUserData));
                   sessionStorage.setItem("user", JSON.stringify(updatedUserData));
                   window.dispatchEvent(new Event('userChanged'));
                   navigate("/customer");

@@ -1329,6 +1329,7 @@ export const Customer = () => {
           contact_no: response.data.user.contact_no
         };
         sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         
         // Dispatch event to notify other components
         window.dispatchEvent(new Event('userChanged'));

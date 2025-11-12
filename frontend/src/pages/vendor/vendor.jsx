@@ -1298,13 +1298,38 @@ export const Vendor = () => {
     }
   };
 
+  const hasPendingRemainingBalance = (order, method) => {
+    if (!order) return false;
+    const remainingBalance = parseFloat(order.remaining_balance ?? 0) || 0;
+    if (remainingBalance <= 0) return false;
+
+    const remainingMethod = (order.remaining_payment_method || '').toLowerCase();
+    const targetMethod = (method || '').toLowerCase();
+    const isPartial = order.payment_status === 'partial';
+    const isConfirmed = Boolean(order.remaining_payment_confirmed_at);
+
+    return isPartial && remainingMethod === targetMethod && !isConfirmed;
+  };
+
   // Handle mark as delivered
   const handleDeliveredOrder = (order) => {
-    // Check if COD payment is still pending
-    if (order.payment_status === 'partial' && 
-        order.remaining_payment_method === 'cod' && 
-        order.remaining_balance > 0) {
-      updateStatus("error", `Cannot mark as delivered. COD payment of ₱${parseFloat(order.remaining_balance).toFixed(2)} is still pending. Please confirm COD payment collection first.`);
+    const remainingBalance = parseFloat(order?.remaining_balance ?? 0) || 0;
+    const isCodPending = hasPendingRemainingBalance(order, 'cod');
+    const isGCashPending = hasPendingRemainingBalance(order, 'gcash');
+
+    if (isCodPending) {
+      updateStatus(
+        "error",
+        `Cannot mark as delivered. COD payment of ₱${remainingBalance.toFixed(2)} is still pending. Please confirm COD payment collection first.`
+      );
+      return;
+    }
+
+    if (isGCashPending) {
+      updateStatus(
+        "error",
+        `Cannot mark as delivered. GCash payment proof for ₱${remainingBalance.toFixed(2)} is still pending. Please verify the customer's payment before completing delivery.`
+      );
       return;
     }
     
@@ -1315,11 +1340,19 @@ export const Vendor = () => {
   // Confirm mark as delivered
   const confirmDeliveredOrder = () => {
     if (selectedOrder) {
-      // Double-check COD payment status before confirming
-      if (selectedOrder.payment_status === 'partial' && 
-          selectedOrder.remaining_payment_method === 'cod' && 
-          selectedOrder.remaining_balance > 0) {
-        updateStatus("error", `Cannot mark as delivered. COD payment of ₱${parseFloat(selectedOrder.remaining_balance).toFixed(2)} is still pending. Please confirm COD payment collection first.`);
+      const remainingBalance = parseFloat(selectedOrder?.remaining_balance ?? 0) || 0;
+      const isCodPending = hasPendingRemainingBalance(selectedOrder, 'cod');
+      const isGCashPending = hasPendingRemainingBalance(selectedOrder, 'gcash');
+
+      if (isCodPending) {
+        updateStatus("error", `Cannot mark as delivered. COD payment of ₱${remainingBalance.toFixed(2)} is still pending. Please confirm COD payment collection first.`);
+        setShowDeliveredModal(false);
+        setSelectedOrder(null);
+        return;
+      }
+
+      if (isGCashPending) {
+        updateStatus("error", `Cannot mark as delivered. GCash payment proof for ₱${remainingBalance.toFixed(2)} is still pending. Please verify the customer's payment before completing delivery.`);
         setShowDeliveredModal(false);
         setSelectedOrder(null);
         return;
@@ -3141,6 +3174,10 @@ export const Vendor = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("pendingVendor");
+    sessionStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("pendingVendor");
+    localStorage.removeItem("token");
     window.dispatchEvent(new Event("userChanged"));
     navigate("/login");
   };
@@ -8306,6 +8343,15 @@ export const Vendor = () => {
 
                           {order.status === 'out_for_delivery' && (() => {
                             const walkInCheck = isWalkInOrder(order);
+                            const remainingBalance = parseFloat(order?.remaining_balance ?? 0) || 0;
+                            const isCODPaymentPending = hasPendingRemainingBalance(order, 'cod');
+                            const isGCashPaymentPending = hasPendingRemainingBalance(order, 'gcash');
+                            const isDeliveryActionDisabled = isCODPaymentPending || isGCashPaymentPending;
+                            const deliveryDisableTitle = isCODPaymentPending
+                              ? `Cannot mark as delivered. COD payment of ₱${remainingBalance.toFixed(2)} must be confirmed first.`
+                              : isGCashPaymentPending
+                                ? `Cannot mark as delivered. GCash payment proof of ₱${remainingBalance.toFixed(2)} is required before completing delivery.`
+                                : 'Mark order as delivered';
                             
                             return (
                               <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 lg:p-4 mb-3 sm:mb-4 lg:mb-6">
@@ -8344,7 +8390,11 @@ export const Vendor = () => {
                                       </>
                                     )}
                                     {order.remaining_payment_method === 'gcash' && (
-                                      <p className="text-orange-700 text-xs">Customer will pay via GCash</p>
+                                      <p className="text-orange-700 text-xs">
+                                        {hasPendingRemainingBalance(order, 'gcash')
+                                          ? 'Customer will pay via GCash. Request payment proof before marking as delivered.'
+                                          : 'Customer will pay via GCash.'}
+                                      </p>
                                     )}
                                     {!order.remaining_payment_method && (
                                       <p className="text-orange-700 text-xs">
@@ -8381,15 +8431,13 @@ export const Vendor = () => {
                                 
                                 <button
                                   onClick={() => handleDeliveredOrder(order)}
-                                  disabled={order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0}
+                                  disabled={isDeliveryActionDisabled}
                                   className={`py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm lg:text-base w-full sm:w-auto ${
-                                    order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0
+                                    isDeliveryActionDisabled
                                       ? 'bg-gray-400 cursor-not-allowed text-gray-600'
                                       : 'bg-green-600 hover:bg-green-700 text-white'
                                   }`}
-                                  title={order.payment_status === 'partial' && order.remaining_payment_method === 'cod' && order.remaining_balance > 0
-                                    ? `Cannot mark as delivered. COD payment of ₱${parseFloat(order.remaining_balance).toFixed(2)} must be confirmed first.`
-                                    : 'Mark order as delivered'}
+                                  title={deliveryDisableTitle}
                                 >
                                   ✅ Mark as Delivered
                                 </button>
@@ -9532,7 +9580,7 @@ export const Vendor = () => {
               <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 text-left bg-gray-50 p-2 sm:p-3 rounded-lg">
                 <p className="mb-1 sm:mb-1.5"><strong>Customer:</strong> {selectedOrder.customer_fname} {selectedOrder.customer_lname}</p>
                 <p><strong>Amount:</strong> ₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</p>
-                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0 && (
+                {hasPendingRemainingBalance(selectedOrder, 'cod') && (
                   <div className="mt-2 p-1.5 sm:p-2 bg-red-50 border border-red-200 rounded">
                     <p className="text-red-800 text-xs font-medium">
                       ⚠️ COD Payment Pending: ₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}
@@ -9542,11 +9590,23 @@ export const Vendor = () => {
                     </p>
                   </div>
                 )}
+                {hasPendingRemainingBalance(selectedOrder, 'gcash') && (
+                  <div className="mt-2 p-1.5 sm:p-2 bg-yellow-50 border border-yellow-200 rounded">
+                    <p className="text-yellow-800 text-xs font-medium">
+                      ⚠️ GCash Payment Proof Pending: ₱{parseFloat(selectedOrder.remaining_balance).toFixed(2)}
+                    </p>
+                    <p className="text-yellow-700 text-xs mt-1">
+                      Request and review the customer&apos;s GCash payment proof before marking this order as delivered.
+                    </p>
+                  </div>
+                )}
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
-                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0
+                {hasPendingRemainingBalance(selectedOrder, 'cod')
                   ? '⚠️ Cannot mark as delivered. COD payment must be confirmed first.'
-                  : 'Confirm that the order has been successfully delivered to the customer.'}
+                  : hasPendingRemainingBalance(selectedOrder, 'gcash')
+                    ? '⚠️ Cannot mark as delivered. Awaiting GCash payment proof.'
+                    : 'Confirm that the order has been successfully delivered to the customer.'}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -9561,9 +9621,9 @@ export const Vendor = () => {
                 </button>
                 <button
                   onClick={confirmDeliveredOrder}
-                  disabled={selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0}
+                  disabled={hasPendingRemainingBalance(selectedOrder, 'cod') || hasPendingRemainingBalance(selectedOrder, 'gcash')}
                   className={`flex-1 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm ${
-                    selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'cod' && selectedOrder.remaining_balance > 0
+                    hasPendingRemainingBalance(selectedOrder, 'cod') || hasPendingRemainingBalance(selectedOrder, 'gcash')
                       ? 'bg-gray-400 cursor-not-allowed text-gray-600'
                       : 'bg-green-600 hover:bg-green-700 text-white'
                   }`}

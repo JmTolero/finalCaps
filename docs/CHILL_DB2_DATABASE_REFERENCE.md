@@ -111,7 +111,7 @@ Primary schema source: current backend migrations and models
 ### `notifications`
 - **Purpose:** Persistent notifications for users.
 - **Key columns:** `notification_id`, `user_id`, `user_type`, `title`, `message`, `notification_type`, `related_order_id`, `related_vendor_id`, `related_customer_id`, `is_read`, `created_at`, `updated_at`.
-- **Notes:** Enum covers order lifecycle plus vendor approval and review events.
+- **Notes:** Enum covers order lifecycle plus vendor approval/review events; includes `payment_reminder` for pending-payment alerts.
 
 ### `feedback`
 - **Purpose:** Support tickets and product feedback.

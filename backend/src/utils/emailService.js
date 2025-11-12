@@ -5,7 +5,7 @@ const createTransporter = () => {
   // Auto-detect environment: Gmail for localhost, Resend for production
   const service = process.env.NODE_ENV === 'production' 
     ? (process.env.EMAIL_SERVICE || 'resend')
-    : (process.env.EMAIL_SERVICE || 'gmail');
+    : (process.env.EMAIL_SERVICE || 'gmail'); 
   
   if (service === 'sendgrid') {
     return nodemailer.createTransport({
@@ -153,6 +153,139 @@ const emailTemplates = {
       If you didn't apply for a vendor account, please ignore this email.
     `
   }),
+
+  orderPaymentReminder: (data) => {
+    const customerName = data.customerName || 'there';
+    const paymentWindowMinutes = data.paymentWindowMinutes || 30;
+    let deadlineDisplay = `the next ${paymentWindowMinutes} minutes`;
+
+    if (data.paymentDeadline) {
+      try {
+        const deadlineDate = new Date(data.paymentDeadline);
+        if (!Number.isNaN(deadlineDate.getTime())) {
+          deadlineDisplay = deadlineDate.toLocaleString('en-PH', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to format payment deadline for email template:', error);
+      }
+    }
+
+    const formattedAmount = data.totalAmount !== undefined && data.totalAmount !== null
+      ? Number(data.totalAmount).toLocaleString('en-PH', {
+          style: 'currency',
+          currency: 'PHP'
+        })
+      : null;
+
+    return {
+      subject: `Complete Your Payment for Order #${data.orderId}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Payment Reminder</title>
+            <style>
+              body { font-family: Arial, sans-serif; background-color: #f4f6fb; margin: 0; padding: 20px; color: #1f2937; }
+              .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08); overflow: hidden; }
+              .header { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #ffffff; padding: 28px; text-align: center; }
+              .header h1 { margin: 0; font-size: 24px; }
+              .content { padding: 28px; }
+              .content p { line-height: 1.6; margin-bottom: 16px; }
+              .order-summary { background-color: #f8fafc; border-radius: 10px; padding: 20px; margin: 24px 0; border: 1px solid #e2e8f0; }
+              .order-summary h3 { margin-top: 0; color: #1d4ed8; }
+              .button { display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff !important; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 10px; }
+              .footer { padding: 20px; text-align: center; font-size: 13px; color: #64748b; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>⏰ Payment Reminder</h1>
+                <p>Order #${data.orderId}</p>
+              </div>
+              <div class="content">
+                <p>Hi ${customerName},</p>
+                <p>Your order with <strong>${data.vendorName || 'the vendor'}</strong> has been confirmed. Please complete your payment within <strong>${paymentWindowMinutes} minutes</strong> to avoid automatic cancellation.</p>
+                <div class="order-summary">
+                  <h3>Order Summary</h3>
+                  <p><strong>Order ID:</strong> #${data.orderId}</p>
+                  ${
+                    formattedAmount
+                      ? `<p><strong>${
+                          data.partialPercentage
+                            ? `Initial Payment (${data.partialPercentage}%)`
+                            : data.isPartial
+                              ? 'Amount Due Now'
+                              : 'Amount Due'
+                        }:</strong> ${formattedAmount}</p>`
+                      : ''
+                  }
+                  ${
+                    data.isPartial && data.remainingBalance !== undefined && data.remainingBalance !== null
+                      ? `<p><strong>Remaining Balance:</strong> ${Number(data.remainingBalance).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}</p>`
+                      : ''
+                  }
+                  <p><strong>Payment Deadline:</strong> ${deadlineDisplay}</p>
+                  ${data.paymentInstructions ? `<p>${data.paymentInstructions}</p>` : ''}
+                </div>
+                <p>Please visit your ChillNet account to upload your GCash payment proof and complete the transaction.</p>
+                <p>If you've already completed your payment, you can ignore this reminder.</p>
+                <p>Thank you for choosing ChillNet! 🍨</p>
+              </div>
+              <div class="footer">
+                <p>This is an automated reminder from ChillNet.</p>
+                <p>If you need assistance, please contact our support team.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+      text: `
+        Payment Reminder for Order #${data.orderId}
+
+        Hi ${customerName},
+
+        Your order with ${data.vendorName || 'the vendor'} has been confirmed. Please complete your payment within ${paymentWindowMinutes} minutes to avoid automatic cancellation.
+
+        Order Summary:
+        - Order ID: #${data.orderId}
+        ${
+          formattedAmount
+            ? `- ${
+                data.partialPercentage
+                  ? `Initial Payment (${data.partialPercentage}%)`
+                  : data.isPartial
+                    ? 'Amount Due Now'
+                    : 'Amount Due'
+              }: ${formattedAmount}`
+            : ''
+        }
+        ${
+          data.isPartial && data.remainingBalance !== undefined && data.remainingBalance !== null
+            ? `- Remaining Balance: ${Number(data.remainingBalance).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}`
+            : ''
+        }
+        - Payment Deadline: ${deadlineDisplay}
+        ${data.paymentInstructions ? `- ${data.paymentInstructions}` : ''}
+
+        Complete payment: ${(process.env.FRONTEND_URL || 'http://localhost:3000')}/customer/gcash-account/${data.orderId}
+
+        If you've already completed your payment, you can ignore this reminder.
+
+        Thank you for choosing ChillNet! 🍨
+      `
+    };
+  },
 
   vendorRejected: (vendorData) => ({
     subject: 'Update on Your ChillNet Vendor Application',

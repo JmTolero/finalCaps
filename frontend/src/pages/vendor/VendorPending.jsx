@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logoImage from '../../assets/images/LOGO.png';
 import axios from 'axios';
@@ -9,10 +9,28 @@ export const VendorPending = () => {
   const navigate = useNavigate();
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isTabVisible, setIsTabVisible] = useState(typeof document !== 'undefined' ? !document.hidden : true);
+  const pollIntervalRef = useRef(null);
+  const inFlightRef = useRef(false);
+  const abortControllerRef = useRef(null);
+  const navigatedRef = useRef(false);
+
+  const isPending = (status) => status !== 'approved' && status !== 'rejected';
+
   const checkVendorStatus = useCallback(async () => {
+    // Pause checks when tab is hidden
+    if (!isTabVisible) return;
+    // Avoid overlapping requests
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    // Abort any previous pending request (defensive)
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
     try {
       // Get user from session
-      const userRaw = sessionStorage.getItem('user');
+      const userRaw = sessionStorage.getItem('user') || localStorage.getItem('user');
       if (!userRaw) {
         navigate('/login');
         return;
@@ -22,7 +40,9 @@ export const VendorPending = () => {
       
       // Fetch vendor status
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`);
+      const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`, {
+        signal: abortControllerRef.current.signal
+      });
       
       if (response.data.success) {
         const userData = response.data.user;
@@ -30,35 +50,84 @@ export const VendorPending = () => {
         
         // If vendor is approved, redirect to setup or dashboard
         if (userData.vendor_status === 'approved') {
-          navigate('/vendor-setup');
+          if (!navigatedRef.current) {
+            navigatedRef.current = true;
+            navigate('/vendor-setup');
+          }
         } else if (userData.vendor_status === 'rejected') {
-          // Handle rejected status - stay on this page but show rejection message
-          console.log('Vendor application was rejected');
+          // No navigation here; message is shown in UI
+        }
+        // Stop polling if no longer pending
+        if (!isPending(userData.vendor_status) && pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
         }
       }
     } catch (error) {
-      console.error('Error checking vendor status:', error);
+      if (axios.isCancel?.(error)) {
+        // request cancelled
+      } else if (error?.name !== 'CanceledError') {
+        console.error('Error checking vendor status:', error);
+      }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, isTabVisible]);
 
   useEffect(() => {
-    checkVendorStatus();
-
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing vendor pending status...');
-      checkVendorStatus();
-    }, 30000);
-
+    // Visibility change: pause/resume polling
+    const handleVisibility = () => setIsTabVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Initial fetch
+    checkVendorStatus();
+    return () => {
+      // Cleanup on unmount
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [checkVendorStatus]);
+
+  useEffect(() => {
+    // Manage polling based on status and tab visibility
+    const currentStatus = vendorData?.vendor_status;
+    // Clear any existing interval first
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    // Only poll when pending and tab visible
+    if (isTabVisible && (currentStatus === undefined || isPending(currentStatus))) {
+      pollIntervalRef.current = setInterval(() => {
+        checkVendorStatus();
+      }, 30000);
+    }
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [vendorData?.vendor_status, isTabVisible, checkVendorStatus]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('pendingVendor');
+    sessionStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('pendingVendor');
+    localStorage.removeItem('token');
     window.dispatchEvent(new Event('userChanged'));
     navigate('/login');
   };
@@ -122,14 +191,14 @@ export const VendorPending = () => {
               <div className={`mx-auto w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full flex items-center justify-center mb-4 sm:mb-6 shadow-lg ${
                 vendorData?.vendor_status === 'rejected'
                   ? 'bg-gradient-to-br from-red-100 to-red-200'
-                  : 'bg-gradient-to-br from-yellow-100 to-yellow-200 animate-pulse'
+                  : 'bg-gradient-to-br from-yellow-100 to-yellow-200'
               }`}>
                 {vendorData?.vendor_status === 'rejected' ? (
                   <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 ) : (
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-yellow-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{animation: 'spin 3s linear infinite'}}>
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
@@ -222,7 +291,7 @@ export const VendorPending = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 ) : (
-                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 )}
@@ -313,6 +382,7 @@ export const VendorPending = () => {
                             role: 'customer'
                           };
                           sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                          localStorage.setItem('user', JSON.stringify(updatedUserData));
                           console.log('Updated user role in session:', updatedUser.role);
                           
                           // Trigger user change event to update app state
@@ -327,6 +397,7 @@ export const VendorPending = () => {
                             role: 'customer'
                           };
                           sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                          localStorage.setItem('user', JSON.stringify(updatedUserData));
                           window.dispatchEvent(new Event('userChanged'));
                           localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
                         }
@@ -342,6 +413,7 @@ export const VendorPending = () => {
                           role: 'customer'
                         };
                         sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                        localStorage.setItem('user', JSON.stringify(updatedUserData));
                         window.dispatchEvent(new Event('userChanged'));
                         localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
                       }
@@ -402,7 +474,7 @@ export const VendorPending = () => {
 
                 {/* Step 2 - Current */}
                 <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center animate-pulse">
+                  <div className="flex-shrink-0 w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
                     <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>

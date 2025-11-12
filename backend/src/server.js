@@ -12,6 +12,9 @@ console.log('🔄 Reservation release job started');
 require('./services/subscriptionExpiryJob');
 console.log('📅 Subscription expiry job started');
 
+require('./services/paymentReminderJob');
+console.log('🔔 Payment reminder job started');
+
 // Listen on all network interfaces (0.0.0.0) to allow access from other devices
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

@@ -1,5 +1,5 @@
-    import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-    import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect, useRef } from 'react';
     import './App.css';
     import { CartProvider } from './contexts/CartContext';
 import { LandingPage } from './pages/shared/landingpage';
@@ -39,13 +39,55 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
 
     function App() {
   const [user, setUser] = useState(null);
+  const initialLoadRef = useRef(true);
 
-  // Update user state when sessionStorage changes
+  // Update user state when storage changes
   useEffect(() => {
     const updateUser = () => {
-      const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
+      if (typeof window === 'undefined') {
+        setUser(null);
+        return;
+      }
+
+      let userRaw = localStorage.getItem('user');
+      let tokenRaw = localStorage.getItem('token');
+
+      if (initialLoadRef.current && !tokenRaw) {
+        const legacyToken = sessionStorage.getItem('token');
+        if (legacyToken) {
+          localStorage.setItem('token', legacyToken);
+          sessionStorage.removeItem('token');
+          tokenRaw = legacyToken;
+        }
+      }
+
+      if (initialLoadRef.current && !userRaw) {
+        const legacyUser = sessionStorage.getItem('user');
+        if (legacyUser) {
+          localStorage.setItem('user', legacyUser);
+          sessionStorage.removeItem('user');
+          userRaw = legacyUser;
+        }
+      }
+
+      if (userRaw) {
+        sessionStorage.setItem('user', userRaw);
+      } else {
+        sessionStorage.removeItem('user');
+      }
+
+      if (tokenRaw) {
+        sessionStorage.setItem('token', tokenRaw);
+      } else {
+        sessionStorage.removeItem('token');
+      }
+
       const userData = userRaw ? JSON.parse(userRaw) : null;
       setUser(userData);
+
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false;
+      }
     };
 
     // Initial load
@@ -53,7 +95,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
 
     // Listen for storage changes (when user logs in/out in another tab)
     const handleStorageChange = (e) => {
-      if (e.key === 'user') {
+      if (e.key === 'user' || e.key === 'token') {
         updateUser();
       }
     };
@@ -80,7 +122,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
     // If user is still loading (null), don't redirect yet
     if (user === null) {
       // Check if there's a user in sessionStorage while loading
-      const userRaw = typeof window !== 'undefined' ? sessionStorage.getItem('user') : null;
+      const userRaw = typeof window !== 'undefined' ? (localStorage.getItem('user') || sessionStorage.getItem('user')) : null;
       if (userRaw) {
         // User exists in storage but state hasn't loaded yet, wait
         return <div className="flex items-center justify-center min-h-screen">
@@ -129,7 +171,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/vendor-google-complete" element={<VendorGoogleComplete />} />
           <Route path="/become-vendor" element={requireRole('customer', <BecomeVendor />)} />
           <Route path="/vendor-setup" element={<VendorSetup />} />
-          <Route path="/vendor-pending" element={<VendorPending />} />
+          <Route path="/vendor-pending" element={requireRole('vendor', <VendorPending />)} />
           <Route path="/home" element={<Home />} />
           <Route path="/admin/*" element={requireRole('admin', <Admin />)} />
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />

@@ -35,8 +35,10 @@ export const GoogleCallback = () => {
           // Parse user data from URL parameters
           const user = JSON.parse(decodeURIComponent(userParam));
           
-          // Save user info and JWT token in sessionStorage
+          // Save user info and JWT token in localStorage
+          localStorage.setItem("user", JSON.stringify(user));
           sessionStorage.setItem("user", JSON.stringify(user));
+          localStorage.setItem("token", token);
           sessionStorage.setItem("token", token);
 
           // Dispatch custom event to notify App component of user change
@@ -73,6 +75,7 @@ export const GoogleCallback = () => {
                         ...user,
                         role: 'customer'
                       };
+                      localStorage.setItem("user", JSON.stringify(updatedUser));
                       sessionStorage.setItem("user", JSON.stringify(updatedUser));
                       window.dispatchEvent(new Event('userChanged'));
                       navigate("/customer");

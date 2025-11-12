@@ -162,9 +162,10 @@ const createOrder = async (req, res) => {
             });
         }
 
-        // Calculate reservation expiry: 24 hours before delivery
-        const reservationExpiry = new Date(deliveryDateTime);
-        reservationExpiry.setHours(reservationExpiry.getHours() - 24);
+        // Calculate payment deadline / reservation expiry based on unpaid window
+        const paymentWindowMinutes = parseInt(process.env.ORDER_PAYMENT_WINDOW_MINUTES || '30', 10);
+        const paymentDeadline = new Date(now);
+        paymentDeadline.setMinutes(paymentDeadline.getMinutes() + paymentWindowMinutes);
 
         // Calculate payment_amount and remaining_balance for partial payments
         const totalAmountNum = parseFloat(total_amount) || 0;
@@ -307,9 +308,10 @@ const createOrder = async (req, res) => {
                 status, 
                 payment_status,
                 payment_method,
+                payment_deadline,
                 reservation_expires_at,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             customer_id,
             vendor_id,
@@ -321,11 +323,33 @@ const createOrder = async (req, res) => {
             status,
             payment_status,
             payment_method,
-            reservationExpiry
+            paymentDeadline,
+            paymentDeadline
         ]);
 
         const orderId = orderResult.insertId;
         console.log('Order created with ID:', orderId);
+
+        // Track pending payment for reminder job
+        try {
+            await pool.query(`
+                INSERT INTO pending_payment_orders (
+                    order_id,
+                    payment_deadline,
+                    reminder_sent,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, 0, NOW(), NOW())
+                ON DUPLICATE KEY UPDATE
+                    payment_deadline = VALUES(payment_deadline),
+                    reminder_sent = 0,
+                    updated_at = NOW()
+            `, [orderId, paymentDeadline]);
+
+            console.log(`⏰ Pending payment record created for order #${orderId} (deadline ${paymentDeadline.toISOString()})`);
+        } catch (pendingError) {
+            console.error(`❌ Failed to create pending payment record for order #${orderId}:`, pendingError);
+        }
 
         // Create notifications for both customer and vendor
         try {
@@ -799,9 +823,31 @@ const updateOrderStatus = async (req, res) => {
             });
         }
 
+        const [orderContextRows] = await pool.query(`
+            SELECT 
+                status AS current_status,
+                payment_status,
+                customer_id,
+                vendor_id,
+                total_amount
+            FROM orders
+            WHERE order_id = ?
+        `, [order_id]);
+
+        if (orderContextRows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Order not found'
+            });
+        }
+
+        const previousStatus = orderContextRows[0].current_status;
+        const currentPaymentStatus = orderContextRows[0].payment_status;
+        const contextCustomerId = orderContextRows[0].customer_id;
+        const contextVendorId = orderContextRows[0].vendor_id;
         // If order is being cancelled, release drums immediately
         if (status === 'cancelled') {
-            console.log(`🔄 Releasing drums for cancelled order #${order_id}...`);
+            console.log(`Releasing drums for cancelled order #${order_id}...`);
             
             try {
                 // Get order details including payment status and items
@@ -851,9 +897,9 @@ const updateOrderStatus = async (req, res) => {
                             `, [item.quantity, item.quantity, item.vendor_id, item.delivery_date, item.drum_size]);
                             
                             if (result.affectedRows > 0) {
-                                console.log(`↩️ Released ${item.quantity} ${item.drum_size} booked drum(s) from order #${order_id} back to available`);
+                                console.log(`Released ${item.quantity} ${item.drum_size} booked drum(s) from order #${order_id} back to available`);
                             } else {
-                                console.warn(`⚠️ Failed to release booked drums for order #${order_id} - record may not exist`);
+                                console.warn(`⚠️Failed to release booked drums for order #${order_id} - record may not exist`);
                             }
                         } else {
                             // Drums are reserved, release them from reserved_count
@@ -865,9 +911,9 @@ const updateOrderStatus = async (req, res) => {
                             `, [item.quantity, item.quantity, item.vendor_id, item.delivery_date, item.drum_size]);
                             
                             if (result.affectedRows > 0) {
-                                console.log(`↩️ Released ${item.quantity} ${item.drum_size} reserved drum(s) from order #${order_id} back to available`);
+                                console.log(`Released ${item.quantity} ${item.drum_size} reserved drum(s) from order #${order_id} back to available`);
                             } else {
-                                console.warn(`⚠️ Failed to release reserved drums for order #${order_id} - record may not exist`);
+                                console.warn(`Failed to release reserved drums for order #${order_id} - record may not exist`);
                             }
                         }
                     }
@@ -910,6 +956,38 @@ const updateOrderStatus = async (req, res) => {
             });
         }
 
+        if (
+            status === 'confirmed' &&
+            previousStatus !== 'confirmed' &&
+            contextCustomerId &&
+            currentPaymentStatus === 'unpaid'
+        ) {
+            const paymentWindowMinutes = parseInt(process.env.ORDER_PAYMENT_WINDOW_MINUTES || '30', 10);
+            const deadlineDate = new Date();
+            deadlineDate.setMinutes(deadlineDate.getMinutes() + paymentWindowMinutes);
+
+            try {
+                await pool.query(`
+                    UPDATE orders
+                    SET payment_deadline = ?, reservation_expires_at = ?
+                    WHERE order_id = ?
+                `, [deadlineDate, deadlineDate, order_id]);
+
+                await pool.query(`
+                    INSERT INTO pending_payment_orders (order_id, payment_deadline, reminder_sent, created_at, updated_at)
+                    VALUES (?, ?, 0, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE 
+                        payment_deadline = VALUES(payment_deadline),
+                        reminder_sent = 0,
+                        updated_at = NOW()
+                `, [order_id, deadlineDate]);
+
+                console.log(`⏰ Payment deadline set for order #${order_id}:`, deadlineDate.toISOString());
+            } catch (deadlineError) {
+                console.error(`❌ Failed to set payment deadline for order #${order_id}:`, deadlineError);
+            }
+        }
+
         // Get order details for notification
         const [orderDetails] = await pool.query(`
             SELECT customer_id, vendor_id, status 
@@ -928,7 +1006,8 @@ const updateOrderStatus = async (req, res) => {
                     case 'confirmed':
                         notificationType = 'order_accepted';
                         title = 'Order Confirmed';
-                        message = `Great news! Your order #${order_id} has been confirmed by the vendor. Please complete your payment first, then the vendor will start preparing your order.`;
+                        const paymentWindow = parseInt(process.env.ORDER_PAYMENT_WINDOW_MINUTES || '30', 10);
+                        message = `Great news! Your order #${order_id} has been confirmed by the vendor. Please complete your payment within ${paymentWindow} minutes so the vendor can start preparing your order.`;
                         break;
                     case 'preparing':
                         notificationType = 'order_preparing';
@@ -969,6 +1048,7 @@ const updateOrderStatus = async (req, res) => {
                 });
 
                 console.log(`📬 Status notification created for order ${order_id}: ${status}`);
+
             } catch (notificationError) {
                 console.error('Failed to create status notification:', notificationError);
                 // Don't fail the status update if notification creation fails

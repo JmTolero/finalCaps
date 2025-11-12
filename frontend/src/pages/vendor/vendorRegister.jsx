@@ -149,21 +149,25 @@ export const VendorRegister = () => {
         });
         
         // Store user data in sessionStorage to keep them logged in
-        sessionStorage.setItem('user', JSON.stringify({
+        const storedUser = JSON.stringify({
           id: res.data.user.user_id,
           fname: res.data.user.fname,
           email: res.data.user.email,
           role: 'vendor'
-        }));
+        });
+        sessionStorage.setItem('user', storedUser);
+        localStorage.setItem('user', storedUser);
         
         // Store vendor data for setup process
-        sessionStorage.setItem('pendingVendor', JSON.stringify({
+        const pendingVendorData = JSON.stringify({
           vendor_id: res.data.vendor.vendor_id,
           user_id: res.data.user.user_id,
           store_name: 'Store Name Pending Setup',
           email: res.data.user.email,
           fname: res.data.user.fname
-        }));
+        });
+        sessionStorage.setItem('pendingVendor', pendingVendorData);
+        localStorage.setItem('pendingVendor', pendingVendorData);
         
         // Dispatch user change event to update navbar
         window.dispatchEvent(new Event('userChanged'));

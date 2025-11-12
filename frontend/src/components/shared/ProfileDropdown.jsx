@@ -85,6 +85,10 @@ export const ProfileDropdown = () => {
     // Clear user data from sessionStorage
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('pendingVendor');
+    sessionStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('pendingVendor');
     
     // Dispatch custom event to notify App component of user change
     window.dispatchEvent(new Event('userChanged'));

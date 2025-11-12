@@ -693,6 +693,10 @@ export const Vendor = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("pendingVendor");
+    sessionStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("pendingVendor");
+    localStorage.removeItem("token");
     window.dispatchEvent(new Event("userChanged"));
     navigate("/login");
   };

@@ -57,6 +57,8 @@ export const VendorGoogleComplete = () => {
         // Store token and user data
         sessionStorage.setItem('token', token);
         sessionStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
         
         // Dispatch user change event to update navbar
         window.dispatchEvent(new Event('userChanged'));
