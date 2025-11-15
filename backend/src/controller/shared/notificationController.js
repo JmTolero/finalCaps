@@ -77,17 +77,10 @@ const getNotifications = async (req, res) => {
     const [countResult] = await pool.query(countQuery, countParams);
     const total = countResult[0].total;
 
-    // Format notifications with timezone conversion
+    // Format notifications - MySQL already returns dates in Philippine timezone (+08:00)
+    // No need for manual conversion as the database is configured with timezone '+08:00'
+    // The frontend will handle timezone formatting using toLocaleString with 'Asia/Manila'
     const formattedNotifications = notifications.map(notification => {
-      // Convert timestamp to Philippine time
-      let philippineTime = notification.created_at;
-      if (notification.created_at) {
-        const date = new Date(notification.created_at);
-        // Add 8 hours to convert from UTC to Philippine time (UTC+8)
-        const philippineDate = new Date(date.getTime() + (8 * 60 * 60 * 1000));
-        philippineTime = philippineDate.toISOString();
-      }
-      
       return {
         id: notification.notification_id,
         title: notification.title,
@@ -95,7 +88,7 @@ const getNotifications = async (req, res) => {
         type: notification.notification_type,
         notification_type: notification.notification_type, // Add this for frontend compatibility
         is_read: notification.is_read,
-        created_at: philippineTime,
+        created_at: notification.created_at, // Return as-is, already in correct timezone
         related_order_id: notification.related_order_id,
         related_vendor_id: notification.related_vendor_id,
         related_customer_id: notification.related_customer_id,

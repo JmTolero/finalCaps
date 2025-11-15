@@ -11,6 +11,9 @@ router.get('/vendors', subscriptionController.getAllVendorSubscriptions);
 // Get subscription revenue summary
 router.get('/revenue', subscriptionController.getSubscriptionRevenue);
 
+// Get all subscription transactions
+router.get('/transactions', subscriptionController.getSubscriptionTransactions);
+
 // Get specific vendor subscription details
 router.get('/vendor/:vendor_id', subscriptionController.getVendorSubscription);
 

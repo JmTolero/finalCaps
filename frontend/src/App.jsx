@@ -144,12 +144,39 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
     console.log('Role check passed, rendering element');
     return element;
   };
+  // VendorPending route - accessible to vendors and rejected vendors (who may have customer role)
+  const VendorPendingRoute = () => {
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+    const role = (user?.role || 'customer').toLowerCase();
+    
+    // Allow access if user is vendor OR if they have rejected vendor status (even if role is customer)
+    if (role === 'vendor' || role === 'customer') {
+      // For customers, check if they have a rejected vendor application
+      if (role === 'customer') {
+        // This will be checked in VendorPending component itself
+        // Allow access - VendorPending will handle showing rejection message
+        return <VendorPending />;
+      }
+      return <VendorPending />;
+    }
+    
+    return <Navigate to="/login" replace />;
+  };
+
   // Redirect logged-in users away from login page
   const LoginRoute = () => {
     if (user) {
       const role = (user?.role || 'customer').toLowerCase();
+      
+      // Special handling for vendors - check vendor status first
+      if (role === 'vendor') {
+        // VendorRedirect will handle the actual status check and redirect appropriately
+        return <VendorRedirect />;
+      }
+      
       if (role === 'admin') return <Navigate to="/admin" replace />;
-      if (role === 'vendor') return <VendorRedirect />;
       if (role === 'customer') return <Navigate to="/customer" replace />;
       return <Navigate to="/home" replace />;
     }
@@ -171,7 +198,7 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/vendor-google-complete" element={<VendorGoogleComplete />} />
           <Route path="/become-vendor" element={requireRole('customer', <BecomeVendor />)} />
           <Route path="/vendor-setup" element={<VendorSetup />} />
-          <Route path="/vendor-pending" element={requireRole('vendor', <VendorPending />)} />
+          <Route path="/vendor-pending" element={<VendorPendingRoute />} />
           <Route path="/home" element={<Home />} />
           <Route path="/admin/*" element={requireRole('admin', <Admin />)} />
           <Route path="/vendor" element={requireRole('vendor', <Vendor />)} />

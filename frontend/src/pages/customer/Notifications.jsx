@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav';
 import { useCart } from '../../contexts/CartContext';
@@ -12,6 +12,133 @@ import notifIcon from '../../assets/images/customerIcon/notifbell.png';
 import productsIcon from '../../assets/images/customerIcon/productsflavor.png';
 import shopsIcon from '../../assets/images/customerIcon/shops.png';
 import findNearbyIcon from '../../assets/images/vendordashboardicon/findnearby.png';
+
+// Payment deadline constants and helper functions
+const PAYMENT_DEADLINE_THRESHOLD_HOURS = 24;
+
+const getReservationExpiry = (deliveryDatetime) => {
+  if (!deliveryDatetime) return null;
+  const deliveryDate = new Date(deliveryDatetime);
+  const expiryDate = new Date(deliveryDate);
+  expiryDate.setHours(expiryDate.getHours() - 24);
+  return expiryDate;
+};
+
+const PaymentCountdownTimer = React.memo(({ order, onExpired }) => {
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const [shouldShow, setShouldShow] = useState(false);
+  const hasTriggeredExpiryRef = useRef(false);
+  const lastOrderIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!order?.delivery_datetime || !order?.order_id) return;
+
+    if (lastOrderIdRef.current !== order.order_id) {
+      lastOrderIdRef.current = order.order_id;
+      hasTriggeredExpiryRef.current = false;
+    }
+
+    const calculateTimeRemaining = () => {
+      let expiryTime = order.reservation_expires_at
+        ? new Date(order.reservation_expires_at)
+        : null;
+
+      const expectedExpiry = getReservationExpiry(order.delivery_datetime);
+
+      if (!expiryTime && expectedExpiry) {
+        expiryTime = expectedExpiry;
+      } else if (expiryTime && expectedExpiry) {
+        const diffMs = Math.abs(expiryTime.getTime() - expectedExpiry.getTime());
+        const toleranceMs = 60 * 1000;
+        if (diffMs > toleranceMs) {
+          expiryTime = expectedExpiry;
+        }
+      }
+
+      if (!expiryTime) return;
+
+      const now = new Date();
+      const diff = expiryTime.getTime() - now.getTime();
+      const hoursRemaining = diff / (1000 * 60 * 60);
+
+      setShouldShow(hoursRemaining <= PAYMENT_DEADLINE_THRESHOLD_HOURS);
+
+      if (hoursRemaining > PAYMENT_DEADLINE_THRESHOLD_HOURS) {
+        if (hasTriggeredExpiryRef.current) {
+          hasTriggeredExpiryRef.current = false;
+        }
+        return;
+      }
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeRemaining({ hours: 0, minutes: 0, seconds: 0 });
+
+        if (!hasTriggeredExpiryRef.current) {
+          hasTriggeredExpiryRef.current = true;
+          if (typeof onExpired === 'function') {
+            onExpired(order);
+          }
+        }
+        return;
+      }
+
+      setIsExpired(false);
+      if (hasTriggeredExpiryRef.current) {
+        hasTriggeredExpiryRef.current = false;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ hours, minutes, seconds });
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [order, order?.delivery_datetime, order?.reservation_expires_at, order?.order_id, onExpired]);
+
+  if (!shouldShow) return null;
+  if (!timeRemaining && !isExpired) return null;
+
+  if (isExpired) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-red-600 text-lg sm:text-xl">⏰</span>
+          <div className="flex-1">
+            <p className="text-red-800 font-semibold text-xs sm:text-sm">Payment Deadline Expired</p>
+            <p className="text-red-700 text-[10px] sm:text-xs">Order will be auto-cancelled soon</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const formatTimeUnit = (value) => String(value).padStart(2, '0');
+
+  return (
+    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 sm:p-3 mb-3">
+      <div className="flex items-center gap-2">
+        <span className="text-orange-600 text-base sm:text-lg">⏰</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-orange-800 font-semibold text-xs sm:text-sm mb-0.5">
+            Payment Deadline: {formatTimeUnit(timeRemaining.hours)}h {formatTimeUnit(timeRemaining.minutes)}m {formatTimeUnit(timeRemaining.seconds)}s
+          </p>
+          <p className="text-orange-700 text-[10px] sm:text-xs">
+            Pay within {formatTimeUnit(timeRemaining.hours)}h {formatTimeUnit(timeRemaining.minutes)}m {formatTimeUnit(timeRemaining.seconds)}s or order will be auto-cancelled
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+PaymentCountdownTimer.displayName = 'PaymentCountdownTimer';
 
 export const Notifications = () => {
   const navigate = useNavigate();
@@ -54,6 +181,11 @@ export const Notifications = () => {
   
   // Feedback dropdown state
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+
+  // Cancel order modal state
+  const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [isCancellingOrder, setIsCancellingOrder] = useState(false);
 
   // Handle feedback dropdown actions
   const handleFeedbackAction = (action) => {
@@ -260,13 +392,36 @@ export const Notifications = () => {
 
   // Handle notification click
   const handleNotificationClick = async (notification) => {
+    console.log('🔔 Notification clicked:', notification);
+    
     // Mark as read if not already read
     if (!notification.isRead) {
       await markNotificationAsRead(notification.id);
     }
 
     // Handle navigation based on notification type
-    if (notification.type === 'order') {
+    if (notification.related_order_id) {
+      // Switch to orders view
+      setActiveView('orders');
+      
+      // Fetch fresh orders and find the specific one
+      const fetchedOrders = await fetchOrders();
+      
+      // Find the specific order
+      const order = fetchedOrders.find(o => o.order_id === notification.related_order_id);
+      
+      if (order) {
+        console.log('📦 Opening order details for order:', notification.related_order_id);
+        // Small delay to ensure view transition is complete
+        setTimeout(() => {
+          setSelectedOrder(order);
+          setShowOrderDetails(true);
+        }, 100);
+      } else {
+        console.warn('Order not found:', notification.related_order_id);
+      }
+    } else if (notification.type === 'order') {
+      // Generic order notification without specific order_id
       handleViewOrder();
     } else if (notification.type === 'profile') {
       handleViewProfile();
@@ -280,7 +435,7 @@ export const Notifications = () => {
       if (!userRaw) {
         console.error('No user session found');
         setOrders([]);
-        return;
+        return [];
       }
       
       const user = JSON.parse(userRaw);
@@ -291,12 +446,15 @@ export const Notifications = () => {
       if (response.data.success) {
         setOrders(response.data.orders);
         console.log('📦 Orders fetched:', response.data.orders.length);
+        return response.data.orders;
       } else {
         setOrders([]);
+        return [];
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]);
+      return [];
     } finally {
       setOrdersLoading(false);
     }
@@ -462,8 +620,74 @@ export const Notifications = () => {
   const handlePayment = (order) => {
     console.log('💳 Payment button clicked for order:', order.order_id);
     
-    // Navigate to dedicated payment page
-    navigate(`/customer/payment/${order.order_id}`);
+    // Check if this is for remaining balance payment
+    const isRemainingPayment = order.payment_status === 'partial' && 
+                                order.remaining_balance > 0 && 
+                                order.remaining_payment_method?.toLowerCase() === 'gcash';
+    
+    // Navigate to GCash payment page with remaining=true if paying remaining balance
+    if (isRemainingPayment) {
+      navigate(`/customer/gcash-account/${order.order_id}?remaining=true`);
+    } else {
+      navigate(`/customer/gcash-account/${order.order_id}`);
+    }
+  };
+
+  const handleCancelOrder = (order) => {
+    setOrderToCancel(order);
+    setShowCancelOrderModal(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+
+    setIsCancellingOrder(true);
+    
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.put(
+        `${apiBase}/api/orders/${orderToCancel.order_id}/status`,
+        { 
+          status: 'cancelled',
+          decline_reason: 'Cancelled by customer'
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Close cancel modal
+        setShowCancelOrderModal(false);
+        setOrderToCancel(null);
+        
+        // Show success message
+        setInfoModalTitle('Order Cancelled ✅');
+        setInfoModalMessage(`Order #${orderToCancel.order_id} has been cancelled successfully. Your reserved items have been released.`);
+        setInfoModalType('success');
+        setShowInfoModal(true);
+        
+        // Close order details modal
+        setShowOrderDetails(false);
+        setSelectedOrder(null);
+        
+        // Refresh orders list
+        fetchOrders();
+      } else {
+        throw new Error(response.data.error || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      setShowCancelOrderModal(false);
+      setInfoModalTitle('Cancellation Failed');
+      setInfoModalMessage(error.response?.data?.error || error.message || 'Failed to cancel order. Please try again.');
+      setInfoModalType('error');
+      setShowInfoModal(true);
+    } finally {
+      setIsCancellingOrder(false);
+    }
   };
 
   const formatTimeAgo = (timestamp) => {
@@ -478,7 +702,19 @@ export const Notifications = () => {
     if (diffInHours < 24) return `${diffInHours} hr ago`;
     
     const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} days ago`;
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    
+    // For older notifications, show the actual date in Philippine timezone
+    try {
+      return time.toLocaleDateString('en-PH', {
+        timeZone: 'Asia/Manila',
+        month: 'short',
+        day: 'numeric',
+        year: time.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      });
+    } catch (error) {
+      return `${diffInDays} days ago`;
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -791,9 +1027,12 @@ export const Notifications = () => {
                         <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
-                          className={`p-3 sm:p-4 lg:p-6 hover:bg-gray-50 transition-colors cursor-pointer ${
-                            !notification.isRead ? 'bg-blue-50' : ''
+                          className={`group p-3 sm:p-4 lg:p-6 hover:bg-blue-100 hover:shadow-md transition-all duration-200 cursor-pointer border-l-4 ${
+                            !notification.isRead 
+                              ? 'bg-blue-50 border-blue-500' 
+                              : 'border-transparent hover:border-blue-300'
                           }`}
+                          title="Click to view order details"
                         >
                           <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
                             {/* Notification Image */}
@@ -831,10 +1070,20 @@ export const Notifications = () => {
                                   </div>
                                 </div>
                                 
-                                {/* Unread Indicator */}
-                                {!notification.isRead && (
-                                  <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
-                                )}
+                                {/* Unread Indicator & Click Arrow */}
+                                <div className="flex flex-col items-end gap-2">
+                                  {!notification.isRead && (
+                                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                  )}
+                                  <svg 
+                                    className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1190,22 +1439,59 @@ export const Notifications = () => {
                   </div>
                 </div>
 
+                {/* Payment Deadline Timer - Show for pending/confirmed unpaid orders */}
+                {(selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed') && 
+                 selectedOrder.payment_status === 'unpaid' && (
+                  <PaymentCountdownTimer 
+                    order={selectedOrder} 
+                    onExpired={() => {
+                      console.log('Payment deadline expired for order:', selectedOrder.order_id);
+                    }} 
+                  />
+                )}
+
                 {/* Payment Information */}
                 <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Payment Information</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Payment</h3>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm text-gray-600">Payment Status:</span>
-                      <span className={`text-xs sm:text-sm font-medium ${
-                        selectedOrder.payment_status === 'paid' 
-                          ? 'text-green-600' 
-                          : selectedOrder.payment_status === 'partial'
-                          ? 'text-yellow-600'
-                          : 'text-red-600'
-                      }`}>
-                        {selectedOrder.payment_status.charAt(0).toUpperCase() + selectedOrder.payment_status.slice(1)}
-                      </span>
-                    </div>
+                    {/* Show Initial Payment for Partial Payments */}
+                    {selectedOrder.payment_status === 'partial' && selectedOrder.initial_payment_method && (
+                      <>
+                        <div className="flex justify-between items-center pb-2 border-b border-gray-300">
+                          <span className="text-xs sm:text-sm text-gray-600">Initial Payment Method:</span>
+                          <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                            {selectedOrder.initial_payment_method}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs sm:text-sm text-gray-600">Payment Status:</span>
+                          <span className="text-xs sm:text-sm font-medium text-orange-600">
+                            Partial
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs sm:text-sm text-gray-600">Amount Paid (50%):</span>
+                          <span className="text-base sm:text-lg font-bold text-green-600">
+                            ₱{(parseFloat(selectedOrder.total_amount) / 2).toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    
+                    {/* Show Payment Status for Non-Partial Orders */}
+                    {selectedOrder.payment_status !== 'partial' && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs sm:text-sm text-gray-600">Payment Status:</span>
+                        <span className={`text-xs sm:text-sm font-medium ${
+                          selectedOrder.payment_status === 'paid' 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        }`}>
+                          {selectedOrder.payment_status.charAt(0).toUpperCase() + selectedOrder.payment_status.slice(1)}
+                        </span>
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between items-center">
                       <span className="text-xs sm:text-sm text-gray-600">Total Amount:</span>
                       <span className="text-base sm:text-lg font-bold">₱{parseFloat(selectedOrder.total_amount).toFixed(2)}</span>
@@ -1213,19 +1499,78 @@ export const Notifications = () => {
                   </div>
                 </div>
 
-                {/* Payment Button for Unpaid Confirmed Orders */}
-                {selectedOrder.status === 'confirmed' && selectedOrder.payment_status === 'unpaid' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                    <p className="text-sm sm:text-base text-green-800 font-medium mb-2">Payment Required</p>
-                    <p className="text-xs sm:text-sm text-green-700 mb-3">
-                      Please proceed with payment via GCash to confirm your order. The vendor will start preparing your ice cream once payment is received.
+                {/* Remaining Balance - Show for Partial Payments */}
+                {selectedOrder.payment_status === 'partial' && (
+                  <div className="bg-orange-50 border border-orange-300 rounded-lg p-2 sm:p-3">
+                    <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+                      <span className="text-xs sm:text-sm font-semibold text-orange-900">Remaining Balance:</span>
+                      <span className="text-base sm:text-lg font-bold text-orange-600">
+                        ₱{(parseFloat(selectedOrder.total_amount) / 2).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs">
+                      <span className="text-orange-800">Remaining Payment Method:</span>
+                      <span className="font-medium text-red-600">
+                        {selectedOrder.remaining_payment_method || 'Not Selected'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Button for Remaining Balance (GCash only) */}
+                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'GCash' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3">
+                    <h3 className="text-sm sm:text-base font-semibold text-green-900 mb-1.5 sm:mb-2">
+                      Complete Your Payment
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-green-800 mb-2 sm:mb-3">
+                      You selected to pay the remaining balance via GCash. Click below to complete your payment:
                     </p>
+                    
                     <button 
                       onClick={() => handlePayment(selectedOrder)}
-                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
+                      className="w-full bg-green-600 text-white px-3 py-3 sm:px-4 sm:py-4 rounded-lg hover:bg-green-700 transition-all hover:shadow-lg text-center"
                     >
-                      💳 Pay Now via GCash
+                      <div className="text-xs sm:text-sm font-bold mb-0.5">💳 Pay Remaining Balance via GCash</div>
+                      <div className="text-[9px] sm:text-xs opacity-90">₱{(parseFloat(selectedOrder.total_amount) / 2).toFixed(2)}</div>
                     </button>
+                  </div>
+                )}
+                
+                {/* Cash on Delivery Info */}
+                {selectedOrder.payment_status === 'partial' && selectedOrder.remaining_payment_method === 'Cash on Delivery' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                    <h3 className="text-sm sm:text-base font-semibold text-blue-900 mb-1.5 sm:mb-2">
+                      💵 Cash on Delivery
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-blue-800">
+                      You will pay the remaining balance of ₱{(parseFloat(selectedOrder.total_amount) / 2).toFixed(2)} in cash when your order arrives. Please prepare the exact amount.
+                    </p>
+                  </div>
+                )}
+
+                {/* Payment Button for Unpaid Orders (both pending and confirmed) */}
+                {((selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed') && 
+                  selectedOrder.payment_status === 'unpaid') && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                    <p className="text-sm sm:text-base text-green-800 font-medium mb-2">💳 Payment Required</p>
+                    <p className="text-xs sm:text-sm text-green-700 mb-3">
+                      Please proceed with payment via GCash. {selectedOrder.status === 'confirmed' ? 'The vendor will start preparing your ice cream once payment is received.' : 'Complete your payment to confirm your order.'}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                      <button 
+                        onClick={() => handlePayment(selectedOrder)}
+                        className="w-full bg-green-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base font-medium"
+                      >
+                        💳 Pay Now via GCash
+                      </button>
+                      <button 
+                        onClick={() => handleCancelOrder(selectedOrder)}
+                        className="w-full bg-red-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base font-medium"
+                      >
+                        ❌ Cancel Order
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -1388,6 +1733,54 @@ export const Notifications = () => {
                   className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg border-2 border-blue-200 transition-colors duration-200 disabled:opacity-50"
                 >
                   {drumReturnLoading === selectedOrderForReturn.order_id ? 'Processing...' : 'Confirm Return'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Confirmation Modal */}
+      {showCancelOrderModal && orderToCancel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Cancel Order #{orderToCancel.order_id}?
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to cancel this order? Your reserved items will be released and made available to other customers. This action cannot be undone.
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowCancelOrderModal(false);
+                    setOrderToCancel(null);
+                  }}
+                  disabled={isCancellingOrder}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                >
+                  Keep Order
+                </button>
+                <button
+                  onClick={confirmCancelOrder}
+                  disabled={isCancellingOrder}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                >
+                  {isCancellingOrder ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Cancelling...
+                    </div>
+                  ) : (
+                    'Yes, Cancel Order'
+                  )}
                 </button>
               </div>
             </div>

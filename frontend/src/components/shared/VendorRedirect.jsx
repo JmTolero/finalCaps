@@ -35,23 +35,61 @@ export const VendorRedirect = () => {
           // Check if vendor has uploaded documents
           const setupResponse = await axios.get(`${apiBase}/api/vendor/setup-status/${user.id}`);
           if (setupResponse.data.success && setupResponse.data.isVendor) {
-            // If they have documents but setup is not complete, go to setup
-            if (setupResponse.data.vendor.business_permit_url && setupResponse.data.vendor.valid_id_url) {
-              setRedirectPath(`/vendor-setup?vendor_id=${setupResponse.data.vendor.vendor_id}`);
+            const vendor = setupResponse.data.vendor;
+            // If vendor has documents but setup is not complete, go to setup
+            if (vendor.business_permit_url && vendor.valid_id_url && vendor.proof_image_url) {
+              // All documents uploaded - check if setup is complete
+              if (!setupResponse.data.setupComplete) {
+                setRedirectPath(`/vendor-setup?vendor_id=${vendor.vendor_id}`);
+              } else {
+                setRedirectPath('/vendor-pending');
+              }
+            } else {
+              // Vendor record exists but documents not uploaded - redirect to complete registration
+              // This handles the case where user started Google OAuth but didn't complete the form
+              console.log('Vendor record exists but documents not uploaded, redirecting to vendor-google-complete');
+              setRedirectPath('/vendor-google-complete');
+            }
+          } else {
+            // No vendor record exists - user needs to complete registration
+            // Check if they came from Google OAuth (have google_id)
+            const userRaw = sessionStorage.getItem('user');
+            if (userRaw) {
+              const userData = JSON.parse(userRaw);
+              if (userData.auth_provider === 'google' || userData.google_id) {
+                // User signed up with Google but didn't complete registration
+                console.log('User signed up with Google but vendor record not created, redirecting to vendor-google-complete');
+                setRedirectPath('/vendor-google-complete');
+              } else {
+                // Regular vendor registration flow
+                setRedirectPath('/vendor-pending');
+              }
             } else {
               setRedirectPath('/vendor-pending');
             }
-          } else {
-            setRedirectPath('/vendor-pending');
           }
         } else if (userData.vendor_status === 'rejected') {
           const ackKey = `vendorRejectionAcknowledged_${user.id}`;
           const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
           
+          console.log('VendorRedirect: Vendor status is rejected');
+          console.log('VendorRedirect: Has acknowledged rejection?', hasAcknowledgedRejection);
+          
           if (hasAcknowledgedRejection) {
+            // User has acknowledged rejection, update role and go to customer page
+            console.log('VendorRedirect: Rejection acknowledged, redirecting to customer');
+            // Ensure role is customer
+            const updatedUserData = {
+              ...user,
+              role: 'customer'
+            };
+            sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+            localStorage.setItem('user', JSON.stringify(updatedUserData));
+            window.dispatchEvent(new Event('userChanged'));
             setRedirectPath('/customer');
           } else {
-            // Show rejection view until acknowledged
+            // Show rejection view until acknowledged - ALWAYS show pending page
+            console.log('VendorRedirect: Rejection not acknowledged, redirecting to vendor-pending');
             setRedirectPath('/vendor-pending');
           }
         } else if (userData.vendor_status === 'approved') {

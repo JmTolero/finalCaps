@@ -284,10 +284,10 @@ const PaymentSuccess = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Error</h1>
           <p className="text-gray-600 mb-6">{error || 'Order not found'}</p>
           <button
-            onClick={() => navigate('/customer')}
+            onClick={() => navigate('/customer?view=orders')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
-            Back to Dashboard
+            My Orders
           </button>
         </div>
       </div>
@@ -429,10 +429,10 @@ const PaymentSuccess = () => {
               )}
             </button>
             <button
-              onClick={() => navigate('/customer')}
+              onClick={() => navigate('/customer?view=orders')}
               className="bg-gray-600 hover:bg-gray-700 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
             >
-              <span>Back to Dashboard</span>
+              <span>My Orders</span>
             </button>
           </div>
         </div>

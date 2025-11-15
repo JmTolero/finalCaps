@@ -1,6 +1,15 @@
 const pool = require('../db/config');
 const cron = require('node-cron');
 
+// Helper function to extract date in local time without timezone conversion
+const getLocalDateString = (dateTime) => {
+  const date = new Date(dateTime);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 /**
  * Auto-release expired reservations
  * 
@@ -74,7 +83,7 @@ async function releaseReservation(orderId, currentStatus = 'pending') {
     
     // Return reserved drums to available
     for (const item of items) {
-      const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+      const deliveryDate = getLocalDateString(item.delivery_datetime);
       
       const [result] = await pool.query(`
         UPDATE daily_drum_availability

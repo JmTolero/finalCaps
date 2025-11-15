@@ -527,7 +527,7 @@ const GoogleMapFree = ({
 
   return (
     <>
-      <div className={`relative ${className}`}>
+      <div className={`relative ${className}`} style={{ position: 'relative', overflow: 'hidden' }}>
       {/* Map Container */}
       <div 
         ref={mapRef} 
@@ -536,25 +536,31 @@ const GoogleMapFree = ({
           minHeight: '500px',
           height: '500px',
           width: '100%',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'hidden'
         }}
       />
       
-      {/* Location Permission Request */}
+      {/* Location Permission Request - Fixed overlay to appear above profile dropdown */}
       {!locationPermissionGranted && !userLocation && (
-        <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-center p-6">
-            <div className="text-4xl mb-4">📍</div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Location Permission Required</h3>
-            <p className="text-gray-600 mb-4">Please allow location access to view the map and find nearby vendors.</p>
-            <button
-              onClick={getCurrentLocation}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-            >
-              Allow Location Access
-            </button>
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black bg-opacity-30 z-[100]"></div>
+          {/* Dialog */}
+          <div className="fixed inset-0 flex items-center justify-center z-[101] pointer-events-none">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4 text-center pointer-events-auto">
+              <div className="text-4xl mb-4">📍</div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Location Permission Required</h3>
+              <p className="text-gray-600 mb-4">Please allow location access to view the map and find nearby vendors.</p>
+              <button
+                onClick={getCurrentLocation}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+              >
+                Allow Location Access
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
       
       {/* Loading Overlay */}
@@ -576,11 +582,12 @@ const GoogleMapFree = ({
         </div>
       )}
 
-      {/* Current Location Button */}
+      {/* Current Location Button - Fixed position within map container, below profile dropdown */}
       {showCurrentLocation && (
         <button
           onClick={centerOnCurrentLocation}
-          className="absolute top-16 left-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md transition-colors duration-200 z-30"
+          className="absolute top-4 left-4 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-3 border border-gray-300 rounded-lg shadow-md transition-colors duration-200 z-[30]"
+          style={{ position: 'absolute', isolation: 'isolate' }}
           title="Center on current location"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

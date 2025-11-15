@@ -35,6 +35,8 @@ export const FlavorDetail = () => {
   const [validationMessage, setValidationMessage] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
   const [showReserveModal, setShowReserveModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Rating state
   const [ratings, setRatings] = useState([]);
@@ -267,7 +269,8 @@ export const FlavorDetail = () => {
 
   const handleRateFlavor = async () => {
     if (newRating === 0) {
-      alert('Please select a rating');
+      setValidationMessage('Please select a rating');
+      setShowValidationModal(true);
       return;
     }
 
@@ -290,11 +293,15 @@ export const FlavorDetail = () => {
         await fetchUserRating();
         await fetchFlavorDetails();
         setShowRatingModal(false);
-        alert('Rating submitted successfully!');
+        setNewRating(0);
+        setReviewText('');
+        setSuccessMessage('Rating submitted successfully!');
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error rating flavor:', error);
-      alert('Failed to submit rating');
+      setValidationMessage('Failed to submit rating. Please try again.');
+      setShowValidationModal(true);
     } finally {
       setRatingLoading(false);
     }
@@ -404,10 +411,9 @@ export const FlavorDetail = () => {
     
     // Check if drums are available for the selected date and size
     const availableDrums = getAvailableDrums();
+    
     if (availableDrums === 0) {
-      const dateDisplay = deliveryDate 
-        ? new Date(deliveryDate).toLocaleDateString() 
-        : 'this date';
+      const dateDisplay = formatDateString(deliveryDate) || 'this date';
       setValidationMessage(
         `No ${selectedSize} drums available for ${dateDisplay}. Please select a different date or size.`
       );
@@ -417,8 +423,9 @@ export const FlavorDetail = () => {
     
     // Check if requested quantity exceeds available
     if (quantity > availableDrums) {
+      const dateDisplay = formatDateString(deliveryDate) || 'this date';
       setValidationMessage(
-        `Only ${availableDrums} ${selectedSize} drum(s) available for ${new Date(deliveryDate).toLocaleDateString()}. Please reduce quantity.`
+        `Only ${availableDrums} ${selectedSize} drum(s) available for ${dateDisplay}. Please reduce quantity.`
       );
       setShowValidationModal(true);
       return;
@@ -527,6 +534,19 @@ export const FlavorDetail = () => {
 
     await addToCart(cartItem);
     setShowReserveModal(true);
+  };
+
+  // Helper function to format date without timezone issues
+  const formatDateString = (dateStr) => {
+    if (!dateStr) return '';
+    // Parse date string manually to avoid timezone conversion
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
   const getPrice = () => {
@@ -1029,7 +1049,7 @@ export const FlavorDetail = () => {
                      <div className="flex items-center gap-2">
                        <span className="text-sm sm:text-base text-gray-600">
                          {getAvailableDrums()} drums available
-                         {deliveryDate && ` for ${new Date(deliveryDate).toLocaleDateString()}`}
+                         {deliveryDate && ` for ${formatDateString(deliveryDate)}`}
                        </span>
                        {availabilityLoading && <span className="text-xs text-gray-400">(loading...)</span>}
                      </div>
@@ -1126,7 +1146,7 @@ export const FlavorDetail = () => {
                      {deliveryDate && dateAvailability && (
                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                          <p className="text-xs sm:text-sm font-medium text-blue-900 mb-2">
-                           📅 Availability for {new Date(deliveryDate).toLocaleDateString()}:
+                           📅 Availability for {formatDateString(deliveryDate)}:
                          </p>
                          <div className="grid grid-cols-3 gap-2">
                            {['small', 'medium', 'large'].map((size) => {
@@ -1484,6 +1504,33 @@ export const FlavorDetail = () => {
               <button
                 onClick={() => setShowValidationModal(false)}
                 className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-2 px-4 rounded-lg border-2 border-blue-200 transition-colors duration-200 text-sm sm:text-base"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 md:p-6 max-w-md w-full">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-100 mb-3 sm:mb-4">
+                <svg className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                Success!
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
+                {successMessage}
+              </p>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-green-50 hover:bg-green-100 text-green-700 font-medium py-2 px-4 rounded-lg border-2 border-green-200 transition-colors duration-200 text-sm sm:text-base"
               >
                 OK
               </button>

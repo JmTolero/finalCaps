@@ -1,5 +1,7 @@
 const pool = require('../../db/config');
 const xenditService = require('../../services/xenditService');
+const { createNotification } = require('../shared/notificationController');
+const { sendSubscriptionUpgradeEmail } = require('../../utils/emailService');
 
 // Create subscription payment invoice
 const createSubscriptionPayment = async (req, res) => {
@@ -92,7 +94,7 @@ const createSubscriptionPayment = async (req, res) => {
         });
         
         try {
-            await upgradeVendorPlan(vendor.vendor_id, plan_name);
+            await upgradeVendorPlan(vendor.vendor_id, plan_name, amount);
             console.log('✅ Vendor plan upgraded successfully in test mode');
             
             // Verify the upgrade
@@ -190,8 +192,8 @@ const handlePaymentWebhook = async (req, res) => {
                     WHERE xendit_invoice_id = ?
                 `, [webhook.payment_id, invoice_id]);
 
-                // Upgrade vendor plan
-                await upgradeVendorPlan(payment.vendor_id, payment.plan_name);
+                // Upgrade vendor plan with payment amount
+                await upgradeVendorPlan(payment.vendor_id, payment.plan_name, payment.amount);
 
                 console.log('✅ Payment confirmed and vendor upgraded:', payment.vendor_id);
             }
@@ -262,7 +264,7 @@ const getPaymentStatus = async (req, res) => {
 };
 
 // Helper function to upgrade vendor plan
-const upgradeVendorPlan = async (vendor_id, plan_name) => {
+const upgradeVendorPlan = async (vendor_id, plan_name, payment_amount = null) => {
     try {
         const features = getPlanFeatures(plan_name);
         const expires_at = new Date();
@@ -291,6 +293,54 @@ const upgradeVendorPlan = async (vendor_id, plan_name) => {
             affected_rows: result[0].affectedRows,
             features: features
         });
+
+        // Get vendor details for notifications
+        const [vendors] = await pool.query(`
+            SELECT v.*, u.fname, u.lname, u.email, u.user_id
+            FROM vendors v
+            LEFT JOIN users u ON v.user_id = u.user_id
+            WHERE v.vendor_id = ?
+        `, [vendor_id]);
+
+        if (vendors.length > 0) {
+            const vendor = vendors[0];
+            const vendor_name = `${vendor.fname} ${vendor.lname}`;
+            const plan_display = plan_name.charAt(0).toUpperCase() + plan_name.slice(1);
+
+            // Send in-app notification
+            try {
+                await createNotification({
+                    user_id: vendor.user_id,
+                    user_type: 'vendor',
+                    title: `🎉 Subscription Upgraded to ${plan_display} Plan!`,
+                    message: `Congratulations! Your subscription has been successfully upgraded to the ${plan_display} Plan. You now have access to all premium features. Valid until ${expires_at.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}.`,
+                    notification_type: 'subscription_upgraded',
+                    related_vendor_id: vendor_id
+                });
+                console.log('✅ In-app notification sent to vendor');
+            } catch (notifError) {
+                console.error('❌ Error sending in-app notification:', notifError);
+                // Don't throw - notification failure shouldn't stop the upgrade
+            }
+
+            // Send email notification
+            try {
+                const emailData = {
+                    vendor_name: vendor_name,
+                    vendor_email: vendor.email,
+                    plan_name: plan_name,
+                    amount: payment_amount || (plan_name === 'professional' ? 499 : plan_name === 'premium' ? 999 : 0),
+                    subscription_end_date: expires_at,
+                    features: features
+                };
+                
+                await sendSubscriptionUpgradeEmail(emailData);
+                console.log('✅ Email notification sent to vendor:', vendor.email);
+            } catch (emailError) {
+                console.error('❌ Error sending email notification:', emailError);
+                // Don't throw - email failure shouldn't stop the upgrade
+            }
+        }
 
     } catch (error) {
         console.error('❌ Error upgrading vendor plan:', error);

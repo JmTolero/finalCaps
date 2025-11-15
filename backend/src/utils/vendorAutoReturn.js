@@ -72,26 +72,30 @@ const   processVendorAutoReturns = async () => {
         
         for (const rejection of eligibleRejections) {
             try {
-                // STEP 1: Delete physical files first
-                console.log(`Deleting physical files for vendor ${rejection.vendor_id}...`);
+                console.log(`🔄 Processing auto-return for vendor ${rejection.vendor_id} (${rejection.fname} ${rejection.lname})...`);
+                
+                // Check if vendor record still exists
+                const [vendorCheck] = await pool.query(
+                    'SELECT vendor_id, status FROM vendors WHERE vendor_id = ?',
+                    [rejection.vendor_id]
+                );
+                
+                if (vendorCheck.length === 0) {
+                    // Vendor record doesn't exist, just mark rejection as returned
+                    console.log(`⚠️ Vendor ${rejection.vendor_id} record not found, marking rejection as returned`);
+                    await pool.query(
+                        'UPDATE vendor_rejections SET is_returned = TRUE, returned_at = NOW() WHERE rejection_id = ?',
+                        [rejection.rejection_id]
+                    );
+                    continue;
+                }
+                
+                // STEP 1: Delete physical files (old documents)
+                console.log(`🗑️ Deleting old document files for vendor ${rejection.vendor_id}...`);
                 await deleteVendorFiles(rejection);
                 
-                // STEP 2: Delete related data in proper order to avoid foreign key constraints
-                console.log(` Cleaning up related data for vendor ${rejection.vendor_id}...`);
-                
-                // First, delete order_items that reference this vendor's products
-                await pool.query(`
-                    DELETE oi FROM order_items oi 
-                    INNER JOIN products p ON oi.product_id = p.product_id 
-                    WHERE p.vendor_id = ?
-                `, [rejection.vendor_id]);
-                
-                // Also delete order_items from orders directly linked to this vendor
-                await pool.query(`
-                    DELETE oi FROM order_items oi 
-                    INNER JOIN orders o ON oi.order_id = o.order_id 
-                    WHERE o.vendor_id = ?
-                `, [rejection.vendor_id]);
+                // STEP 2: Clean up temporary vendor data (products, flavors, etc.)
+                console.log(`🧹 Cleaning up temporary vendor data for vendor ${rejection.vendor_id}...`);
                 
                 // Delete cart_items that reference this vendor's flavors
                 await pool.query(`
@@ -107,7 +111,7 @@ const   processVendorAutoReturns = async () => {
                     WHERE f.vendor_id = ?
                 `, [rejection.vendor_id]);
                 
-                // Then delete any remaining products directly linked to this vendor
+                // Delete products directly linked to this vendor
                 await pool.query(
                     'DELETE FROM products WHERE vendor_id = ?',
                     [rejection.vendor_id]
@@ -119,41 +123,40 @@ const   processVendorAutoReturns = async () => {
                     [rejection.vendor_id]
                 );
                 
-                // Delete vendor reviews
-                await pool.query(
-                    'DELETE FROM vendor_reviews WHERE vendor_id = ?',
-                    [rejection.vendor_id]
-                );
+                // Note: We keep orders and reviews for historical/legal purposes
+                // Orders are anonymized (vendor_id set to NULL) but not deleted
                 
-                // Delete orders from this vendor
-                await pool.query(
-                    'DELETE FROM orders WHERE vendor_id = ?',
-                    [rejection.vendor_id]
-                );
-                
-                // Finally, delete the vendor record
+                // STEP 3: Delete the vendor record completely (clean slate)
+                console.log(`🗑️ Deleting vendor record ${rejection.vendor_id} to allow fresh registration...`);
                 await pool.query(
                     'DELETE FROM vendors WHERE vendor_id = ?',
                     [rejection.vendor_id]
                 );
                 
-                // Mark rejection as returned
+                // STEP 4: Ensure user role is 'customer' (so they can register as vendor again)
+                console.log(`👤 Ensuring user ${rejection.user_id} role is customer...`);
+                await pool.query(
+                    'UPDATE users SET role = "customer" WHERE user_id = ?',
+                    [rejection.user_id]
+                );
+                
+                // STEP 5: Mark rejection as returned
                 await pool.query(
                     'UPDATE vendor_rejections SET is_returned = TRUE, returned_at = NOW() WHERE rejection_id = ?',
                     [rejection.rejection_id]
                 );
                 
-                // Create notification for vendor (COMPLETE RESET)
+                // STEP 6: Create notification for user (as customer, not vendor)
                 await createNotification({
                     user_id: rejection.user_id,
-                    user_type: 'vendor',
-                    title: 'Fresh Start Available! 🆕',
-                    message: `Hello ${rejection.fname}! Your vendor application has been completely reset. You now have a clean slate and can submit a brand new application with fresh documents. Please reapply from scratch.`,
+                    user_type: 'customer',
+                    title: 'You Can Reapply as Vendor Now! 🎉',
+                    message: `Hello ${rejection.fname}! Your vendor application has been completely reset. You can now register as a vendor again with fresh documents. Please visit the vendor registration page to start a new application.`,
                     notification_type: 'system_announcement',
-                    related_vendor_id: rejection.vendor_id
+                    related_vendor_id: null // No vendor_id since record is deleted
                 });
                 
-                console.log(`✅ Auto-reset vendor ${rejection.vendor_id} (${rejection.fname} ${rejection.lname}) - Complete data wipe completed`);
+                console.log(`✅ Auto-return completed for vendor ${rejection.vendor_id} (${rejection.fname} ${rejection.lname}) - Vendor record deleted, user can register fresh`);
                 
             } catch (error) {
                 console.error(`❌ Error processing auto-return for vendor ${rejection.vendor_id}:`, error);

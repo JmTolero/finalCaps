@@ -20,15 +20,25 @@ export const Checkout = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [savedOrderId, setSavedOrderId] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isConfirmingOrder, setIsConfirmingOrder] = useState(false);
   const [paymentOption, setPaymentOption] = useState('full'); // 'full' or '50'
+  const [remainingPaymentMethod, setRemainingPaymentMethod] = useState(''); // 'gcash' or 'cod'
   const receiptRef = useRef(null);
 
   // Debug receipt state changes
   useEffect(() => {
     console.log('🔍 Receipt state changed:', showReceipt);
   }, [showReceipt]);
+
+  // Reset remaining payment method when switching back to full payment
+  useEffect(() => {
+    if (paymentOption === 'full') {
+      setRemainingPaymentMethod('');
+    }
+  }, [paymentOption]);
 
   const groupItemsByVendor = useCallback((items) => {
     if (!items || !Array.isArray(items)) {
@@ -449,7 +459,15 @@ export const Checkout = () => {
       }
       
       if (!orderData.deliveryDate || !orderData.deliveryTime) {
-        alert('Please set a delivery date and time before placing the order.');
+        setErrorMessage('Please set a delivery date and time before placing the order.');
+        setShowErrorModal(true);
+        return;
+      }
+      
+      // Validate remaining payment method if 50% payment is selected
+      if (paymentOption === '50' && !remainingPaymentMethod) {
+        setErrorMessage('Please select a payment method for the remaining balance.');
+        setShowErrorModal(true);
         return;
       }
       
@@ -457,13 +475,16 @@ export const Checkout = () => {
       console.log('Placing order:', orderData);
       console.log('Delivery address:', finalDeliveryAddress);
       console.log('Delivery date/time:', deliveryDateTime);
+      console.log('Payment option:', paymentOption);
+      console.log('Remaining payment method:', remainingPaymentMethod);
       
       // Show order confirmation receipt first
       setShowReceipt(true);
       
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
+      setErrorMessage('Failed to place order. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -512,7 +533,8 @@ export const Checkout = () => {
       
       if (!firstOrderId) {
         console.error('❌ No order ID found! orderIds:', orderIds);
-        alert('Failed to get order ID. Please try again.');
+        setErrorMessage('Failed to get order ID. Please try again.');
+        setShowErrorModal(true);
         return;
       }
       
@@ -523,8 +545,9 @@ export const Checkout = () => {
       setShowReceipt(false);
       
       // Show the actual error message from backend
-      const errorMessage = error.message || 'Failed to save order. Please try again.';
-      alert(errorMessage);
+      const message = error.message || 'Failed to save order. Please try again.';
+      setErrorMessage(message);
+      setShowErrorModal(true);
     } finally {
       setIsConfirmingOrder(false);
     }
@@ -612,6 +635,8 @@ export const Checkout = () => {
             // Keep as 'unpaid' until payment is actually confirmed
             // 'partial' status will be set when payment is received
             payment_status: 'unpaid',
+            initial_payment_method: paymentOption === '50' ? 'GCash' : null,
+            remaining_payment_method: paymentOption === '50' ? remainingPaymentMethod : null,
             items: vendorItems
           };
           
@@ -665,6 +690,8 @@ export const Checkout = () => {
           // Keep as 'unpaid' until payment is actually confirmed
           // 'partial' status will be set when payment is received
           payment_status: 'unpaid',
+          initial_payment_method: paymentOption === '50' ? 'GCash' : null,
+          remaining_payment_method: paymentOption === '50' ? remainingPaymentMethod : null,
           items: orderData.items || []
         };
 
@@ -688,18 +715,18 @@ export const Checkout = () => {
       console.error('Error in saveOrderToDatabase:', error);
       
       // Extract error message from axios error response
-      let errorMessage = 'Failed to save order. Please try again.';
+      let errorMsg = 'Failed to save order. Please try again.';
       
       if (error.response && error.response.data) {
         // Backend returned an error
-        errorMessage = error.response.data.error || error.response.data.message || errorMessage;
-        console.error('Backend error:', errorMessage);
+        errorMsg = error.response.data.error || error.response.data.message || errorMsg;
+        console.error('Backend error:', errorMsg);
       } else if (error.message) {
         // JavaScript error
-        errorMessage = error.message;
+        errorMsg = error.message;
       }
       
-      throw new Error(errorMessage);
+      throw new Error(errorMsg);
     }
   };
 
@@ -967,11 +994,66 @@ export const Checkout = () => {
                   </button>
                 </div>
                 {paymentOption === '50' && (
-                  <div className="mt-2 sm:mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3">
-                    <p className="text-xs sm:text-sm text-yellow-800">
-                      <strong>Note:</strong> Remaining balance of ₱{getRemainingBalance().toFixed(2)} will be collected on delivery.
-                    </p>
-                  </div>
+                  <>
+                    <div className="mt-2 sm:mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3">
+                      <p className="text-xs sm:text-sm text-yellow-800">
+                        <strong>Note:</strong> Remaining balance of ₱{getRemainingBalance().toFixed(2)} will be collected on delivery.
+                      </p>
+                    </div>
+                    
+                    {/* Choose Payment Method for Remaining Balance */}
+                    <div className="mt-3 sm:mt-4">
+                      <label className="text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3 block">
+                        How would you like to pay the remaining balance?
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                        {/* Pay via GCash */}
+                        <button
+                          type="button"
+                          onClick={() => setRemainingPaymentMethod('GCash')}
+                          className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                            remainingPaymentMethod === 'GCash'
+                              ? 'border-green-600 bg-green-50'
+                              : 'border-gray-300 bg-white hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className={`text-sm sm:text-base font-semibold mb-1 ${
+                              remainingPaymentMethod === 'GCash' ? 'text-green-600' : 'text-gray-700'
+                            }`}>
+                              Pay via GCash
+                            </div>
+                            <div className="text-xs text-gray-600">Pay Now</div>
+                          </div>
+                        </button>
+                        
+                        {/* Cash on Delivery */}
+                        <button
+                          type="button"
+                          onClick={() => setRemainingPaymentMethod('Cash on Delivery')}
+                          className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                            remainingPaymentMethod === 'Cash on Delivery'
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-300 bg-white hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className={`text-sm sm:text-base font-semibold mb-1 ${
+                              remainingPaymentMethod === 'Cash on Delivery' ? 'text-blue-600' : 'text-gray-700'
+                            }`}>
+                              Cash on Delivery
+                            </div>
+                            <div className="text-xs text-gray-600">Pay when arrives</div>
+                          </div>
+                        </button>
+                      </div>
+                      {!remainingPaymentMethod && (
+                        <p className="text-xs sm:text-sm text-red-600 mt-2">
+                          ⚠️ Please select a payment method for the remaining balance
+                        </p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1109,10 +1191,17 @@ export const Checkout = () => {
                     <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mt-3">
                       <p className="text-sm text-yellow-800">
                         <strong>Note:</strong> {paymentOption === '50' 
-                          ? `Please proceed with 50% payment (₱${getPaymentAmount().toFixed(2)}) via GCash to confirm your order. Remaining balance of ₱${getRemainingBalance().toFixed(2)} will be collected on delivery.`
+                          ? `Please proceed with 50% payment (₱${getPaymentAmount().toFixed(2)}) via GCash to confirm your order. Remaining balance of ₱${getRemainingBalance().toFixed(2)} will be collected via ${remainingPaymentMethod}.`
                           : 'Please proceed with payment via GCash to confirm your order. The vendor will start preparing once payment is received.'}
                       </p>
                     </div>
+                    {paymentOption === '50' && remainingPaymentMethod && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                        <p className="text-sm text-blue-800">
+                          <strong>Remaining Payment Method:</strong> {remainingPaymentMethod}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1181,7 +1270,15 @@ export const Checkout = () => {
                       : 'Please proceed with payment via GCash to confirm your order'}</p>
                     <p>• You will receive a notification once payment is received</p>
                     {paymentOption === '50' && (
-                      <p>• Remaining balance (₱{getRemainingBalance().toFixed(2)}) will be collected on delivery</p>
+                      <>
+                        <p>• Remaining balance (₱{getRemainingBalance().toFixed(2)}) will be collected via {remainingPaymentMethod}</p>
+                        {remainingPaymentMethod === 'GCash' && (
+                          <p>• You will receive another GCash payment link for the remaining balance</p>
+                        )}
+                        {remainingPaymentMethod === 'Cash on Delivery' && (
+                          <p>• Please prepare exact cash amount for the remaining balance</p>
+                        )}
+                      </>
                     )}
                     <p>• The vendor will start preparing your order after payment confirmation</p>
                     <p>• Keep this confirmation for your records</p>
@@ -1269,6 +1366,33 @@ export const Checkout = () => {
                   Go to Settings
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-white rounded-xl p-5 sm:p-6 md:p-8 max-w-md w-full mx-4 shadow-xl">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-orange-100 mb-4">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                Order Error
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed break-words">
+                {errorMessage}
+              </p>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 text-base shadow-sm"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>

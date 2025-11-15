@@ -8976,15 +8976,78 @@ export const Vendor = () => {
                         const isReviewNotification = notification.notification_type === 'review_received';
                         console.log('📬 Processing notification:', notification.title, 'Type:', notification.notification_type, 'Is Review:', isReviewNotification);
                         
+                        const handleNotificationClick = async () => {
+                          console.log('🔔 Notification clicked:', notification);
+                          
+                          // Mark as read
+                          await markNotificationAsRead(notification.id);
+                          
+                          // If there's a related order, open it
+                          if (notification.related_order_id) {
+                            console.log('📦 Looking for order:', notification.related_order_id);
+                            
+                            // Fetch fresh orders first
+                            const orders = await fetchVendorOrders();
+                            
+                            // Find the specific order
+                            const order = orders.find(o => o.order_id === notification.related_order_id);
+                            
+                            if (order) {
+                              console.log('✅ Found order, navigating to it:', order.order_id);
+                              
+                              // Expand the order first (before view change)
+                              setExpandedOrderId(order.order_id);
+                              
+                              // Then navigate to orders view (Order Management page)
+                              setActiveView('orders');
+                              
+                              // Wait for view transition and scroll to the order
+                              // Use multiple attempts to ensure the element is in the DOM
+                              let attempts = 0;
+                              const maxAttempts = 10;
+                              
+                              const scrollToOrder = () => {
+                                const orderElement = document.getElementById(`order-${order.order_id}`);
+                                if (orderElement) {
+                                  console.log('✅ Order element found, scrolling to it');
+                                  orderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  // Add a highlight effect
+                                  orderElement.style.transition = 'all 0.3s ease';
+                                  orderElement.style.backgroundColor = '#dbeafe';
+                                  setTimeout(() => {
+                                    orderElement.style.backgroundColor = '';
+                                  }, 2000);
+                                } else {
+                                  attempts++;
+                                  if (attempts < maxAttempts) {
+                                    console.log(`⏳ Attempt ${attempts}: Order element not found yet, retrying...`);
+                                    setTimeout(scrollToOrder, 200);
+                                  } else {
+                                    console.warn('❌ Order element not found after max attempts');
+                                  }
+                                }
+                              };
+                              
+                              // Start scrolling after initial delay
+                              setTimeout(scrollToOrder, 300);
+                            } else {
+                              console.warn('❌ Order not found in orders list:', notification.related_order_id);
+                              // Still navigate to Order Management page to show all orders
+                              setActiveView('orders');
+                            }
+                          }
+                        };
+                        
                         return (
                           <div 
                             key={notification.id} 
-                            className={`border-l-2 p-2 rounded-r-sm cursor-pointer transition-colors touch-manipulation ${
+                            className={`group border-l-4 p-2 rounded-r-sm cursor-pointer transition-all duration-200 hover:bg-blue-100 hover:shadow-md touch-manipulation ${
                               notification.is_read 
-                                ? 'bg-gray-50 border-gray-300'
-                                : 'bg-blue-50 border-blue-400'
+                                ? 'bg-gray-50 border-gray-300 hover:border-blue-300'
+                                : 'bg-blue-50 border-blue-500'
                             }`}
-                            onClick={() => markNotificationAsRead(notification.id)}
+                            onClick={handleNotificationClick}
+                            title="Click to view order details"
                           >
                             <div className="flex items-start space-x-1.5">
                               <div className={`w-1 h-1 rounded-full mt-1.5 flex-shrink-0 ${
@@ -9035,9 +9098,19 @@ export const Vendor = () => {
                                   </div>
                                 </div>
                               </div>
-                              {!notification.is_read && (
-                                <div className="w-1 h-1 rounded-full mt-1.5 bg-blue-500 flex-shrink-0"></div>
-                              )}
+                              <div className="flex flex-col items-end gap-1 ml-2">
+                                {!notification.is_read && (
+                                  <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></div>
+                                )}
+                                <svg 
+                                  className="w-4 h-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
                         );

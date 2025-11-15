@@ -17,57 +17,46 @@ const authenticateToken = (req, res, next) => {
   }
 
   try {
-    // First, try to verify as JWT token
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      console.log('🔐 JWT token verified:', decoded);
-      
-      if (!decoded.user_id && !decoded.id) {
-        console.log('❌ No user_id or id in JWT payload');
-        return res.status(403).json({
-          success: false,
-          error: 'Invalid JWT payload'
-        });
-      }
-
-      // Normalize user_id field
-      if (decoded.id && !decoded.user_id) {
-        decoded.user_id = decoded.id;
-      }
-
-      req.user = decoded;
-      console.log('✅ JWT Authentication successful for user:', decoded.user_id);
-      next();
-      return;
-    } catch (jwtError) {
-      console.log('🔐 Not a JWT token, trying session data...');
-    }
-
-    // Fallback: Parse as session data (current approach)
-    const userData = JSON.parse(token);
-    console.log('🔐 Parsed session user data:', userData);
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    console.log('🔐 JWT token verified:', decoded);
     
-    if (!userData.user_id && !userData.id) {
-      console.log('❌ No user_id or id in user data');
+    if (!decoded.user_id && !decoded.id) {
+      console.log('❌ No user_id or id in JWT payload');
       return res.status(403).json({
         success: false,
-        error: 'Invalid user data'
+        error: 'Invalid JWT payload'
       });
     }
 
     // Normalize user_id field
-    if (userData.id && !userData.user_id) {
-      userData.user_id = userData.id;
+    if (decoded.id && !decoded.user_id) {
+      decoded.user_id = decoded.id;
     }
 
-    req.user = userData;
-    console.log('✅ Session Authentication successful for user:', userData.user_id);
+    req.user = decoded;
+    console.log('✅ JWT Authentication successful for user:', decoded.user_id);
     next();
   } catch (error) {
-    console.error('❌ Authentication error:', error);
+    console.error('❌ Authentication error:', error.message);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        error: 'Token expired'
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid token'
+      });
+    }
+    
     return res.status(403).json({
       success: false,
-      error: 'Invalid or expired token'
+      error: 'Authentication failed'
     });
   }
 };

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { NavWithLogo } from '../../components/shared/nav.jsx';
 import axios from 'axios';
 import { handleValidatedChange, validateFormData, trimFormData } from '../../utils/inputValidation';
 
 export const VendorRegister = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({
     fname: '',
     lname: '',
@@ -24,6 +25,20 @@ export const VendorRegister = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Check for error parameter in URL (from Google OAuth failure)
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      const decodedError = decodeURIComponent(errorParam);
+      setStatus({
+        type: 'error',
+        message: decodedError || 'Google authentication failed. Please try again.'
+      });
+      // Remove error parameter from URL
+      navigate('/vendor-register', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Auto-hide error messages after 3 seconds and scroll to top when error/success occurs
   useEffect(() => {
@@ -184,6 +199,82 @@ export const VendorRegister = () => {
       console.error('Error response:', err.response?.data);
       console.error('Error status:', err.response?.status);
       
+      // Check if this is a timeout error
+      const isTimeout = err.code === 'ECONNABORTED' || 
+                       err.message?.includes('timeout') || 
+                       err.message?.includes('exceeded');
+      
+      if (isTimeout) {
+        console.log('Registration request timed out. Checking if account was created...');
+        
+        // Try to verify if account was actually created by attempting login
+        try {
+          const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+          const loginResponse = await axios.post(`${apiBase}/api/auth/login`, {
+            username: form.username,
+            password: form.password
+          }, {
+            timeout: 5000 // 5 second timeout for verification
+          });
+          
+          if (loginResponse.data?.user) {
+            // Account was created! Login successful
+            console.log('Account was created despite timeout. Logging in user...');
+            
+            // Store user data
+            const userData = loginResponse.data.user;
+            sessionStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('user', JSON.stringify(userData));
+            if (loginResponse.data.token) {
+              sessionStorage.setItem('token', loginResponse.data.token);
+              localStorage.setItem('token', loginResponse.data.token);
+            }
+            
+            // Dispatch user change event
+            window.dispatchEvent(new Event('userChanged'));
+            
+            // Check if vendor data exists
+            try {
+              const vendorCheckResponse = await axios.get(`${apiBase}/api/vendor/setup-status/${userData.id}`, {
+                timeout: 5000
+              });
+              
+              if (vendorCheckResponse.data?.success && vendorCheckResponse.data?.isVendor) {
+                // Store vendor data
+                const vendorData = vendorCheckResponse.data.vendor;
+                const pendingVendorData = JSON.stringify({
+                  vendor_id: vendorData.vendor_id,
+                  user_id: userData.id,
+                  store_name: vendorData.store_name || 'Store Name Pending Setup',
+                  email: userData.email,
+                  fname: userData.firstName
+                });
+                sessionStorage.setItem('pendingVendor', pendingVendorData);
+                localStorage.setItem('pendingVendor', pendingVendorData);
+              }
+            } catch (vendorCheckErr) {
+              console.warn('Could not fetch vendor data:', vendorCheckErr);
+            }
+            
+            // Show success message and redirect
+            setStatus({
+              type: 'success',
+              message: 'Registration successful! Your account was created. Redirecting...'
+            });
+            
+            setTimeout(() => {
+              navigate('/vendor-pending');
+            }, 2000);
+            
+            setLoading(false);
+            return;
+          }
+        } catch (loginErr) {
+          console.log('Login verification failed, account was not created:', loginErr);
+          // Account was not created, show timeout error
+        }
+      }
+      
       let errorMessage = 'Registration failed. Please try again.';
       
       if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
@@ -296,74 +387,74 @@ export const VendorRegister = () => {
                   />
                 </div>
 
-                {/* Password Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="password">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter password"
-                        className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                        required
-                        value={form.password}
-                        onChange={handleChange}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4 text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
+                {/* Password Field */}
+                <div className="form-group">
+                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="password">
+                    Password *
+                    <span className="text-xs sm:text-sm font-normal text-gray-500 block">
+                      Set a password for your account (minimum 6 characters)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.password}
+                      onChange={handleChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L6.878 6.878M6.88 6.88L3 3m3.29 3.29L12 12m-3.29-3.29L12 12m0 0l3.29 3.29M12 12l3.29-3.29m0 0L21 21m-3.29-3.29L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
+                </div>
 
-                  <div className="form-group">
-                    <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="confirmPassword">
-                      Confirm Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm password"
-                        className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                        required
-                        value={form.confirmPassword}
-                        onChange={handleChange}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4 text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      >
-                        {showConfirmPassword ? (
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
+                {/* Confirm Password Field */}
+                <div className="form-group">
+                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="confirmPassword">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.confirmPassword}
+                      onChange={handleChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L6.878 6.878M6.88 6.88L3 3m3.29 3.29L12 12m-3.29-3.29L12 12m0 0l3.29 3.29M12 12l3.29-3.29m0 0L21 21m-3.29-3.29L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 </div>
 

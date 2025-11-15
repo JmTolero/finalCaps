@@ -197,11 +197,12 @@ const CustomerGCashAccount = () => {
     }
     
     // If partial payment (50% option), use payment_amount
-    if (order.payment_status === 'partial' && order.payment_amount) {
+    // Check if payment_amount is less than total_amount (indicates 50% payment)
+    if (order.payment_amount && parseFloat(order.payment_amount) < parseFloat(order.total_amount)) {
       return parseFloat(order.payment_amount);
     }
     
-    // Otherwise use total amount
+    // Otherwise use total amount (full payment)
     return parseFloat(order.total_amount);
   };
 
@@ -226,17 +227,32 @@ const CustomerGCashAccount = () => {
       <>
         <NavWithLogo />
         <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-8 mt-16">
-          <div className="max-w-2xl mx-auto px-3 sm:px-6">
-            <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center">
-              <div className="text-red-500 text-3xl sm:text-4xl mb-4">❌</div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Payment Error</h2>
-              <p className="text-gray-600 mb-6 text-sm sm:text-base">{error}</p>
-              <button
-                onClick={() => navigate(-1)}
-                className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-              >
-                Back
-              </button>
+          <div className="max-w-2xl mx-auto px-4 sm:px-6">
+            <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-6 md:p-8">
+              <div className="text-center">
+                {/* Error Icon */}
+                <div className="mx-auto flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-red-100 mb-4">
+                  <svg className="h-8 w-8 sm:h-9 sm:w-9 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                
+                {/* Title */}
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Payment Error</h2>
+                
+                {/* Error Message */}
+                <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 leading-relaxed break-words px-2">
+                  {error}
+                </p>
+                
+                {/* My Orders Button */}
+                <button
+                  onClick={() => navigate('/customer?view=orders')}
+                  className="w-full sm:w-auto min-w-[200px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200 text-base shadow-sm"
+                >
+                  My Orders
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -250,17 +266,32 @@ const CustomerGCashAccount = () => {
       <>
         <NavWithLogo />
         <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 py-4 sm:py-8 mt-16">
-          <div className="max-w-2xl mx-auto px-3 sm:px-6">
-            <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center">
-              <div className="text-red-500 text-3xl sm:text-4xl mb-4">⚠️</div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Invalid Order</h2>
-              <p className="text-gray-600 mb-6 text-sm sm:text-base">No order ID provided</p>
-              <button
-                onClick={() => navigate(-1)}
-                className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-              >
-                Back
-              </button>
+          <div className="max-w-2xl mx-auto px-4 sm:px-6">
+            <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-6 md:p-8">
+              <div className="text-center">
+                {/* Warning Icon */}
+                <div className="mx-auto flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-orange-100 mb-4">
+                  <svg className="h-8 w-8 sm:h-9 sm:w-9 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                
+                {/* Title */}
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Invalid Order</h2>
+                
+                {/* Error Message */}
+                <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 leading-relaxed">
+                  No order ID provided
+                </p>
+                
+                {/* My Orders Button */}
+                <button
+                  onClick={() => navigate('/customer?view=orders')}
+                  className="w-full sm:w-auto min-w-[200px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200 text-base shadow-sm"
+                >
+                  My Orders
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -277,13 +308,13 @@ const CustomerGCashAccount = () => {
           <div className="mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/customer?view=orders')}
                 className="flex items-center space-x-1 sm:space-x-2 text-blue-600 hover:text-blue-700 transition-colors text-sm sm:text-base"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
-                <span className="font-medium">Back</span>
+                <span className="font-medium">My Orders</span>
               </button>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">GCash QR Payment</h1>
@@ -297,6 +328,32 @@ const CustomerGCashAccount = () => {
               
               {order && (
                 <div className="space-y-4">
+                  {/* Payment Type Badge */}
+                  <div className="mb-4">
+                    {isRemainingPayment && order.remaining_balance > 0 ? (
+                      <div className="inline-flex items-center bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full">
+                        <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold">Remaining Balance Payment</span>
+                      </div>
+                    ) : (order.payment_amount && parseFloat(order.payment_amount) < parseFloat(order.total_amount)) ? (
+                      <div className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full">
+                        <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold">Initial Payment (50%)</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1.5 rounded-full">
+                        <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold">Full Payment</span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order ID:</span>
                     <span className="font-medium">#{order.order_id}</span>
@@ -305,45 +362,64 @@ const CustomerGCashAccount = () => {
                     <span className="text-gray-600">Vendor:</span>
                     <span className="font-medium">{order.business_name || order.vendor_name}</span>
                   </div>
-                  {isRemainingPayment && order.remaining_balance > 0 ? (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Order Amount:</span>
-                        <span className="font-medium">₱{parseFloat(order.total_amount).toFixed(2)}</span>
+
+                  <div className="border-t pt-4 mt-4">
+                    {/* Subtotal and Delivery Fee Breakdown */}
+                    <div className="mb-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Subtotal (Items):</span>
+                        <span className="font-medium">₱{parseFloat(order.subtotal || (order.total_amount - (order.delivery_fee || 0))).toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Already Paid:</span>
-                        <span className="font-medium">₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Delivery Fee:</span>
+                        <span className={`font-medium ${parseFloat(order.delivery_fee || 0) === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                          {parseFloat(order.delivery_fee || 0) === 0 ? 'FREE' : `₱${parseFloat(order.delivery_fee).toFixed(2)}`}
+                        </span>
                       </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="text-gray-800 font-semibold">Remaining Balance:</span>
-                        <span className="font-bold text-orange-600 text-xl">₱{parseFloat(order.remaining_balance).toFixed(2)}</span>
+                      <div className="flex justify-between pt-2 border-t font-semibold">
+                        <span className="text-gray-700">Order Total:</span>
+                        <span className="text-gray-900">₱{parseFloat(order.total_amount).toFixed(2)}</span>
                       </div>
-                    </>
-                  ) : order.payment_status === 'partial' && order.payment_amount ? (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Order Amount:</span>
-                        <span className="font-medium">₱{parseFloat(order.total_amount).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="text-gray-800 font-semibold">Amount to Pay (50%):</span>
-                        <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.payment_amount).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-500">
-                        <span>Remaining Balance:</span>
-                        <span>₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Amount:</span>
-                      <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.total_amount).toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Delivery Fee:</span>
-                    <span className="font-medium">₱{parseFloat(order.delivery_fee || 0).toFixed(2)}</span>
+
+                    {/* Payment Amount Section */}
+                    {isRemainingPayment && order.remaining_balance > 0 ? (
+                      <>
+                        <div className="flex justify-between mb-2 text-sm">
+                          <span className="text-gray-600">Already Paid (Initial):</span>
+                          <span className="font-medium text-green-600">-₱{parseFloat(order.payment_amount || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="bg-orange-50 rounded-lg p-3 mt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-800 font-semibold">Remaining Balance to Pay:</span>
+                            <span className="font-bold text-orange-600 text-xl">₱{parseFloat(order.remaining_balance).toFixed(2)}</span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">Pay before or on delivery</p>
+                        </div>
+                      </>
+                    ) : (order.payment_amount && parseFloat(order.payment_amount) < parseFloat(order.total_amount)) ? (
+                      <>
+                        <div className="bg-blue-50 rounded-lg p-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-gray-800 font-semibold">Initial Payment (50%):</span>
+                            <span className="font-bold text-blue-600 text-xl">₱{parseFloat(order.payment_amount).toFixed(2)}</span>
+                          </div>
+                          <p className="text-xs text-gray-600">Pay now to confirm order</p>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600 mt-3 bg-gray-50 p-2 rounded">
+                          <span>Balance Due on Delivery:</span>
+                          <span className="font-semibold">₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-800 font-semibold">Total Amount to Pay:</span>
+                          <span className="font-bold text-green-600 text-xl">₱{parseFloat(order.total_amount).toFixed(2)}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">Full payment - pay in full now</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -365,18 +441,44 @@ const CustomerGCashAccount = () => {
                       />
                     </div>
                     <p className="text-xs sm:text-sm text-gray-600 mb-2">Scan this QR code with your GCash app</p>
-                    <p className="text-lg sm:text-xl font-bold text-green-600 mb-3 sm:mb-4">
-                      ₱{getAmountToPay().toFixed(2)}
-                    </p>
-                    {isRemainingPayment && order.remaining_balance > 0 && (
-                      <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                        Remaining balance payment
-                      </p>
-                    )}
-                    {order.payment_status === 'partial' && order.payment_amount && !isRemainingPayment && (
-                      <p className="text-xs sm:text-sm text-gray-600 mb-2">
-                        50% payment (₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery)
-                      </p>
+                    
+                    {/* Payment Amount with Type Indicator */}
+                    {isRemainingPayment && order.remaining_balance > 0 ? (
+                      <div className="mb-3 sm:mb-4">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
+                          <p className="text-xs text-orange-800 font-medium mb-1">REMAINING BALANCE</p>
+                          <p className="text-2xl sm:text-3xl font-bold text-orange-600">
+                            ₱{getAmountToPay().toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Already paid ₱{parseFloat(order.payment_amount || 0).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (order.payment_amount && parseFloat(order.payment_amount) < parseFloat(order.total_amount)) ? (
+                      <div className="mb-3 sm:mb-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                          <p className="text-xs text-blue-800 font-medium mb-1">INITIAL PAYMENT (50%)</p>
+                          <p className="text-2xl sm:text-3xl font-bold text-blue-600">
+                            ₱{getAmountToPay().toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            ₱{parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)} due on delivery
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3 sm:mb-4">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                          <p className="text-xs text-green-800 font-medium mb-1">FULL PAYMENT</p>
+                          <p className="text-2xl sm:text-3xl font-bold text-green-600">
+                            ₱{getAmountToPay().toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Complete order payment
+                          </p>
+                        </div>
+                      </div>
                     )}
                     
                     {/* View Full Image and Download Buttons */}

@@ -1,6 +1,16 @@
 const pool = require('../../db/config');    
 const Orders = require('../../model/shared/orderModel');
 const { createNotification } = require('./notificationController');
+const { sendOrderDeliveryEmail } = require('../../utils/emailService');
+
+// Helper function to extract date in local time without timezone conversion
+const getLocalDateString = (dateTime) => {
+    const date = new Date(dateTime);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const getOrderRecord = async (req, res) => {
     try{
@@ -103,6 +113,8 @@ const createOrder = async (req, res) => {
             payment_amount, // Amount being paid (for partial payments)
             status = 'pending',
             payment_status = 'unpaid',
+            initial_payment_method, // For partial payments (e.g., 'GCash')
+            remaining_payment_method, // For partial payments (e.g., 'GCash' or 'Cash on Delivery')
             items = []
         } = req.body;
 
@@ -184,7 +196,7 @@ const createOrder = async (req, res) => {
         if (items && items.length > 0) {
             for (const item of items) {
                 try {
-                    const deliveryDate = deliveryDateTime.toISOString().split('T')[0];
+                    const deliveryDate = getLocalDateString(deliveryDateTime);
                     
                     // Get drum size from item or query it
                     let drumSize = item.size;
@@ -301,28 +313,36 @@ const createOrder = async (req, res) => {
                 customer_id, 
                 vendor_id, 
                 delivery_datetime, 
-                delivery_address, 
+                delivery_address,
+                subtotal,
+                delivery_fee,
                 total_amount, 
                 payment_amount,
                 remaining_balance,
                 status, 
                 payment_status,
                 payment_method,
+                initial_payment_method,
+                remaining_payment_method,
                 payment_deadline,
                 reservation_expires_at,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `, [
             customer_id,
             vendor_id,
             delivery_datetime,
             delivery_address,
+            subtotal || 0,
+            delivery_fee || 0,
             total_amount,
             paymentAmountNum,
             remainingBalance,
             status,
             payment_status,
             payment_method,
+            initial_payment_method || null,
+            remaining_payment_method || null,
             paymentDeadline,
             paymentDeadline
         ]);
@@ -470,7 +490,7 @@ const createOrder = async (req, res) => {
             `, [orderId]);
             
             for (const orderItem of orderItemsForVerification) {
-                const deliveryDate = new Date(orderItem.delivery_datetime).toISOString().split('T')[0];
+                const deliveryDate = getLocalDateString(orderItem.delivery_datetime);
                 
                 // Check if reservation exists
                 const [existingReservation] = await pool.query(`
@@ -555,7 +575,7 @@ const createOrder = async (req, res) => {
                     `, [orderId]);
                     
                     for (const item of orderItemsForConversion) {
-                        const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                        const deliveryDate = getLocalDateString(item.delivery_datetime);
                         
                         // Convert reserved to booked
                         const [result] = await pool.query(`
@@ -865,7 +885,7 @@ const updateOrderStatus = async (req, res) => {
                     // Group items by delivery date and size for efficient updates
                     const itemsByDateSize = {};
                     for (const item of orderInfo) {
-                        const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                        const deliveryDate = getLocalDateString(item.delivery_datetime);
                         const key = `${item.vendor_id}_${deliveryDate}_${item.size}`;
                         
                         if (!itemsByDateSize[key]) {
@@ -1018,6 +1038,49 @@ const updateOrderStatus = async (req, res) => {
                         notificationType = 'order_ready';
                         title = 'Order Out for Delivery';
                         message = `Your order #${order_id} is on its way to you! Track your delivery.`;
+                        
+                        // Send email notification for delivery
+                        try {
+                            const [customerInfo] = await pool.query(`
+                                SELECT 
+                                    u.fname,
+                                    u.lname,
+                                    u.email,
+                                    o.delivery_address,
+                                    o.remaining_balance,
+                                    o.remaining_payment_method,
+                                    v.store_name
+                                FROM orders o
+                                JOIN users u ON o.customer_id = u.user_id
+                                JOIN vendors v ON o.vendor_id = v.vendor_id
+                                WHERE o.order_id = ?
+                            `, [order_id]);
+
+                            if (customerInfo.length > 0 && customerInfo[0].email) {
+                                const emailData = {
+                                    orderId: order_id,
+                                    customerName: customerInfo[0].fname,
+                                    customerEmail: customerInfo[0].email,
+                                    vendorName: customerInfo[0].store_name,
+                                    deliveryAddress: customerInfo[0].delivery_address,
+                                    remainingBalance: customerInfo[0].remaining_balance,
+                                    remainingPaymentMethod: customerInfo[0].remaining_payment_method
+                                };
+                                
+                                const emailResult = await sendOrderDeliveryEmail(emailData);
+                                
+                                if (emailResult.success) {
+                                    console.log(`✅ Email delivery notification sent for order #${order_id}`);
+                                } else {
+                                    console.log(`⚠️ Email notification failed for order #${order_id}:`, emailResult.message);
+                                }
+                            } else {
+                                console.log(`⚠️ No email found for customer of order #${order_id}`);
+                            }
+                        } catch (emailError) {
+                            console.error('Failed to send email notification:', emailError);
+                            // Don't fail the order status update if email fails
+                        }
                         break;
                     case 'delivered':
                         notificationType = 'order_delivered';
@@ -1147,7 +1210,7 @@ const updatePaymentStatus = async (req, res) => {
                 `, [order_id]);
 
                 for (const item of orderItems) {
-                    const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                    const deliveryDate = getLocalDateString(item.delivery_datetime);
                     const drumSize = item.size.toLowerCase();
                     const quantity = item.quantity;
 
@@ -1455,7 +1518,7 @@ const updateQRPaymentStatus = async (req, res) => {
                     });
                 }
                 
-                const deliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                const deliveryDate = getLocalDateString(item.delivery_datetime);
                 const drumSize = item.size.toLowerCase();
                 
                 // Get current availability state
@@ -1820,10 +1883,10 @@ const updateDrumReturnStatus = async (req, res) => {
             `, [order_id]);
 
             if (orderItems.length > 0) {
-                const today = new Date().toISOString().split('T')[0]; // Today's date for immediate availability
+                const today = getLocalDateString(new Date()); // Today's date for immediate availability
                 
                 for (const item of orderItems) {
-                    const originalDeliveryDate = new Date(item.delivery_datetime).toISOString().split('T')[0];
+                    const originalDeliveryDate = getLocalDateString(item.delivery_datetime);
                     
                     // Return drums from booked_count back to available_count
                     // First, try to return to original delivery date if it's in the future
@@ -2232,8 +2295,9 @@ const payRemainingBalanceGCash = async (req, res) => {
             });
         }
 
-        // Check if payment method is GCash
-        if (order.remaining_payment_method !== 'gcash') {
+        // Check if payment method is GCash (case-insensitive)
+        const remainingMethod = (order.remaining_payment_method || '').toLowerCase();
+        if (remainingMethod !== 'gcash') {
             return res.status(400).json({
                 success: false,
                 error: 'Payment method for remaining balance is not GCash. Please select GCash payment method first.'

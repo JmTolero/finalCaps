@@ -109,9 +109,10 @@ export const VendorPending = () => {
     }
     // Only poll when pending and tab visible
     if (isTabVisible && (currentStatus === undefined || isPending(currentStatus))) {
+      // Poll every 0.5 seconds for fast status updates
       pollIntervalRef.current = setInterval(() => {
         checkVendorStatus();
-      }, 30000);
+      }, 500);
     }
     return () => {
       if (pollIntervalRef.current) {
@@ -365,62 +366,65 @@ export const VendorPending = () => {
                     console.log('Continue as Customer button clicked');
                     console.log('Current user data:', vendorData);
                     
-                    // Refresh user session data to get updated role
                     try {
-                      const userRaw = sessionStorage.getItem('user');
-                      if (userRaw) {
-                        const user = JSON.parse(userRaw);
-                        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-                        
-                        // Fetch updated user data from backend
+                      const userRaw = sessionStorage.getItem('user') || localStorage.getItem('user');
+                      if (!userRaw) {
+                        console.error('No user data found');
+                        navigate('/login');
+                        return;
+                      }
+                      
+                      const user = JSON.parse(userRaw);
+                      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+                      
+                      // Fetch updated user data from backend to confirm role change
+                      try {
                         const response = await axios.get(`${apiBase}/api/admin/users/${user.id}`);
                         if (response.data.success) {
                           const updatedUser = response.data.user;
-                          // Update session storage with new role
+                          console.log('Backend user role:', updatedUser.role);
+                          
+                          // Update session storage with customer role (backend already changed it)
                           const updatedUserData = {
                             ...user,
-                            role: 'customer'
+                            role: 'customer', // Backend already changed this, but ensure frontend matches
+                            id: updatedUser.user_id || user.id
                           };
                           sessionStorage.setItem('user', JSON.stringify(updatedUserData));
                           localStorage.setItem('user', JSON.stringify(updatedUserData));
-                          console.log('Updated user role in session:', updatedUser.role);
-                          
-                          // Trigger user change event to update app state
-                          window.dispatchEvent(new Event('userChanged'));
-                          
-                          // Mark rejection as acknowledged
-                          localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
-                        } else {
-                          // Fallback: force role to customer in session
-                          const updatedUserData = {
-                            ...user,
-                            role: 'customer'
-                          };
-                          sessionStorage.setItem('user', JSON.stringify(updatedUserData));
-                          localStorage.setItem('user', JSON.stringify(updatedUserData));
-                          window.dispatchEvent(new Event('userChanged'));
-                          localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
+                          console.log('Updated user role in session to customer');
                         }
+                      } catch (error) {
+                        console.error('Error fetching updated user data:', error);
+                        // Still proceed with role update
                       }
+                      
+                      // Update role to customer in session/localStorage
+                      const updatedUserData = {
+                        ...user,
+                        role: 'customer'
+                      };
+                      sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                      localStorage.setItem('user', JSON.stringify(updatedUserData));
+                      
+                      // Mark rejection as acknowledged BEFORE navigation
+                      localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
+                      console.log('Marked rejection as acknowledged for user:', user.id);
+                      
+                      // Trigger user change event to update app state
+                      window.dispatchEvent(new Event('userChanged'));
+                      
+                      // Small delay to ensure state updates before navigation
+                      setTimeout(() => {
+                        console.log('Navigating to /customer');
+                        navigate('/customer', { replace: true });
+                      }, 100);
+                      
                     } catch (error) {
-                      console.error('Error refreshing user data:', error);
-                      // Fallback: force role to customer in session
-                      const userRaw = sessionStorage.getItem('user');
-                      if (userRaw) {
-                        const user = JSON.parse(userRaw);
-                        const updatedUserData = {
-                          ...user,
-                          role: 'customer'
-                        };
-                        sessionStorage.setItem('user', JSON.stringify(updatedUserData));
-                        localStorage.setItem('user', JSON.stringify(updatedUserData));
-                        window.dispatchEvent(new Event('userChanged'));
-                        localStorage.setItem(`vendorRejectionAcknowledged_${user.id}`, 'true');
-                      }
+                      console.error('Error in Continue as Customer:', error);
+                      // Still try to navigate
+                      navigate('/customer', { replace: true });
                     }
-                    
-                    console.log('Navigating to /customer');
-                    navigate('/customer');
                   }}
                   className="w-full bg-green-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg sm:rounded-xl hover:bg-green-700 transition-all duration-200 text-sm sm:text-base font-medium shadow-lg hover:shadow-xl"
                 >

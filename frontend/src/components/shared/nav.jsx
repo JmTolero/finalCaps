@@ -183,7 +183,7 @@ export const NavWithLogo = () => {
 
     return(
         <div>
-            <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20">
+            <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-50" style={{ position: 'fixed', isolation: 'isolate' }}>
                 <div className="flex items-center space-x-2 sm:space-x-3">
                     {shouldShowHamburger && (
                         <button

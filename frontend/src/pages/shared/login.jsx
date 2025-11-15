@@ -102,18 +102,32 @@ export const Login = () => {
                 const setupStatusRes = await axios.get(`${apiBase}/api/vendor/setup-status/${data.user.id}`);
                 console.log('Setup status response for pending vendor:', setupStatusRes.data);
                 if (setupStatusRes.data.success && setupStatusRes.data.isVendor) {
-                  // If they have documents but setup is not complete, go to setup
-                  if (setupStatusRes.data.vendor.business_permit_url && setupStatusRes.data.vendor.valid_id_url) {
-                    console.log('Vendor has uploaded documents, redirecting to setup page');
-                    navigate(`/vendor-setup?vendor_id=${setupStatusRes.data.vendor.vendor_id}`);
+                  const vendor = setupStatusRes.data.vendor;
+                  // If they have all documents but setup is not complete, go to setup
+                  if (vendor.business_permit_url && vendor.valid_id_url && vendor.proof_image_url) {
+                    console.log('Vendor has uploaded all documents, redirecting to vendor-pending page');
+                    // All documents uploaded - go to pending page to wait for approval
+                    navigate("/vendor-pending");
                     return;
                   } else {
-                    console.log('Vendor has not uploaded documents yet, redirecting to pending page');
-                    navigate("/vendor-pending");
+                    // Vendor record exists but documents not uploaded
+                    // Check if they're Google auth user - if so, redirect to google-complete page
+                    // Otherwise, redirect to vendor-pending (they can see their status there)
+                    console.log('Vendor record exists but documents not uploaded');
+                    if (data.user.auth_provider === 'google' || data.user.google_id) {
+                      console.log('Google auth user, redirecting to vendor-google-complete');
+                      navigate("/vendor-google-complete");
+                    } else {
+                      // Regular login - go to pending page to see status
+                      // They can complete registration from there if needed
+                      console.log('Regular login user with pending status, redirecting to vendor-pending');
+                      navigate("/vendor-pending");
+                    }
                     return;
                   }
                 } else {
-                  console.log('No vendor record found, redirecting to pending page');
+                  // No vendor record exists but status is pending - go to pending page
+                  console.log('No vendor record found but status is pending, redirecting to vendor-pending');
                   navigate("/vendor-pending");
                   return;
                 }
@@ -155,13 +169,22 @@ export const Login = () => {
             }
           } catch (vendorError) {
             console.error('Error checking vendor status:', vendorError);
-            // If we can't check status, try to go to vendor dashboard anyway
-            // This handles cases where the admin API might not be available
+            // If we can't check status, check auth provider
+            if (data.user.auth_provider === 'google' || data.user.google_id) {
+              navigate("/vendor-google-complete");
+            } else {
+              navigate("/vendor");
+            }
+            return;
           }
           
-          // Default fallback - go to vendor dashboard
-          console.log('Default fallback: redirecting to vendor dashboard');
-          navigate("/vendor");
+          // Default fallback - check auth provider
+          console.log('Default fallback: checking auth provider');
+          if (data.user.auth_provider === 'google' || data.user.google_id) {
+            navigate("/vendor-google-complete");
+          } else {
+            navigate("/vendor");
+          }
         } else {
           // Check if this user has a vendor application in pending or rejected status
           try {
@@ -171,13 +194,32 @@ export const Login = () => {
               const ackKey = `vendorRejectionAcknowledged_${data.user.id}`;
               const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
               
+              console.log('Customer login - vendor_status:', userData.vendor_status);
+              console.log('Customer login - hasAcknowledgedRejection:', hasAcknowledgedRejection);
+              
               if (userData.vendor_status === 'rejected' && !hasAcknowledgedRejection) {
-                console.log('User has rejected vendor application, redirecting to pending page');
+                console.log('User has rejected vendor application (not acknowledged), redirecting to pending page');
+                // Update user role in session to match backend (customer)
+                const updatedUserData = {
+                  ...data.user,
+                  role: 'customer'
+                };
+                sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                localStorage.setItem('user', JSON.stringify(updatedUserData));
+                window.dispatchEvent(new Event('userChanged'));
                 navigate("/vendor-pending");
                 return;
               }
               if (userData.vendor_status === 'pending') {
                 console.log('User has pending vendor application, redirecting to pending page');
+                // Update user role in session to match backend (customer, since backend changed it)
+                const updatedUserData = {
+                  ...data.user,
+                  role: 'customer'
+                };
+                sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+                localStorage.setItem('user', JSON.stringify(updatedUserData));
+                window.dispatchEvent(new Event('userChanged'));
                 navigate("/vendor-pending");
                 return;
               }

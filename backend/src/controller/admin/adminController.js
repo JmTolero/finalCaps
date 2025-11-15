@@ -3,82 +3,168 @@ const { createNotification } = require('../shared/notificationController');
 const { User } = require('../../model/shared/userModel');
 const { sendVendorApprovalEmail, sendVendorRejectionEmail } = require('../../utils/emailService');
 
-const cleanupVendorDataByUserId = async (userId) => {
-    const [vendorInfo] = await pool.query(
-        'SELECT vendor_id FROM vendors WHERE user_id = ?',
-        [userId]
-    );
+const cleanupVendorDataByUserId = async (userId, providedConnection = null) => {
+    const connection = providedConnection || await pool.getConnection();
+    const shouldReleaseConnection = !providedConnection;
+    
+    try {
+        if (!providedConnection) {
+            await connection.beginTransaction();
+        }
+        
+        const [vendorInfo] = await connection.query(
+            'SELECT vendor_id FROM vendors WHERE user_id = ?',
+            [userId]
+        );
 
-    if (vendorInfo.length === 0) {
-        return;
+        if (vendorInfo.length === 0) {
+            if (!providedConnection) {
+                await connection.commit();
+            }
+            return;
+        }
+
+        const vendorId = vendorInfo[0].vendor_id;
+        console.log(`Cleaning up vendor data for vendor ID: ${vendorId}`);
+
+        // NOTE: We DO NOT delete payment_history (financial records must be kept)
+        // Only delete subscription records, but keep payment history for compliance
+        try {
+            await connection.query('DELETE FROM subscription_usage WHERE vendor_id = ?', [vendorId]);
+            // Keep payment_history - it's a financial record
+            // await connection.query('DELETE FROM payment_history WHERE subscription_id IN (SELECT subscription_id FROM vendor_subscriptions WHERE vendor_id = ?)', [vendorId]);
+            await connection.query('DELETE FROM vendor_subscriptions WHERE vendor_id = ?', [vendorId]);
+            console.log(`✅ Deleted subscription records (payment history preserved for compliance)`);
+        } catch (err) {
+            console.log('Note: Subscription tables may not exist, skipping:', err.message);
+        }
+
+        // Delete daily drum availability
+        try {
+            await connection.query('DELETE FROM daily_drum_availability WHERE vendor_id = ?', [vendorId]);
+        } catch (err) {
+            console.log('Note: daily_drum_availability table may not exist, skipping:', err.message);
+        }
+
+        // Delete vendor QR codes (both vendor_qr_codes and vendor_gcash_qr)
+        try {
+            await connection.query('DELETE FROM vendor_qr_codes WHERE vendor_id = ?', [vendorId]);
+        } catch (err) {
+            console.log('Note: vendor_qr_codes table may not exist, skipping:', err.message);
+        }
+        try {
+            await connection.query('DELETE FROM vendor_gcash_qr WHERE vendor_id = ?', [vendorId]);
+        } catch (err) {
+            console.log('Note: vendor_gcash_qr table may not exist, skipping:', err.message);
+        }
+
+        // NOTE: We DO NOT delete order_items or orders
+        // These are kept for:
+        // 1. Legal/compliance (tax records, audit trail)
+        // 2. Customer order history
+        // 3. Financial records
+        // Instead, we'll set vendor_id to NULL in orders (if foreign key allows)
+        // This preserves order history while removing vendor association
+        
+        // Set vendor_id to NULL in orders (preserves order history for customers)
+        try {
+            await connection.query(
+                'UPDATE orders SET vendor_id = NULL WHERE vendor_id = ?',
+                [vendorId]
+            );
+            console.log(`✅ Anonymized vendor reference in orders (orders preserved for customer history)`);
+        } catch (err) {
+            // If foreign key constraint prevents NULL, log but continue
+            console.log('Note: Could not set vendor_id to NULL in orders (may have foreign key constraint):', err.message);
+        }
+
+        // Delete cart_items that reference this vendor's flavors
+        await connection.query(`
+            DELETE ci FROM cart_items ci 
+            INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
+            WHERE f.vendor_id = ?
+        `, [vendorId]);
+
+        // Delete products that reference this vendor's flavors
+        await connection.query(`
+            DELETE p FROM products p 
+            INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
+            WHERE f.vendor_id = ?
+        `, [vendorId]);
+
+        // Delete products directly linked to this vendor
+        await connection.query(
+            'DELETE FROM products WHERE vendor_id = ?',
+            [vendorId]
+        );
+
+        // Delete flavors belonging to this vendor
+        await connection.query(
+            'DELETE FROM flavors WHERE vendor_id = ?',
+            [vendorId]
+        );
+
+        // NOTE: We DO NOT delete reviews
+        // Reviews from other customers should remain for:
+        // 1. Historical accuracy
+        // 2. Other customers' feedback
+        // 3. Business transparency
+        // Instead, we'll anonymize the vendor reference or mark reviews as "vendor deleted"
+        
+        // Anonymize vendor in reviews (keep reviews but mark vendor as deleted)
+        try {
+            await connection.query(`
+                UPDATE vendor_reviews 
+                SET vendor_id = NULL, 
+                    review_text = CONCAT(review_text, ' [Vendor account deleted]')
+                WHERE vendor_id = ?
+            `, [vendorId]);
+            console.log(`✅ Anonymized vendor in reviews (reviews preserved)`);
+        } catch (err) {
+            console.log('Note: Could not update vendor_reviews:', err.message);
+        }
+        
+        try {
+            await connection.query(`
+                UPDATE reviews 
+                SET vendor_id = NULL,
+                    review_text = CONCAT(review_text, ' [Vendor account deleted]')
+                WHERE vendor_id = ?
+            `, [vendorId]);
+            console.log(`✅ Anonymized vendor in reviews table`);
+        } catch (err) {
+            console.log('Note: Could not update reviews table:', err.message);
+        }
+
+        // Delete vendor rejection history
+        try {
+            await connection.query('DELETE FROM vendor_rejections WHERE vendor_id = ?', [vendorId]);
+        } catch (err) {
+            console.log('Note: vendor_rejections table may not exist, skipping:', err.message);
+        }
+
+        // Delete vendor record (this should cascade delete related data due to foreign keys)
+        await connection.query(
+            'DELETE FROM vendors WHERE vendor_id = ?',
+            [vendorId]
+        );
+
+        if (!providedConnection) {
+            await connection.commit();
+        }
+        console.log(`✅ Vendor ${vendorId} and all related data deleted successfully`);
+        
+    } catch (err) {
+        if (!providedConnection) {
+            await connection.rollback();
+        }
+        console.error(`❌ Error cleaning up vendor data for user ${userId}:`, err);
+        throw err; // Re-throw to let caller handle
+    } finally {
+        if (shouldReleaseConnection) {
+            connection.release();
+        }
     }
-
-    const vendorId = vendorInfo[0].vendor_id;
-    console.log(`Cleaning up vendor data for vendor ID: ${vendorId}`);
-
-    // Delete order_items that reference this vendor's products
-    await pool.query(`
-        DELETE oi FROM order_items oi 
-        INNER JOIN products p ON oi.product_id = p.product_id 
-        WHERE p.vendor_id = ?
-    `, [vendorId]);
-
-    // Delete order_items from orders directly linked to this vendor
-    await pool.query(`
-        DELETE oi FROM order_items oi 
-        INNER JOIN orders o ON oi.order_id = o.order_id 
-        WHERE o.vendor_id = ?
-    `, [vendorId]);
-
-    // Delete cart_items that reference this vendor's flavors
-    await pool.query(`
-        DELETE ci FROM cart_items ci 
-        INNER JOIN flavors f ON ci.flavor_id = f.flavor_id 
-        WHERE f.vendor_id = ?
-    `, [vendorId]);
-
-    // Delete products that reference this vendor's flavors
-    await pool.query(`
-        DELETE p FROM products p 
-        INNER JOIN flavors f ON p.flavor_id = f.flavor_id 
-        WHERE f.vendor_id = ?
-    `, [vendorId]);
-
-    // Delete products directly linked to this vendor
-    await pool.query(
-        'DELETE FROM products WHERE vendor_id = ?',
-        [vendorId]
-    );
-
-    // Delete flavors belonging to this vendor
-    await pool.query(
-        'DELETE FROM flavors WHERE vendor_id = ?',
-        [vendorId]
-    );
-
-    // Delete vendor reviews
-    await pool.query(
-        'DELETE FROM vendor_reviews WHERE vendor_id = ?',
-        [vendorId]
-    );
-
-    // Delete orders from this vendor
-    await pool.query(
-        'DELETE FROM orders WHERE vendor_id = ?',
-        [vendorId]
-    );
-
-    // Delete vendor rejection history
-    await pool.query(
-        'DELETE FROM vendor_rejections WHERE vendor_id = ?',
-        [vendorId]
-    );
-
-    // Delete vendor record
-    await pool.query(
-        'DELETE FROM vendors WHERE vendor_id = ?',
-        [vendorId]
-    );
 };
 
 const countTotal = async (req, res) => {
@@ -256,19 +342,20 @@ Important: To start receiving payments, please complete your GCash QR code setup
                 // Don't fail the approval if email fails
             }
         } else if (status.toLowerCase() === 'rejected') {
-            // Calculate auto-return date (testing: 1 minute from now)
+            // Calculate auto-return date
+            // FOR PRODUCTION: Use INTERVAL 7 DAY
             const autoReturnDate = new Date();
-            autoReturnDate.setDate(autoReturnDate.getDate() + 7);
-            // autoReturnDate.setMinutes(autoReturnDate.getMinutes() + 1); for testing
+            autoReturnDate.setDate(autoReturnDate.getDate() + 7); // 7 days for production
                 
             // Record the rejection for auto-return tracking
+            // FOR TESTING: Change INTERVAL 7 DAY to INTERVAL 1 MINUTE (or INTERVAL 1 HOUR)
             await pool.query(
                 'INSERT INTO vendor_rejections (vendor_id, user_id, auto_return_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))',
                 [vendor_id, vendor.user_id]
             );
             
             // Change user role back to customer when vendor is rejected
-            await pool.query(
+            await pool.query(   
                 'UPDATE users SET role = "customer" WHERE user_id = ?',
                 [vendor.user_id]
             );
@@ -293,12 +380,12 @@ Important: To start receiving payments, please complete your GCash QR code setup
                 });
                 
                 if (emailResult.success) {
-                    console.log(`📧 Rejection email sent successfully to ${vendor.email}`);
+                    console.log(`Rejection email sent successfully to ${vendor.email}`);
                 } else {
-                    console.error(`❌ Failed to send rejection email to ${vendor.email}:`, emailResult.error);
+                    console.error(` Failed to send rejection email to ${vendor.email}:`, emailResult.error);
                 }
             } catch (emailError) {
-                console.error(`❌ Error sending rejection email to ${vendor.email}:`, emailError.message);
+                console.error(` Error sending rejection email to ${vendor.email}:`, emailError.message);
                 // Don't fail the rejection if email fails
             }
         }
@@ -507,9 +594,13 @@ const updateUser = async (req, res) => {
         let formattedBirthDate = null;
         if (birth_date) {
             try {
-                // If it's an ISO string, extract just the date part
+                // If it's an ISO string, extract just the date part in local time
                 if (birth_date.includes('T')) {
-                    formattedBirthDate = new Date(birth_date).toISOString().split('T')[0];
+                    const date = new Date(birth_date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    formattedBirthDate = `${year}-${month}-${day}`;
                 } else {
                     // If it's already in YYYY-MM-DD format, use as is
                     formattedBirthDate = birth_date;
@@ -610,42 +701,97 @@ const updateUserStatus = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
+    const connection = await pool.getConnection();
+    
     try {
         const { user_id } = req.params;
         
         console.log('Deleting user:', user_id);
         
+        await connection.beginTransaction();
+        
         // Get user information before deletion for logging
-        const [userInfo] = await pool.query(
+        const [userInfo] = await connection.query(
             'SELECT fname, lname, email, role FROM users WHERE user_id = ?',
             [user_id]
         );
         
         if (userInfo.length === 0) {
+            await connection.rollback();
             return res.status(404).json({ error: 'User not found' });
         }
         
         const user = userInfo[0];
         
         // Always attempt vendor cleanup (covers both vendor users and customers who previously had vendor data)
-        await cleanupVendorDataByUserId(user_id);
+        // Pass the connection so it participates in the same transaction
+        try {
+            await cleanupVendorDataByUserId(user_id, connection);
+        } catch (vendorCleanupError) {
+            console.error('Vendor cleanup error (rolling back transaction):', vendorCleanupError);
+            throw vendorCleanupError; // Re-throw to trigger rollback
+        }
         
-        // Delete user-related data
-        await pool.query('DELETE FROM notifications WHERE user_id = ?', [user_id]);
-        await pool.query('DELETE FROM cart_items WHERE user_id = ?', [user_id]);
-        await pool.query('DELETE FROM user_addresses WHERE user_id = ?', [user_id]);
+        // Preserve orders by setting customer_id to NULL before deleting user
+        // This keeps order history for financial/legal compliance
+        try {
+            await connection.query(
+                'UPDATE orders SET customer_id = NULL WHERE customer_id = ?',
+                [user_id]
+            );
+            console.log(`✅ Preserved orders by setting customer_id to NULL (orders kept for compliance)`);
+        } catch (err) {
+            console.log('Note: Could not update orders.customer_id (may have foreign key constraint):', err.message);
+        }
         
-        // Finally, delete the user record
-        const [result] = await pool.query(
+        // Anonymize user data before deletion
+        // Note: status column is ENUM('active', 'inactive', 'suspended'), so we use 'inactive' instead of 'deleted'
+        await connection.query(`
+            UPDATE users SET 
+                email = CONCAT('deleted_', user_id, '@deleted.local'),
+                fname = 'Deleted',
+                lname = 'User',
+                username = CONCAT('deleted_', user_id),
+                password = NULL,
+                contact_no = NULL,
+                birth_date = NULL,
+                gender = NULL,
+                status = 'inactive'
+            WHERE user_id = ?
+        `, [user_id]);
+        console.log(`✅ Anonymized user personal data`);
+        
+        // NOTE: Orders are preserved with customer_id = NULL
+        // This maintains order history for:
+        // 1. Financial/legal compliance (tax records, audit trail)
+        // 2. Business analytics
+        // 3. Historical data integrity
+        
+        // Delete user-related temporary data
+        await connection.query('DELETE FROM notifications WHERE user_id = ?', [user_id]);
+        await connection.query('DELETE FROM cart_items WHERE user_id = ?', [user_id]);
+        await connection.query('DELETE FROM user_addresses WHERE user_id = ?', [user_id]);
+        
+        // Delete feedback if exists
+        try {
+            await connection.query('DELETE FROM feedback WHERE user_id = ?', [user_id]);
+        } catch (err) {
+            console.log('Note: feedback table may not exist, skipping:', err.message);
+        }
+        
+        // Finally, delete the anonymized user record
+        const [result] = await connection.query(
             'DELETE FROM users WHERE user_id = ?',
             [user_id]
         );
         
         if (result.affectedRows === 0) {
+            await connection.rollback();
             return res.status(404).json({ error: 'User not found' });
         }
         
-        console.log(`User ${user.fname} ${user.lname} (${user.email}) deleted successfully`);
+        await connection.commit();
+        console.log(`✅ User ${user.fname} ${user.lname} (${user.email}) deleted successfully`);
         
         res.json({
             success: true,
@@ -653,11 +799,14 @@ const deleteUser = async (req, res) => {
         });
         
     } catch (err) {
-        console.error('Failed to delete user:', err);
+        await connection.rollback();
+        console.error('❌ Failed to delete user:', err);
         res.status(500).json({
             error: 'Failed to delete user',
             message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
         });
+    } finally {
+        connection.release();
     }
 };
 

@@ -287,6 +287,136 @@ const emailTemplates = {
     };
   },
 
+  subscriptionUpgraded: (subscriptionData) => ({
+    subject: `🎉 Subscription Upgraded to ${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Subscription Upgraded</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+          .highlight { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }
+          .plan-features { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+          .plan-features ul { list-style: none; padding: 0; }
+          .plan-features li { padding: 8px 0; border-bottom: 1px solid #e0e0e0; }
+          .plan-features li:last-child { border-bottom: none; }
+          .amount { font-size: 24px; font-weight: bold; color: #667eea; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Subscription Upgraded!</h1>
+            <h2>${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan</h2>
+          </div>
+          
+          <div class="content">
+            <p>Hi <strong>${subscriptionData.vendor_name}</strong>,</p>
+            
+            <p>Congratulations! Your subscription has been successfully upgraded to the <strong>${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan</strong>.</p>
+            
+            <div class="highlight">
+              <h3>💳 Payment Confirmation</h3>
+              <p><strong>Amount Paid:</strong> <span class="amount">₱${parseFloat(subscriptionData.amount).toLocaleString()}</span></p>
+              <p><strong>Payment Method:</strong> GCash</p>
+              <p><strong>Payment Date:</strong> ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p><strong>Valid Until:</strong> ${subscriptionData.subscription_end_date ? new Date(subscriptionData.subscription_end_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Next month'}</p>
+            </div>
+            
+            <div class="plan-features">
+              <h3>✨ Your ${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan Features:</h3>
+              <ul>
+                ${subscriptionData.plan_name === 'professional' ? `
+                  <li>✅ Up to 15 Ice Cream Flavors</li>
+                  <li>✅ Up to 15 Drum Stock</li>
+                  <li>✅ 70 Orders per month</li>
+                  <li>✅ Priority Support</li>
+                  <li>✅ Featured Store Listing</li>
+                ` : subscriptionData.plan_name === 'premium' ? `
+                  <li>✅ Unlimited Ice Cream Flavors</li>
+                  <li>✅ Unlimited Drum Stock</li>
+                  <li>✅ Unlimited Orders</li>
+                  <li>✅ Priority Support</li>
+                  <li>✅ Featured Store Listing</li>
+                  <li>✅ Advanced Analytics</li>
+                  <li>✅ All Professional Features</li>
+                ` : ''}
+              </ul>
+            </div>
+            
+            <p>You can now enjoy all the benefits of your new plan! Start adding more products, managing more inventory, and growing your business with ChillNet.</p>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor" class="button text-white">Go to Dashboard</a>
+            </div>
+            
+            <p>Thank you for choosing ChillNet to grow your ice cream business! 🍨</p>
+            
+            <p>Best regards,<br>
+            <strong>ChillNet Team</strong></p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from ChillNet - Your Ice Cream Business Platform</p>
+            <p>Need help? Contact our support team at any time.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      🎉 Subscription Upgraded to ${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan!
+      
+      Hi ${subscriptionData.vendor_name},
+      
+      Congratulations! Your subscription has been successfully upgraded to the ${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan.
+      
+      💳 Payment Confirmation:
+      - Amount Paid: ₱${parseFloat(subscriptionData.amount).toLocaleString()}
+      - Payment Method: GCash
+      - Payment Date: ${new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
+      - Valid Until: ${subscriptionData.subscription_end_date ? new Date(subscriptionData.subscription_end_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Next month'}
+      
+      ✨ Your ${subscriptionData.plan_name.charAt(0).toUpperCase() + subscriptionData.plan_name.slice(1)} Plan Features:
+      ${subscriptionData.plan_name === 'professional' ? `
+      ✅ Up to 15 Ice Cream Flavors
+      ✅ Up to 15 Drum Stock
+      ✅ 70 Orders per month
+      ✅ Priority Support
+      ✅ Featured Store Listing
+      ` : subscriptionData.plan_name === 'premium' ? `
+      ✅ Unlimited Ice Cream Flavors
+      ✅ Unlimited Drum Stock
+      ✅ Unlimited Orders
+      ✅ Priority Support
+      ✅ Featured Store Listing
+      ✅ Advanced Analytics
+      ✅ All Professional Features
+      ` : ''}
+      
+      You can now enjoy all the benefits of your new plan! Start adding more products, managing more inventory, and growing your business with ChillNet.
+      
+      Go to Dashboard: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor
+      
+      Thank you for choosing ChillNet to grow your ice cream business! 🍨
+      
+      Best regards,
+      ChillNet Team
+      
+      ---
+      This email was sent from ChillNet - Your Ice Cream Business Platform
+      Need help? Contact our support team at any time.
+    `
+  }),
+
   vendorRejected: (vendorData) => ({
     subject: 'Update on Your ChillNet Vendor Application',
     html: `
@@ -334,7 +464,7 @@ const emailTemplates = {
             <p>We encourage you to review your application and make any necessary improvements before reapplying.</p>
             
             <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/vendor-register" class="button text-white">Reapply as Vendor</a>
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor-register" class="button text-white" style="display: inline-block; background: #667eea; color: white !important; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Reapply as Vendor</a>
             </div>
             
             <p>If you have questions about the rejection reason or need guidance on improving your application, please contact our support team.</p>
@@ -370,7 +500,7 @@ const emailTemplates = {
       
       We encourage you to review your application and make any necessary improvements before reapplying.
       
-      Reapply as Vendor: ${process.env.FRONTEND_URL}/vendor-register
+      Reapply as Vendor: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/vendor-register
       
       If you have questions about the rejection reason or need guidance on improving your application, please contact our support team.
       
@@ -382,6 +512,155 @@ const emailTemplates = {
       ---
       This email was sent from ChillNet - Your Ice Cream Ordering Platform
       If you didn't apply for a vendor account, please ignore this email.
+    `
+  }),
+
+  orderOutForDelivery: (orderData) => ({
+    subject: `🚚 Your ChillNet Order #${orderData.orderId} is On The Way!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Out for Delivery</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; }
+          .delivery-box { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+          .payment-reminder { background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
+          .order-details { background: #f9fafb; padding: 15px; border-radius: 5px; margin: 15px 0; }
+          .button { display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .button-secondary { display: inline-block; background: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+          .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+          .icon { font-size: 48px; margin: 10px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="icon">🚚</div>
+            <h1>Your Order is On The Way!</h1>
+            <p>Order #${orderData.orderId}</p>
+          </div>
+          
+          <div class="content">
+            <p>Hi <strong>${orderData.customerName}</strong>,</p>
+            
+            <div class="delivery-box">
+              <h2 style="margin-top: 0; color: #059669;">🍨 Great News!</h2>
+              <p style="font-size: 16px; margin-bottom: 0;">Your delicious ice cream order from <strong>${orderData.vendorName}</strong> is now out for delivery and heading your way!</p>
+            </div>
+            
+            <div class="order-details">
+              <h3 style="margin-top: 0;">📦 Order Details</h3>
+              <p><strong>Order ID:</strong> #${orderData.orderId}</p>
+              <p><strong>Vendor:</strong> ${orderData.vendorName}</p>
+              <p><strong>Delivery Address:</strong><br>${orderData.deliveryAddress}</p>
+              ${orderData.estimatedTime ? `<p><strong>Estimated Arrival:</strong> ${orderData.estimatedTime}</p>` : ''}
+              ${orderData.remainingBalance && parseFloat(orderData.remainingBalance) > 0 ? `
+                <p><strong>Remaining Balance:</strong> ₱${parseFloat(orderData.remainingBalance).toFixed(2)}</p>
+                <p><strong>Payment Method:</strong> ${orderData.remainingPaymentMethod || 'Cash on Delivery'}</p>
+              ` : ''}
+            </div>
+            
+            ${orderData.remainingBalance && parseFloat(orderData.remainingBalance) > 0 ? `
+              <div class="payment-reminder">
+                <h3 style="margin-top: 0; color: #d97706;">💰 Payment Reminder</h3>
+                ${orderData.remainingPaymentMethod === 'GCash' ? `
+                  <p style="font-size: 16px; margin-bottom: 10px;">
+                    <strong>Don't forget to pay your remaining balance of ₱${parseFloat(orderData.remainingBalance).toFixed(2)} via GCash!</strong>
+                  </p>
+                  <p>You can complete your payment now before the delivery arrives:</p>
+                  <div style="text-align: center; margin: 15px 0;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/gcash-account/${orderData.orderId}?remaining=true" class="button-secondary" style="color: white; text-decoration: none;">
+                      💳 Pay Remaining Balance via GCash
+                    </a>
+                  </div>
+                  <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                    💡 Tip: Paying now ensures a faster delivery process!
+                  </p>
+                ` : `
+                  <p style="font-size: 16px; margin-bottom: 10px;">
+                    <strong>Please prepare ₱${parseFloat(orderData.remainingBalance).toFixed(2)} in cash for Cash on Delivery (COD) payment.</strong>
+                  </p>
+                  <p>💵 Please have the exact amount or small bills ready when the delivery arrives.</p>
+                  <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                    💡 Having the right amount ready helps speed up the delivery process!
+                  </p>
+                `}
+              </div>
+            ` : ''}
+            
+            <p>🔔 <strong>Please be ready to receive your order!</strong></p>
+            <p>Our delivery team will contact you if they need any assistance finding your location.</p>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/orders" class="button" style="color: white; text-decoration: none;">Track Your Order</a>
+            </div>
+            
+            <p>Thank you for choosing ChillNet! Enjoy your ice cream! 🍦</p>
+            
+            <p>Best regards,<br>
+            <strong>ChillNet Team</strong></p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent from ChillNet - Your Ice Cream Delivery Platform</p>
+            <p>Need help? Contact us through your customer dashboard.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+      🚚 Your ChillNet Order #${orderData.orderId} is On The Way!
+      
+      Hi ${orderData.customerName},
+      
+      Great News!
+      Your delicious ice cream order from ${orderData.vendorName} is now out for delivery and heading your way!
+      
+      📦 Order Details:
+      - Order ID: #${orderData.orderId}
+      - Vendor: ${orderData.vendorName}
+      - Delivery Address: ${orderData.deliveryAddress}
+      ${orderData.estimatedTime ? `- Estimated Arrival: ${orderData.estimatedTime}` : ''}
+      ${orderData.remainingBalance && parseFloat(orderData.remainingBalance) > 0 ? `- Remaining Balance: ₱${parseFloat(orderData.remainingBalance).toFixed(2)}
+      - Payment Method: ${orderData.remainingPaymentMethod || 'Cash on Delivery'}` : ''}
+      
+      ${orderData.remainingBalance && parseFloat(orderData.remainingBalance) > 0 ? `
+      💰 PAYMENT REMINDER:
+      ${orderData.remainingPaymentMethod === 'GCash' ? `
+      Don't forget to pay your remaining balance of ₱${parseFloat(orderData.remainingBalance).toFixed(2)} via GCash!
+      
+      Pay now: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/gcash-account/${orderData.orderId}?remaining=true
+      
+      💡 Tip: Paying now ensures a faster delivery process!
+      ` : `
+      Please prepare ₱${parseFloat(orderData.remainingBalance).toFixed(2)} in cash for Cash on Delivery (COD) payment.
+      
+      💵 Please have the exact amount or small bills ready when the delivery arrives.
+      💡 Having the right amount ready helps speed up the delivery process!
+      `}
+      ` : ''}
+      
+      🔔 Please be ready to receive your order!
+      
+      Our delivery team will contact you if they need any assistance finding your location.
+      
+      Track Your Order: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/orders
+      
+      Thank you for choosing ChillNet! Enjoy your ice cream! 🍦
+      
+      Best regards,
+      ChillNet Team
+      
+      ---
+      This email was sent from ChillNet - Your Ice Cream Delivery Platform
+      Need help? Contact us through your customer dashboard.
     `
   })
 };
@@ -473,9 +752,19 @@ const sendVendorRejectionEmail = async (vendorData) => {
   return await sendEmail(vendorData.email, 'vendorRejected', vendorData);
 };
 
+const sendSubscriptionUpgradeEmail = async (subscriptionData) => {
+  return await sendEmail(subscriptionData.vendor_email, 'subscriptionUpgraded', subscriptionData);
+};
+
+const sendOrderDeliveryEmail = async (orderData) => {
+  return await sendEmail(orderData.customerEmail, 'orderOutForDelivery', orderData);
+};
+
 module.exports = {
   sendEmail,
   sendVendorApprovalEmail,
   sendVendorRejectionEmail,
+  sendSubscriptionUpgradeEmail,
+  sendOrderDeliveryEmail,
   emailTemplates
 };

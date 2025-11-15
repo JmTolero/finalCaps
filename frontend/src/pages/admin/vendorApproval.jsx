@@ -202,21 +202,34 @@ export const AdminVendorApproval = () => {
   ).length;
 
   // Filter vendors based on search term, tab, and status filter
-  const filteredVendors = vendors.filter(vendor => {
-    const matchesSearch = (vendor.store_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (vendor.fname || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (vendor.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-                         (vendor.status && vendor.status.toLowerCase() === statusFilter.toLowerCase());
-    
-    if (activeTab === 'allVendors') {
+  // Search by vendor ID, vendor name (fname + lname), shop name (store_name), and email
+  const filteredVendors = vendors
+    .filter(vendor => {
+      const searchLower = searchTerm.toLowerCase();
+      const vendorFullName = `${vendor.fname || ''} ${vendor.lname || ''}`.trim().toLowerCase();
+      const vendorIdString = vendor.vendor_id ? String(vendor.vendor_id) : '';
+      const matchesSearch = !searchTerm || // If no search term, show all
+                           vendorIdString.includes(searchTerm) || // Search by ID (exact match, case-sensitive for numbers)
+                           (vendor.store_name || '').toLowerCase().includes(searchLower) ||
+                           (vendor.email || '').toLowerCase().includes(searchLower) ||
+                           vendorFullName.includes(searchLower);
+      
+      const matchesStatus = statusFilter === 'all' || 
+                           (vendor.status && vendor.status.toLowerCase() === statusFilter.toLowerCase());
+      
+      if (activeTab === 'allVendors') {
+        return matchesSearch && matchesStatus;
+      } else if (activeTab === 'requestedApproval') {
+        return matchesSearch && vendor.status && vendor.status.toLowerCase() === 'pending' && matchesStatus;
+      }
       return matchesSearch && matchesStatus;
-    } else if (activeTab === 'requestedApproval') {
-      return matchesSearch && vendor.status && vendor.status.toLowerCase() === 'pending' && matchesStatus;
-    }
-    return matchesSearch && matchesStatus;
-  });
+    })
+    .sort((a, b) => {
+      // Sort alphabetically by vendor name (first name + last name)
+      const nameA = `${a.fname || ''} ${a.lname || ''}`.trim().toLowerCase();
+      const nameB = `${b.fname || ''} ${b.lname || ''}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   const getStatusColor = (status) => {
     if (!status) return 'bg-gray-100 text-gray-800';
@@ -290,7 +303,7 @@ export const AdminVendorApproval = () => {
         <div className="relative max-w-md flex-1">
           <input
             type="text"
-            placeholder={activeTab === 'allVendors' ? 'Search Vendor Name' : 'Search Vendor ID'}
+            placeholder="Search Vendor ID, Name, Shop Name, or Email"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-3 sm:px-4 py-2 pr-10 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm sm:text-base"
@@ -366,6 +379,7 @@ export const AdminVendorApproval = () => {
                 <table className="w-full border-collapse bg-white min-w-max">
                   <thead className="bg-[#FFDDAE] sticky top-0 z-10">
                   <tr>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-20">Vendor ID</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-32">Vendor Name</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-32">Shop Name</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-gray-700 border-r border-orange-200 w-40">Email</th>
@@ -377,6 +391,11 @@ export const AdminVendorApproval = () => {
                 <tbody>
                   {filteredVendors.map((vendor) => (
                     <tr key={vendor.vendor_id} className="border-b hover:bg-gray-50">
+                      <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-20">
+                        <div className="text-xs font-medium text-gray-900">
+                          {vendor.vendor_id || 'N/A'}
+                        </div>
+                      </td>
                       <td className="px-2 py-2 border-r border-gray-200 whitespace-nowrap w-32">
                         <div className="text-xs font-medium text-gray-900 truncate">
                           {(vendor.fname || '') + ' ' + (vendor.lname || '')}
@@ -439,7 +458,10 @@ export const AdminVendorApproval = () => {
                 <div key={vendor.vendor_id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:bg-gray-50">
                   <div className="flex flex-col space-y-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-base sm:text-lg">{vendor.store_name || 'N/A'}</h3>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-base sm:text-lg">{vendor.store_name || 'N/A'}</h3>
+                        <span className="text-xs sm:text-sm text-gray-500 font-medium">ID: {vendor.vendor_id || 'N/A'}</span>
+                      </div>
                       <p className="text-gray-600 text-xs sm:text-sm">Owner: {(vendor.fname || '') + ' ' + (vendor.lname || '')}</p>
                       <p className="text-gray-600 text-xs sm:text-sm">{vendor.email || 'N/A'}</p>
                       <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mt-2">

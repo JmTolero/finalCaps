@@ -12,6 +12,8 @@ export const VendorGoogleComplete = () => {
   const [isExistingUser, setIsExistingUser] = useState(false);
   const [form, setForm] = useState({
     username: '',
+    password: '',
+    confirmPassword: '',
     birth_date: '',
     gender: '',
     contact_no: '',
@@ -22,6 +24,87 @@ export const VendorGoogleComplete = () => {
   const [status, setStatus] = useState({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
   const [showExistingUserMessage, setShowExistingUserMessage] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [existingDocuments, setExistingDocuments] = useState({
+    valid_id: null,
+    business_permit: null,
+    proof_image: null
+  });
+  const [checkingDocuments, setCheckingDocuments] = useState(true);
+
+  // Check if documents are already uploaded
+  useEffect(() => {
+    const checkExistingDocuments = async () => {
+      if (!user || !user.id) {
+        setCheckingDocuments(false);
+        return;
+      }
+
+      try {
+        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+        const setupResponse = await axios.get(`${apiBase}/api/vendor/setup-status/${user.id}`);
+        
+        if (setupResponse.data.success && setupResponse.data.isVendor) {
+          const vendor = setupResponse.data.vendor;
+          
+          // Try to get vendor details with document URLs
+          try {
+            // Use vendor current endpoint which includes document URLs
+            const vendorResponse = await axios.get(`${apiBase}/api/vendor/current`, {
+              headers: {
+                'x-user-id': user.id
+              }
+            });
+            
+            if (vendorResponse.data.success && vendorResponse.data.vendor) {
+              const vendorData = vendorResponse.data.vendor;
+              
+              setExistingDocuments({
+                valid_id: vendorData.valid_id_url || null,
+                business_permit: vendorData.business_permit_url || null,
+                proof_image: vendorData.proof_image_url || null
+              });
+
+              // If all documents are uploaded, redirect immediately
+              if (vendorData.valid_id_url && vendorData.business_permit_url && vendorData.proof_image_url) {
+                console.log('All documents already uploaded, redirecting to vendor-pending immediately');
+                // Redirect immediately - no delay
+                navigate('/vendor-pending');
+                return;
+              }
+            }
+          } catch (vendorError) {
+            console.error('Error fetching vendor details:', vendorError);
+            // If vendor current fails, try admin endpoint if we have vendor_id
+            if (vendor.vendor_id) {
+              try {
+                const adminResponse = await axios.get(`${apiBase}/api/admin/vendors/${vendor.vendor_id}`);
+                if (adminResponse.data.success && adminResponse.data.vendor) {
+                  const vendorData = adminResponse.data.vendor;
+                  setExistingDocuments({
+                    valid_id: vendorData.valid_id_url || null,
+                    business_permit: vendorData.business_permit_url || null,
+                    proof_image: vendorData.proof_image_url || null
+                  });
+                }
+              } catch (adminError) {
+                console.error('Error fetching vendor from admin endpoint:', adminError);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking existing documents:', error);
+      } finally {
+        setCheckingDocuments(false);
+      }
+    };
+
+    if (user && user.id) {
+      checkExistingDocuments();
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     // Get user data from URL parameters
@@ -36,6 +119,12 @@ export const VendorGoogleComplete = () => {
         type: 'error',
         message: 'Google authentication failed. Please try again.'
       });
+      // Set a dummy user object so the component can render the error
+      setUser({ error: true });
+      // Redirect to login after showing error
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
       return;
     }
 
@@ -68,14 +157,49 @@ export const VendorGoogleComplete = () => {
           type: 'error',
           message: 'Invalid user data. Please try again.'
         });
+        // Set a dummy user object so the component can render the error
+        setUser({ error: true });
+        // Redirect to login after showing error
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
       }
     } else {
+      // Check if user data exists in localStorage/sessionStorage as fallback
+      const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+      const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      
+      if (storedUser && storedToken) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          // Use stored token
+          if (!localStorage.getItem('token')) {
+            localStorage.setItem('token', storedToken);
+          }
+          if (!sessionStorage.getItem('token')) {
+            sessionStorage.setItem('token', storedToken);
+          }
+          window.dispatchEvent(new Event('userChanged'));
+          return;
+        } catch (error) {
+          console.error('Error parsing stored user data:', error);
+        }
+      }
+      
+      // No valid data found - show error and redirect
       setStatus({
         type: 'error',
         message: 'Missing authentication data. Please try again.'
       });
+      // Set a dummy user object so the component can render the error
+      setUser({ error: true });
+      // Redirect to login after showing error
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   // Auto-hide error messages after 3 seconds and scroll to top when error/success occurs
   useEffect(() => {
@@ -107,8 +231,8 @@ export const VendorGoogleComplete = () => {
   }, [isExistingUser, showExistingUserMessage]);
 
   const handleChange = (e) => {
-    // Prevent spaces in contact and username fields
-    const noSpaceFields = ['contact_no', 'username'];
+    // Prevent spaces in contact, username, and password fields
+    const noSpaceFields = ['contact_no', 'username', 'password', 'confirmPassword'];
     handleValidatedChange(e, setForm, noSpaceFields);
   };
 
@@ -121,14 +245,31 @@ export const VendorGoogleComplete = () => {
     console.log('Form data:', form); // Debug log
     
     // Validate required text fields for empty/whitespace values
-    const requiredTextFields = ['birth_date', 'gender'];
+    const requiredTextFields = ['birth_date', 'gender', 'password', 'confirmPassword'];
     const validation = validateFormData(form, requiredTextFields);
     if (!validation.isValid) {
       setStatus({ type: 'error', message: validation.message });
       return false;
     }
 
-    if (!form.valid_id || !form.business_permit || !form.proof_image) {
+    // Validate password length
+    if (form.password.length < 6) {
+      setStatus({ type: 'error', message: 'Password must be at least 6 characters long' });
+      return false;
+    }
+
+    // Validate password match
+    if (form.password !== form.confirmPassword) {
+      setStatus({ type: 'error', message: 'Passwords do not match' });
+      return false;
+    }
+
+    // Check if all documents are uploaded (either new uploads or existing)
+    const hasValidId = form.valid_id || existingDocuments.valid_id;
+    const hasBusinessPermit = form.business_permit || existingDocuments.business_permit;
+    const hasProofImage = form.proof_image || existingDocuments.proof_image;
+    
+    if (!hasValidId || !hasBusinessPermit || !hasProofImage) {
       setStatus({ type: 'error', message: 'Please upload all required documents' });
       return false;
     }
@@ -163,6 +304,7 @@ export const VendorGoogleComplete = () => {
       if (trimmedForm.username) {
         formData.append('username', trimmedForm.username);
       }
+      formData.append('password', trimmedForm.password);
       formData.append('birth_date', trimmedForm.birth_date);
       formData.append('gender', trimmedForm.gender);
       formData.append('contact_no', trimmedForm.contact_no);
@@ -252,7 +394,7 @@ export const VendorGoogleComplete = () => {
     }
   };
 
-  if (!user) {
+  if (!user || checkingDocuments) {
     return (
       <>
         <NavWithLogo />
@@ -260,6 +402,36 @@ export const VendorGoogleComplete = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading...</p>
+            {checkingDocuments && (
+              <p className="text-sm text-gray-500 mt-2">Checking for existing documents...</p>
+            )}
+            {!checkingDocuments && (
+              <p className="text-sm text-gray-500 mt-2">If this takes too long, please try signing in again.</p>
+            )}
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  // Show error state if user object has error flag
+  if (user.error) {
+    return (
+      <>
+        <NavWithLogo />
+        <main className="flex items-center justify-center min-h-[90vh] px-4 py-4 pt-20 sm:pt-20">
+          <div className="text-center max-w-md">
+            <div className="text-red-600 text-6xl mb-4">❌</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Authentication Error</h2>
+            {status.message && (
+              <p className="text-gray-600 mb-6">{status.message}</p>
+            )}
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200"
+            >
+              Go to Login
+            </button>
           </div>
         </main>
       </>
@@ -298,7 +470,15 @@ export const VendorGoogleComplete = () => {
                 ? 'bg-green-100 text-green-800 border border-green-200' 
                 : 'bg-red-100 text-red-800 border border-red-200'
             }`}>
-              <div className="font-semibold text-sm sm:text-base">{status.message}</div>
+              <div className="font-semibold text-sm sm:text-base mb-2">{status.message}</div>
+              {status.type === 'success' && status.message.includes('already uploaded') && (
+                <button
+                  onClick={() => navigate('/vendor-pending')}
+                  className="mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors text-sm"
+                >
+                  Go to Pending Page Now →
+                </button>
+              )}
             </div>
           )}
 
@@ -400,6 +580,77 @@ export const VendorGoogleComplete = () => {
                     onChange={handleChange}
                   />
                 </div>
+
+                {/* Password Field */}
+                <div className="form-group">
+                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="password">
+                    Password *
+                    <span className="text-xs sm:text-sm font-normal text-gray-500 block">
+                      Set a password for your account (minimum 6 characters)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.password}
+                      onChange={handleChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L6.878 6.878M6.88 6.88L3 3m3.29 3.29L12 12m-3.29-3.29L12 12m0 0l3.29 3.29M12 12l3.29-3.29m0 0L21 21m-3.29-3.29L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="form-group">
+                  <label className="block text-base sm:text-lg font-semibold mb-2 text-gray-700" htmlFor="confirmPassword">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-10 sm:pr-12 rounded-lg sm:rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-base sm:text-lg text-black transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                      required
+                      value={form.confirmPassword}
+                      onChange={handleChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L6.878 6.878M6.88 6.88L3 3m3.29 3.29L12 12m-3.29-3.29L12 12m0 0l3.29 3.29M12 12l3.29-3.29m0 0L21 21m-3.29-3.29L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Right Column - Documents & Requirements */}
@@ -431,15 +682,31 @@ export const VendorGoogleComplete = () => {
                       Driver's License, Passport, National ID, etc.
                     </span>
                   </label>
-                  <div className="relative">
-                    <input
-                      id="valid_id"
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+                  {existingDocuments.valid_id ? (
+                    <div className="bg-green-50 border-2 border-green-300 rounded-lg sm:rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-green-800 font-semibold">✅ Document Already Uploaded</p>
+                          <p className="text-green-600 text-sm">Valid ID has been uploaded successfully</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        id="valid_id"
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Upload Business Permit */}
@@ -450,15 +717,31 @@ export const VendorGoogleComplete = () => {
                       Valid business registration or permit
                     </span>
                   </label>
-                  <div className="relative">
-                    <input
-                      id="business_permit"
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+                  {existingDocuments.business_permit ? (
+                    <div className="bg-green-50 border-2 border-green-300 rounded-lg sm:rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-green-800 font-semibold">✅ Document Already Uploaded</p>
+                          <p className="text-green-600 text-sm">Business Permit has been uploaded successfully</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        id="business_permit"
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Upload Proof Image */}
@@ -469,15 +752,31 @@ export const VendorGoogleComplete = () => {
                       Photo of you making ice cream or with your ice cream products (proof of business)
                     </span>
                   </label>
-                  <div className="relative">
-                    <input
-                      id="proof_image"
-                      type="file"
-                      accept="image/*"
-                      className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      onChange={handleFileChange}
-                    />
-                  </div>
+                  {existingDocuments.proof_image ? (
+                    <div className="bg-green-50 border-2 border-green-300 rounded-lg sm:rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-green-800 font-semibold">✅ Document Already Uploaded</p>
+                          <p className="text-green-600 text-sm">Ice Cream Making Proof has been uploaded successfully</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        id="proof_image"
+                        type="file"
+                        accept="image/*"
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border-2 border-dashed border-gray-300 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 text-sm sm:text-base text-black transition-all duration-200 bg-white/80 backdrop-blur-sm file:mr-2 sm:file:mr-4 file:py-1 sm:file:py-2 file:px-2 sm:file:px-4 file:rounded-full file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Registration Process Info */}

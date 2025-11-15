@@ -12,6 +12,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   const [selectedImageTitle, setSelectedImageTitle] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [loadingAction, setLoadingAction] = useState(false);
 
   const fetchVendorDetails = useCallback(async () => {
     try {
@@ -60,6 +61,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
   };
 
   const handleStatusUpdate = async (newStatus) => {
+    setLoadingAction(true);
     try {
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const response = await axios.put(`${apiBase}/api/admin/vendors/${vendorId}/status`, {
@@ -71,6 +73,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
         onStatusUpdate(vendorId, newStatus);
         
         // Show success modal
+        setLoadingAction(false);
         setShowConfirmModal(false);
         setPendingAction('success');
         
@@ -81,6 +84,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
         
       } else {
         // Show error modal
+        setLoadingAction(false);
         setShowConfirmModal(false);
         setPendingAction('error');
         setTimeout(() => {
@@ -89,6 +93,7 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
       }
     } catch (err) {
       console.error('Error updating vendor status:', err);
+      setLoadingAction(false);
       setShowConfirmModal(false);
       setPendingAction('error');
       setTimeout(() => {
@@ -542,19 +547,21 @@ const VendorDetailView = ({ vendorId, onBack, onStatusUpdate }) => {
                   setShowConfirmModal(false);
                   setPendingAction(null);
                 }}
-                className="px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                disabled={loadingAction}
+                className="px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded border border-gray-300 hover:bg-gray-50 transition-colors text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleStatusUpdate(pendingAction)}
+                disabled={loadingAction}
                 className={`px-3 sm:px-4 py-2 text-white font-medium rounded transition-colors text-sm sm:text-base ${
                   pendingAction === 'approved' 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : 'bg-red-500 hover:bg-red-600'
-                }`}
+                    ? 'bg-green-500 hover:bg-green-600 disabled:bg-green-300' 
+                    : 'bg-red-500 hover:bg-red-600 disabled:bg-red-300'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {pendingAction === 'approved' ? 'Confirm Approve' : 'Confirm Reject'}
+                {loadingAction ? 'Processing...' : (pendingAction === 'approved' ? 'Confirm Approve' : 'Confirm Reject')}
               </button>
             </div>
           </div>

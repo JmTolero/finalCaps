@@ -62,9 +62,21 @@ router.get(
 );
 
 router.get('/google/callback',
-    passport.authenticate('vendor-google', { 
-        failureRedirect: '/api/vendor/auth/google/failure' 
-    }),
+    (req, res, next) => {
+        passport.authenticate('vendor-google', { session: false }, (err, user, info) => {
+            if (err) {
+                console.error('Vendor Google OAuth error:', err);
+                return res.redirect(`/api/vendor/auth/google/failure?error=${encodeURIComponent(err.message || 'Authentication failed')}`);
+            }
+            if (!user) {
+                const errorMsg = info?.message || 'User is already registered as a vendor';
+                console.log('Vendor Google OAuth failed:', errorMsg);
+                return res.redirect(`/api/vendor/auth/google/failure?error=${encodeURIComponent(errorMsg)}`);
+            }
+            req.user = user;
+            next();
+        })(req, res, next);
+    },
     vendorGoogleAuthController.vendorGoogleAuthSuccess
 );
 

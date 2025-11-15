@@ -301,10 +301,51 @@ const getSubscriptionRevenue = async (req, res) => {
     }
 };
 
+// Get all subscription transactions
+const getSubscriptionTransactions = async (req, res) => {
+    try {
+        const [transactions] = await pool.query(`
+            SELECT 
+                sp.payment_id,
+                sp.vendor_id,
+                v.store_name,
+                u.fname,
+                u.lname,
+                u.email,
+                sp.plan_name,
+                sp.amount,
+                sp.payment_status,
+                sp.xendit_invoice_id,
+                sp.xendit_payment_id,
+                sp.payment_method,
+                sp.payment_date,
+                sp.created_at,
+                sp.updated_at
+            FROM subscription_payments sp
+            LEFT JOIN vendors v ON sp.vendor_id = v.vendor_id
+            LEFT JOIN users u ON v.user_id = u.user_id
+            ORDER BY sp.created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            transactions: transactions
+        });
+
+    } catch (error) {
+        console.error('Error fetching subscription transactions:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch subscription transactions'
+        });
+    }
+};
+
 module.exports = {
     getSubscriptionPlans,
     getVendorSubscription,
     updateVendorSubscription,
     getAllVendorSubscriptions,
-    getSubscriptionRevenue
+    getSubscriptionRevenue,
+    getSubscriptionTransactions
 };

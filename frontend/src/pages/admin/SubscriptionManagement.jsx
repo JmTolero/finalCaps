@@ -5,20 +5,26 @@ import {
   Crown, 
   Star, 
   Gift,
-  CheckCircle
+  CheckCircle,
+  Receipt,
+  Calendar,
+  CreditCard
 } from 'lucide-react';
 
 const SubscriptionManagement = () => {
   const [vendors, setVendors] = useState([]);
   const [revenue, setRevenue] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [activeTab, setActiveTab] = useState('vendors');
   const [searchQuery, setSearchQuery] = useState('');
+  const [transactionSearchQuery, setTransactionSearchQuery] = useState('');
 
   useEffect(() => {
     fetchVendorSubscriptions();
     fetchRevenue();
+    fetchTransactions();
   }, []);
 
   const fetchVendorSubscriptions = async () => {
@@ -46,6 +52,19 @@ const SubscriptionManagement = () => {
       console.error('Error fetching revenue:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await fetch(`${apiBase}/api/admin/subscription/transactions`);
+      const data = await response.json();
+      if (data.success) {
+        setTransactions(data.transactions);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription transactions:', error);
     }
   };
 
@@ -196,6 +215,17 @@ const SubscriptionManagement = () => {
             >
               <span className="hidden sm:inline">Subscription Plans</span>
               <span className="sm:hidden">Plans</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm ${
+                activeTab === 'transactions'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <span className="hidden sm:inline">Transactions</span>
+              <span className="sm:hidden">Transactions</span>
             </button>
           </nav>
         </div>
@@ -384,6 +414,177 @@ const SubscriptionManagement = () => {
                   </ul>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'transactions' && (
+          <div className="bg-sky-100 rounded-lg shadow">
+            <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold flex items-center space-x-2">
+                <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>Subscription Transactions</span>
+              </h2>
+            </div>
+            <div className="p-3 sm:p-4 lg:p-6">
+              {/* Search Box */}
+              <div className="mb-4 sm:mb-6">
+                <label htmlFor="transaction-search" className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  Search by Transaction ID
+                </label>
+                <input
+                  type="text"
+                  id="transaction-search"
+                  placeholder="Enter transaction ID..."
+                  value={transactionSearchQuery}
+                  onChange={(e) => setTransactionSearchQuery(e.target.value)}
+                  className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                />
+              </div>
+
+              {(() => {
+                const filteredTransactions = transactions.filter(transaction => {
+                  if (!transactionSearchQuery.trim()) return true;
+                  return transaction.payment_id.toString().includes(transactionSearchQuery.trim());
+                });
+
+                if (filteredTransactions.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <Receipt className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                      <p className="text-sm sm:text-base">
+                        {transactionSearchQuery.trim() 
+                          ? `No transactions found with ID containing "${transactionSearchQuery}"`
+                          : 'No transactions found'}
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Transaction ID
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vendor
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Plan
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Payment Method
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredTransactions.map((transaction) => (
+                        <tr key={transaction.payment_id} className="hover:bg-gray-50">
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
+                              #{transaction.payment_id}
+                            </div>
+                            {transaction.xendit_invoice_id && (
+                              <div className="text-xs text-gray-500 truncate max-w-xs">
+                                {transaction.xendit_invoice_id.substring(0, 20)}...
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
+                              {transaction.store_name || 'N/A'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {transaction.fname} {transaction.lname}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate max-w-xs">
+                              {transaction.email}
+                            </div>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              {getPlanIcon(transaction.plan_name)}
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPlanColor(transaction.plan_name)}`}>
+                                {transaction.plan_name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="text-xs sm:text-sm font-bold text-gray-900">
+                              ₱{parseFloat(transaction.amount).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-1">
+                              <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                              <span className="text-xs sm:text-sm text-gray-600">
+                                {transaction.payment_method || 'N/A'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              transaction.payment_status === 'paid' 
+                                ? 'bg-green-100 text-green-800'
+                                : transaction.payment_status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : transaction.payment_status === 'failed'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {transaction.payment_status}
+                            </span>
+                          </td>
+                          <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                              <div className="text-xs sm:text-sm text-gray-600">
+                                {transaction.payment_date 
+                                  ? new Date(transaction.payment_date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })
+                                  : new Date(transaction.created_at).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })
+                                }
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {transaction.payment_date 
+                                ? new Date(transaction.payment_date).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : new Date(transaction.created_at).toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                );
+              })()}
             </div>
           </div>
         )}

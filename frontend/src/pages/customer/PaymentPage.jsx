@@ -8,13 +8,16 @@ const PaymentPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const fetchOrderDetails = useCallback(async () => {
     try {
       const userRaw = sessionStorage.getItem('user');
       if (!userRaw) {
-        alert('Please log in to view payment details');
-        navigate('/login');
+        setErrorMessage('Please log in to view payment details');
+        setShowErrorModal(true);
+        setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
@@ -31,17 +34,20 @@ const PaymentPage = () => {
         if (orderData) {
           setOrder(orderData);
         } else {
-          alert('Order not found');
-          navigate('/customer');
+          setErrorMessage('Order not found');
+          setShowErrorModal(true);
+          setTimeout(() => navigate('/customer'), 2000);
         }
       } else {
-        alert('Error loading order details');
-        navigate('/customer');
+        setErrorMessage('Error loading order details');
+        setShowErrorModal(true);
+        setTimeout(() => navigate('/customer'), 2000);
       }
     } catch (error) {
       console.error('Error fetching order:', error);
-      alert('Error loading order details');
-      navigate('/customer');
+      setErrorMessage('Error loading order details');
+      setShowErrorModal(true);
+      setTimeout(() => navigate('/customer'), 2000);
     } finally {
       setLoading(false);
     }
@@ -68,7 +74,8 @@ const PaymentPage = () => {
       navigate('/customer?view=orders');
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert('Error processing payment. Please try again.');
+      setErrorMessage('Error processing payment. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setProcessing(false);
     }
@@ -233,6 +240,33 @@ const PaymentPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6">
+          <div className="bg-white rounded-xl p-5 sm:p-6 md:p-8 max-w-md w-full mx-4 shadow-xl">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-red-100 mb-4">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">
+                Error
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed break-words">
+                {errorMessage}
+              </p>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 text-base shadow-sm"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

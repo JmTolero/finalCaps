@@ -166,7 +166,7 @@ export const ProfileDropdown = () => {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 sm:w-80 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200 transform transition-all duration-200 ease-in-out origin-top-right sm:right-0 right-[-1rem] max-w-[calc(100vw-2rem)] overflow-hidden">
+        <div className="absolute right-0 mt-2 w-96 sm:w-80 bg-white rounded-md shadow-lg py-1 z-[100] border border-gray-200 transform transition-all duration-200 ease-in-out origin-top-right sm:right-0 right-[-1rem] max-w-[calc(100vw-2rem)] overflow-hidden" style={{ position: 'absolute', isolation: 'isolate' }}>
           <div className="px-4 py-3 text-sm text-gray-700 border-b border-gray-100 min-w-0 max-w-full">
             <div className="font-medium text-gray-900 truncate max-w-full">
               {user.firstName && user.lastName 
@@ -229,11 +229,73 @@ export const ProfileDropdown = () => {
             <>
               <button
                 onClick={async () => {
-                  // Verify vendor access before navigation
+                  setIsOpen(false);
+                  
+                  // Check if user is currently on vendor-google-complete page
+                  const currentPath = window.location.pathname;
+                  if (currentPath === '/vendor-google-complete') {
+                    // User is completing registration - don't navigate away
+                    console.log('User is completing vendor registration, staying on current page');
+                    return;
+                  }
+                  
+                  // Verify vendor access and check status before navigation
                   try {
                     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
                     const token = sessionStorage.getItem('token');
                     
+                    // First check vendor status
+                    const statusResponse = await fetch(`${apiBase}/api/admin/users/${user.id}`, {
+                      credentials: 'include',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : ''
+                      },
+                    });
+                    
+                    if (statusResponse.ok) {
+                      const statusData = await statusResponse.json();
+                      if (statusData.success) {
+                        const userData = statusData.user;
+                        
+                        // Check vendor status
+                        if (userData.vendor_status === 'pending') {
+                          // Vendor is pending - check if they're completing registration
+                          if (currentPath === '/vendor-google-complete' || currentPath === '/vendor-register') {
+                            // Stay on registration page
+                            console.log('Vendor is pending and completing registration');
+                            return;
+                          }
+                          // Otherwise go to pending page
+                          navigate('/vendor-pending');
+                          return;
+                        } else if (userData.vendor_status === 'rejected') {
+                          // Vendor is rejected - go to pending page
+                          const ackKey = `vendorRejectionAcknowledged_${user.id}`;
+                          const hasAcknowledgedRejection = localStorage.getItem(ackKey) === 'true';
+                          if (!hasAcknowledgedRejection) {
+                            navigate('/vendor-pending');
+                            return;
+                          }
+                        } else if (userData.vendor_status === 'approved') {
+                          // Vendor is approved - verify and go to dashboard
+                          const verifyResponse = await fetch(`${apiBase}/api/auth/verify-vendor`, {
+                            credentials: 'include',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': token ? `Bearer ${token}` : ''
+                            },
+                          });
+                          
+                          if (verifyResponse.ok) {
+                            navigate('/vendor');
+                            return;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Fallback: verify vendor access
                     const response = await fetch(`${apiBase}/api/auth/verify-vendor`, {
                       credentials: 'include',
                       headers: {
@@ -245,15 +307,18 @@ export const ProfileDropdown = () => {
                     if (response.ok) {
                       navigate('/vendor');
                     } else {
-                      alert('Access denied. You are not authorized to access the vendor dashboard.');
-                      navigate('/login');
+                      // Check if vendor is pending
+                      navigate('/vendor-pending');
                     }
                   } catch (error) {
                     console.error('Vendor verification failed:', error);
-                    alert('Unable to verify vendor access. Please log in again.');
-                    navigate('/login');
+                    // On error, check current path
+                    if (currentPath === '/vendor-google-complete' || currentPath === '/vendor-register') {
+                      // Stay on registration page
+                      return;
+                    }
+                    navigate('/vendor-pending');
                   }
-                  setIsOpen(false);
                 }}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 flex items-center gap-3 touch-manipulation"
               >
