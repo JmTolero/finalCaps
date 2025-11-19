@@ -196,6 +196,28 @@ const createOrder = async (req, res) => {
         if (items && items.length > 0) {
             for (const item of items) {
                 try {
+                    // Verify flavor exists and is not deleted
+                    if (item.flavor_id) {
+                        const [flavorCheck] = await pool.query(
+                            'SELECT flavor_id, deleted_at FROM flavors WHERE flavor_id = ?',
+                            [item.flavor_id]
+                        );
+                        
+                        if (flavorCheck.length === 0) {
+                            return res.status(400).json({
+                                success: false,
+                                error: `Flavor not found for item: ${item.name || item.flavor_id}`
+                            });
+                        }
+                        
+                        if (flavorCheck[0].deleted_at) {
+                            return res.status(400).json({
+                                success: false,
+                                error: `The flavor "${item.name || 'Unknown'}" is no longer available and cannot be ordered`
+                            });
+                        }
+                    }
+                    
                     const deliveryDate = getLocalDateString(deliveryDateTime);
                     
                     // Get drum size from item or query it
@@ -208,7 +230,7 @@ const createOrder = async (req, res) => {
                             FROM container_drum cd
                             JOIN products p ON cd.drum_id = p.drum_id
                             JOIN flavors f ON p.flavor_id = f.flavor_id
-                            WHERE p.vendor_id = ? AND f.flavor_id = ?
+                            WHERE p.vendor_id = ? AND f.flavor_id = ? AND f.deleted_at IS NULL
                             LIMIT 1
                         `, [vendor_id, item.flavor_id]);
                         

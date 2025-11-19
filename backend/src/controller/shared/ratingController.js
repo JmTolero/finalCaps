@@ -15,9 +15,9 @@ const rateFlavor = async (req, res) => {
       });
     }
 
-    // Check if flavor exists
+    // Check if flavor exists (excluding deleted flavors)
     const [flavors] = await pool.query(
-      'SELECT flavor_id FROM flavors WHERE flavor_id = ? AND store_status = "published"',
+      'SELECT flavor_id FROM flavors WHERE flavor_id = ? AND store_status = "published" AND deleted_at IS NULL',
       [flavorId]
     );
 

@@ -79,9 +79,9 @@ const getVendorSubscription = async (req, res) => {
 
         const vendor = vendors[0];
 
-        // Get current usage
+        // Get current usage (excluding deleted flavors)
         const [flavorCount] = await pool.query(
-            'SELECT COUNT(*) as count FROM flavors WHERE vendor_id = ?',
+            'SELECT COUNT(*) as count FROM flavors WHERE vendor_id = ? AND deleted_at IS NULL',
             [vendor_id]
         );
 
@@ -215,7 +215,7 @@ const getAllVendorSubscriptions = async (req, res) => {
         const vendorsWithUsage = await Promise.all(
             vendors.map(async (vendor) => {
                 const [flavorCount] = await pool.query(
-                    'SELECT COUNT(*) as count FROM flavors WHERE vendor_id = ?',
+                    'SELECT COUNT(*) as count FROM flavors WHERE vendor_id = ? AND deleted_at IS NULL',
                     [vendor.vendor_id]
                 );
 

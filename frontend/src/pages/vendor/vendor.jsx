@@ -1975,9 +1975,23 @@ export const Vendor = () => {
     if (!flavorToDelete) return;
     
     try {
+      // Get user ID from sessionStorage
+      const userRaw = sessionStorage.getItem('user');
+      if (!userRaw) {
+        updateStatus("error", "Please log in again to delete flavors.");
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
       const response = await axios.delete(
-        `${apiBase}/api/vendor/flavors/${flavorToDelete.flavor_id}`
+        `${apiBase}/api/vendor/flavors/${flavorToDelete.flavor_id}`,
+        {
+          headers: {
+            'x-user-id': user.id || user.user_id,
+            'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+          }
+        }
       );
       
       if (response.data.success) {

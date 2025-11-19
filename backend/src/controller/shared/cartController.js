@@ -25,7 +25,7 @@ const getUserCart = async (req, res) => {
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
-            WHERE ci.user_id = ?
+            WHERE ci.user_id = ? AND f.deleted_at IS NULL
             ORDER BY ci.updated_at DESC
         `, [userId]);
         
@@ -60,6 +60,26 @@ const addToCart = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: flavor_id, size, quantity, price'
+            });
+        }
+        
+        // Check if flavor exists and is not deleted
+        const [flavorCheck] = await pool.query(
+            'SELECT flavor_id, deleted_at FROM flavors WHERE flavor_id = ?',
+            [flavor_id]
+        );
+        
+        if (flavorCheck.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Flavor not found'
+            });
+        }
+        
+        if (flavorCheck[0].deleted_at) {
+            return res.status(400).json({
+                success: false,
+                error: 'This flavor is no longer available'
             });
         }
         
@@ -103,7 +123,7 @@ const addToCart = async (req, res) => {
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
-            WHERE ci.user_id = ?
+            WHERE ci.user_id = ? AND f.deleted_at IS NULL
             ORDER BY ci.updated_at DESC
         `, [userId]);
         
@@ -163,7 +183,7 @@ const updateCartItem = async (req, res) => {
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
-            WHERE ci.user_id = ?
+            WHERE ci.user_id = ? AND f.deleted_at IS NULL
             ORDER BY ci.updated_at DESC
         `, [userId]);
         
@@ -213,7 +233,7 @@ const removeFromCart = async (req, res) => {
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
-            WHERE ci.user_id = ?
+            WHERE ci.user_id = ? AND f.deleted_at IS NULL
             ORDER BY ci.updated_at DESC
         `, [userId]);
         
@@ -315,7 +335,7 @@ const syncCart = async (req, res) => {
             FROM cart_items ci
             JOIN flavors f ON ci.flavor_id = f.flavor_id
             JOIN vendors v ON f.vendor_id = v.vendor_id
-            WHERE ci.user_id = ?
+            WHERE ci.user_id = ? AND f.deleted_at IS NULL
             ORDER BY ci.updated_at DESC
         `, [userId]);
         

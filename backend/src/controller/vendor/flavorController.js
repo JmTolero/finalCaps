@@ -2,6 +2,7 @@ const pool = require('../../db/config');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const cloudinary = require('../../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const {
@@ -63,7 +64,7 @@ const getVendorFlavors = async (req, res) => {
     
     // First, let's check if there are any flavors at all for this vendor
     const [allFlavorsCheck] = await pool.query(`
-      SELECT COUNT(*) as total_flavors FROM flavors WHERE vendor_id = ?
+      SELECT COUNT(*) as total_flavors FROM flavors WHERE vendor_id = ? AND deleted_at IS NULL
     `, [vendor_id]);
     
     console.log('📊 Total flavors in database for vendor', vendor_id, ':', allFlavorsCheck[0].total_flavors);
@@ -115,7 +116,7 @@ const getVendorFlavors = async (req, res) => {
       LEFT JOIN products p ON f.flavor_id = p.flavor_id
       LEFT JOIN order_items oi ON p.product_id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.order_id
-      WHERE f.vendor_id = ?
+      WHERE f.vendor_id = ? AND f.deleted_at IS NULL
       GROUP BY f.flavor_id, f.flavor_name, f.flavor_description, f.image_url, f.store_status, f.created_at, f.vendor_id, f.sold_count, f.average_rating, f.total_ratings, a.address_id, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a2.address_id, a2.unit_number, a2.street_name, a2.barangay, a2.cityVillage, a2.province, a2.region, a2.postal_code
       ORDER BY f.created_at DESC
     `, [vendor_id]);
@@ -262,9 +263,9 @@ const updateFlavor = async (req, res) => {
       });
     }
 
-    // Check if flavor exists
+    // Check if flavor exists (excluding deleted flavors)
     const [existingFlavor] = await pool.query(`
-      SELECT flavor_id, image_url FROM flavors 
+      SELECT flavor_id, image_url, deleted_at FROM flavors 
       WHERE flavor_id = ?
     `, [flavor_id]);
 
@@ -272,6 +273,14 @@ const updateFlavor = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Flavor not found'
+      });
+    }
+
+    // Prevent updating deleted flavors
+    if (existingFlavor[0].deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot update a deleted flavor. Please restore it first.'
       });
     }
 
@@ -333,9 +342,48 @@ const deleteFlavor = async (req, res) => {
     console.log('🔍 Flavor delete debug:');
     console.log('  - flavor_id:', flavor_id);
     
-    // Check if flavor exists
+    // Get user ID from request (from JWT token or headers)
+    let userId = req.headers['x-user-id'] || req.user?.user_id || req.user?.id;
+    
+    // If not found, try to extract from JWT token in Authorization header
+    if (!userId) {
+      const authHeader = req.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+          userId = decoded.user_id || decoded.id;
+        } catch (error) {
+          console.log('JWT token verification failed:', error.message);
+        }
+      }
+    }
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required. Please log in again.'
+      });
+    }
+
+    // Get vendor_id from user_id
+    const [vendors] = await pool.query(`
+      SELECT vendor_id FROM vendors WHERE user_id = ?
+    `, [userId]);
+
+    if (vendors.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Vendor account not found'
+      });
+    }
+
+    const vendor_id = vendors[0].vendor_id;
+    console.log('  - vendor_id:', vendor_id);
+    
+    // Check if flavor exists and belongs to this vendor (including deleted ones for ownership check)
     const [existingFlavor] = await pool.query(`
-      SELECT flavor_id, image_url FROM flavors 
+      SELECT flavor_id, image_url, vendor_id, deleted_at FROM flavors 
       WHERE flavor_id = ?
     `, [flavor_id]);
 
@@ -346,125 +394,38 @@ const deleteFlavor = async (req, res) => {
       });
     }
 
-    // Check if the flavor has sales records
-    console.log('  - Checking for related sales records...');
-    const [salesRecords] = await pool.query(`
-      SELECT COUNT(*) AS saleCount
-      FROM order_items oi
-      INNER JOIN products p ON oi.product_id = p.product_id
-      WHERE p.flavor_id = ?
-    `, [flavor_id]);
-
-    if (salesRecords[0].saleCount > 0) {
-      console.log(`  - Found ${salesRecords[0].saleCount} sales record(s); aborting delete.`);
-      return res.status(400).json({
+    // Verify ownership
+    if (existingFlavor[0].vendor_id !== vendor_id) {
+      console.log(`  - Ownership mismatch: flavor belongs to vendor ${existingFlavor[0].vendor_id}, but user is vendor ${vendor_id}`);
+      return res.status(403).json({
         success: false,
-        error: 'Flavor cannot be deleted because it has associated sales records.'
+        error: 'You do not have permission to delete this flavor'
       });
     }
 
-    // First, delete related products (foreign key constraint)
-    console.log('  - Checking for related products...');
-    const [relatedProducts] = await pool.query(`
-      SELECT product_id FROM products 
-      WHERE flavor_id = ?
-    `, [flavor_id]);
+    // Check if already deleted
+    if (existingFlavor[0].deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error: 'Flavor is already deleted'
+      });
+    }
+
+    // Soft delete: Set deleted_at timestamp instead of hard deleting
+    // This preserves sales records and order history while hiding the flavor from display
+    console.log('  - Performing soft delete (preserving sales records)...');
     
-    if (relatedProducts.length > 0) {
-      console.log(`  - Found ${relatedProducts.length} related product(s), deleting...`);
-      
-      // Delete the products (no sales records exist at this point)
-      await pool.query(`
-        DELETE FROM products 
-        WHERE flavor_id = ?
-      `, [flavor_id]);
-      
-      console.log('  - Related products deleted successfully');
-    }
-
-    // Delete image files if they exist
-    if (existingFlavor[0].image_url) {
-      try {
-        const imageUrls = JSON.parse(existingFlavor[0].image_url);
-        if (Array.isArray(imageUrls)) {
-          // Delete multiple images
-          for (const imageUrl of imageUrls) {
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              // Cloudinary image - extract public_id and delete from Cloudinary
-              try {
-                // Extract public_id from Cloudinary URL
-                // URL format: https://res.cloudinary.com/cloud-name/image/upload/v123/folder/public-id.ext
-                const urlParts = imageUrl.split('/');
-                const fileWithExt = urlParts[urlParts.length - 1];
-                const fileName = fileWithExt.split('.')[0]; // Remove extension
-                const folder = urlParts[urlParts.length - 2];
-                const publicId = `${folder}/${fileName}`;
-                
-                await cloudinary.uploader.destroy(publicId);
-                console.log('  - Deleted Cloudinary image:', publicId);
-              } catch (cloudErr) {
-                console.error('  - Failed to delete Cloudinary image:', imageUrl, cloudErr.message);
-              }
-            } else {
-              // Local image - delete from file system
-              const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
-              if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-                console.log('  - Deleted local image:', imageUrl);
-              }
-            }
-          }
-        } else {
-          // Delete single image (old format)
-          const imageUrl = existingFlavor[0].image_url;
-          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-            // Cloudinary image
-            try {
-              const urlParts = imageUrl.split('/');
-              const fileWithExt = urlParts[urlParts.length - 1];
-              const fileName = fileWithExt.split('.')[0];
-              const folder = urlParts[urlParts.length - 2];
-              const publicId = `${folder}/${fileName}`;
-              
-              await cloudinary.uploader.destroy(publicId);
-              console.log('  - Deleted Cloudinary image:', publicId);
-            } catch (cloudErr) {
-              console.error('  - Failed to delete Cloudinary image:', imageUrl, cloudErr.message);
-            }
-          } else {
-            // Local image
-            const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
-            if (fs.existsSync(imagePath)) {
-              fs.unlinkSync(imagePath);
-              console.log('  - Deleted local image:', imageUrl);
-            }
-          }
-        }
-      } catch (e) {
-        console.error('  - Error processing image deletion:', e.message);
-        // Fallback for single image
-        const imageUrl = existingFlavor[0].image_url;
-        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-          const imagePath = path.join(__dirname, '../../../uploads/flavor-images', imageUrl);
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-            console.log('  - Deleted local image (fallback):', imageUrl);
-          }
-        }
-      }
-    }
-
-    // Finally, delete the flavor from database
     await pool.query(`
-      DELETE FROM flavors 
+      UPDATE flavors 
+      SET deleted_at = NOW()
       WHERE flavor_id = ?
     `, [flavor_id]);
 
-    console.log('✅ Flavor deleted successfully');
+    console.log('✅ Flavor soft deleted successfully (hidden from display, sales records preserved)');
 
     res.json({
       success: true,
-      message: 'Flavor deleted successfully'
+      message: 'Flavor deleted successfully. It has been hidden from display, but sales records are preserved.'
     });
   } catch (error) {
     console.error('Error deleting flavor:', error);
@@ -495,9 +456,9 @@ const updateFlavorStoreStatus = async (req, res) => {
       });
     }
 
-    // Check if flavor exists and get vendor + lock info
+    // Check if flavor exists and get vendor + lock info (including deleted ones for status update)
     const [existingFlavor] = await pool.query(`
-      SELECT flavor_id, vendor_id, locked_by_subscription FROM flavors 
+      SELECT flavor_id, vendor_id, locked_by_subscription, deleted_at FROM flavors 
       WHERE flavor_id = ?
     `, [flavor_id]);
 
@@ -505,6 +466,14 @@ const updateFlavorStoreStatus = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Flavor not found'
+      });
+    }
+
+    // Prevent updating status of deleted flavors
+    if (existingFlavor[0].deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot update status of a deleted flavor. Please restore it first.'
       });
     }
 
@@ -556,7 +525,7 @@ const updateFlavorStoreStatus = async (req, res) => {
         const [publishedCountRows] = await pool.query(`
           SELECT COUNT(*) as published_count
           FROM flavors
-          WHERE vendor_id = ? AND store_status = 'published' AND flavor_id <> ?
+          WHERE vendor_id = ? AND store_status = 'published' AND flavor_id <> ? AND deleted_at IS NULL
         `, [vendorId, flavor_id]);
 
         if (publishedCountRows[0].published_count >= flavorLimit) {
