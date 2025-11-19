@@ -8,7 +8,7 @@ const geocodeAddress = async (city, province, country = 'Philippines') => {
         const address = `${city}, ${province}, ${country}`;
         const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyArt8GMWuhdWsHKM73YdXwvKOsMLaaeQYM';
         
-        console.log(`🔍 Geocoding address: ${address}`);
+        console.log(` Geocoding address: ${address}`);
         
         const response = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
@@ -18,18 +18,18 @@ const geocodeAddress = async (city, province, country = 'Philippines') => {
         
         if (data.status === 'OK' && data.results.length > 0) {
             const location = data.results[0].geometry.location;
-            console.log(`✅ Geocoded successfully: ${location.lat}, ${location.lng}`);
+            console.log(`Geocoded successfully: ${location.lat}, ${location.lng}`);
             return {
                 latitude: location.lat,
                 longitude: location.lng,
                 formatted_address: data.results[0].formatted_address
             };
         } else {
-            console.log(`❌ Geocoding failed: ${data.status}`);
+            console.log(` Geocoding failed: ${data.status}`);
             return null;
         }
     } catch (error) {
-        console.error('❌ Geocoding error:', error.message);
+        console.error(' Geocoding error:', error.message);
         return null;
     }
 };
