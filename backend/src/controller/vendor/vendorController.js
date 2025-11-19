@@ -699,7 +699,7 @@ const getVendorProducts = async (req, res) => {
                 p.product_id, p.product_name, p.price, p.size, p.stock, p.description, p.image_url,
                 f.flavor_name, v.store_name
             FROM products p
-            INNER JOIN flavors f ON p.flavor_id = f.flavor_id
+            INNER JOIN flavors f ON p.flavor_id = f.flavor_id AND f.deleted_at IS NULL
             INNER JOIN vendors v ON p.vendor_id = v.vendor_id
             WHERE p.vendor_id = ? ORDER BY p.product_name
         `, [vendorId]);
@@ -720,7 +720,7 @@ const getAllProducts = async (req, res) => {
                 p.product_id, p.product_name, p.price, p.size, p.stock, p.description, p.image_url,
                 f.flavor_name, v.store_name, v.location, v.vendor_id
             FROM products p
-            INNER JOIN flavors f ON p.flavor_id = f.flavor_id
+            INNER JOIN flavors f ON p.flavor_id = f.flavor_id AND f.deleted_at IS NULL
             INNER JOIN vendors v ON p.vendor_id = v.vendor_id
             WHERE v.status = 'approved'
             ORDER BY v.store_name, p.product_name
@@ -767,7 +767,7 @@ const getVendorsWithLocations = async (req, res) => {
             FROM vendors v
             LEFT JOIN users u ON v.user_id = u.user_id
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
-            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
+            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published' AND f.deleted_at IS NULL
             WHERE v.status = 'approved'
             GROUP BY v.vendor_id, v.store_name, v.profile_image_url, v.status, u.fname, u.lname, u.email, u.contact_no, a.unit_number, a.street_name, a.barangay, a.cityVillage, a.province, a.region, a.postal_code, a.latitude, a.longitude, a.exact_latitude, a.exact_longitude, a.coordinate_accuracy, a.coordinate_source
             ORDER BY v.store_name
@@ -830,7 +830,7 @@ const getAllApprovedVendors = async (req, res) => {
             LEFT JOIN addresses a ON v.primary_address_id = a.address_id
             LEFT JOIN user_addresses ua ON v.user_id = ua.user_id AND ua.is_default = 1
             LEFT JOIN addresses a2 ON ua.address_id = a2.address_id
-            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published'
+            INNER JOIN flavors f ON v.vendor_id = f.vendor_id AND f.store_status = 'published' AND f.deleted_at IS NULL
             WHERE v.status = 'approved'
             ORDER BY v.store_name
         `);
