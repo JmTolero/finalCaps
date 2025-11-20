@@ -262,6 +262,7 @@ const getAllVendorSubscriptions = async (req, res) => {
 // Get subscription revenue summary
 const getSubscriptionRevenue = async (req, res) => {
     try {
+        // Get MRR (Monthly Recurring Revenue) - Expected revenue based on current plans
         const [revenue] = await pool.query(`
             SELECT 
                 subscription_plan,
@@ -280,15 +281,41 @@ const getSubscriptionRevenue = async (req, res) => {
             GROUP BY subscription_plan
         `);
 
-        const totalRevenue = revenue.reduce((sum, plan) => sum + plan.monthly_revenue, 0);
+        const totalMRR = revenue.reduce((sum, plan) => sum + plan.monthly_revenue, 0);
         const totalVendors = revenue.reduce((sum, plan) => sum + plan.vendor_count, 0);
+
+        // Get actual collected revenue from subscription_payments table
+        const [actualRevenue] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(amount), 0) as total_collected,
+                COUNT(*) as total_payments
+            FROM subscription_payments
+            WHERE payment_status = 'paid'
+        `);
+
+        // Get current month's collected revenue
+        const [monthlyCollected] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(amount), 0) as monthly_collected,
+                COUNT(*) as monthly_payments
+            FROM subscription_payments
+            WHERE payment_status = 'paid'
+            AND MONTH(payment_date) = MONTH(CURDATE())
+            AND YEAR(payment_date) = YEAR(CURDATE())
+        `);
 
         res.json({
             success: true,
             revenue_summary: {
                 plans: revenue,
                 total_vendors: totalVendors,
-                total_monthly_revenue: totalRevenue
+                total_monthly_revenue: totalMRR,
+                actual_collected: {
+                    total: actualRevenue[0].total_collected,
+                    total_payments: actualRevenue[0].total_payments,
+                    this_month: monthlyCollected[0].monthly_collected,
+                    this_month_payments: monthlyCollected[0].monthly_payments
+                }
             }
         });
 

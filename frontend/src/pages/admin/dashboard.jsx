@@ -1,12 +1,33 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-// import { NavWithLogo } from "../../components/shared/nav";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from "recharts";
 
 //images import
 
 import imgTotalUser from '../../assets/images/t-user.png';
 import imgTotalVendor from '../../assets/images/t-vendor.png';
 import imgTotalOrder from '../../assets/images/t-order.png';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const PLAN_COLORS = {
+  free: '#94A3B8',
+  professional: '#0088FE',
+  premium: '#FFD700'
+};
 
 export const AdminDashboard = () => {
 
@@ -19,6 +40,12 @@ export const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  
+  // Subscription statistics
+  const [subscriptionRevenue, setSubscriptionRevenue] = useState(0);
+  const [revenueByPlan, setRevenueByPlan] = useState([]);
+  const [vendorPlanDist, setVendorPlanDist] = useState([]);
+  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
 
   useEffect(()=>{
     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
@@ -36,6 +63,43 @@ export const AdminDashboard = () => {
       
     }
     fetchTotal();
+
+    const fetchSubscriptionStats = async () => {
+      try{
+        const res = await axios.get(`${apiBase}/api/admin/statistics/subscription`);
+        if (res.data.success) {
+          const data = res.data.data;
+          
+          // Set total subscription revenue
+          setSubscriptionRevenue(data.overview.totalSubscriptionRevenue || 0);
+          
+          // Format revenue by plan
+          const planData = data.revenueByPlan.map(item => ({
+            name: item.plan_name.charAt(0).toUpperCase() + item.plan_name.slice(1),
+            revenue: parseFloat(item.totalRevenue),
+            subscriptions: item.subscriptionCount
+          }));
+          setRevenueByPlan(planData);
+          
+          // Format vendor plan distribution
+          const vendorData = data.vendorSubscriptionStatus.map(item => ({
+            name: (item.plan || 'Free').charAt(0).toUpperCase() + (item.plan || 'free').slice(1),
+            value: item.vendorCount
+          }));
+          setVendorPlanDist(vendorData);
+          
+          // Format monthly revenue (last 6 months)
+          const monthlyData = data.monthlyRevenue.map(item => ({
+            month: item.month,
+            revenue: parseFloat(item.revenue)
+          }));
+          setMonthlyRevenue(monthlyData);
+        }
+      }catch(err){
+        console.log('Error fetching subscription stats:', err);
+      }
+    }
+    fetchSubscriptionStats();
 
     const fetchOrderRecords = async () => {
       try{
@@ -101,43 +165,154 @@ export const AdminDashboard = () => {
       <main className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-10 min-h-screen">
 
         {/* Page Title */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 mt-6 sm:mt-8 lg:mt-10">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+        <div className="mb-3 sm:mb-4 lg:mb-6 mt-4 sm:mt-6 lg:mt-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3 lg:gap-4">
 
-          <div className="bg-[#D4F6FF] h-24 sm:h-28 lg:h-32 rounded-lg sm:rounded-xl flex flex-col justify-center px-2 sm:px-3 lg:px-4">
-            <h3 className="text-xs sm:text-sm lg:text-base font-semibold text-left mb-1">Total Users</h3>
+          <div className="bg-[#D4F6FF] h-20 sm:h-24 lg:h-28 rounded-lg sm:rounded-xl flex flex-col justify-center px-3 sm:px-3 lg:px-4">
+            <h3 className="text-xs sm:text-xs lg:text-sm font-semibold text-left mb-1">Total Users</h3>
             <div className="flex justify-between items-center">
-              <img src={imgTotalUser} alt="Total Users" className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#26A0FE]">{totalUsers.toLocaleString()}</div>
+              <img src={imgTotalUser} alt="Total Users" className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+              <div className="text-xl sm:text-lg lg:text-2xl font-bold text-[#26A0FE]">{totalUsers.toLocaleString()}</div>
             </div>
           </div>
 
-          <div className="bg-[#D4F6FF] h-24 sm:h-28 lg:h-32 rounded-lg sm:rounded-xl flex flex-col justify-center px-2 sm:px-3 lg:px-4">
-            <h3 className="text-xs sm:text-sm lg:text-base font-semibold text-left mb-1">Total Vendors</h3>
+          <div className="bg-[#D4F6FF] h-20 sm:h-24 lg:h-28 rounded-lg sm:rounded-xl flex flex-col justify-center px-3 sm:px-3 lg:px-4">
+            <h3 className="text-xs sm:text-xs lg:text-sm font-semibold text-left mb-1">Total Vendors</h3>
             <div className="flex justify-between items-center">
-              <img src={imgTotalVendor} alt="Total Vendors" className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#26A0FE]">{totalVendors.toLocaleString()}</div>
+              <img src={imgTotalVendor} alt="Total Vendors" className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+              <div className="text-xl sm:text-lg lg:text-2xl font-bold text-[#26A0FE]">{totalVendors.toLocaleString()}</div>
             </div>
           </div>
 
-          <div className="bg-[#D4F6FF] h-24 sm:h-28 lg:h-32 rounded-lg sm:rounded-xl flex flex-col justify-center px-2 sm:px-3 lg:px-4">
-            <h3 className="text-xs sm:text-sm lg:text-base font-semibold text-left mb-1">Total Orders</h3>
+          <div className="bg-[#D4F6FF] h-20 sm:h-24 lg:h-28 rounded-lg sm:rounded-xl flex flex-col justify-center px-3 sm:px-3 lg:px-4">
+            <h3 className="text-xs sm:text-xs lg:text-sm font-semibold text-left mb-1">Total Orders</h3>
             <div className="flex justify-between items-center">
-              <img src={imgTotalOrder} alt="Total Orders" className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
-              <div className="text-lg sm:text-xl lg:text-2xl font-bold text-[#26A0FE]">{totalOrders.toLocaleString()}</div>
+              <img src={imgTotalOrder} alt="Total Orders" className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
+              <div className="text-xl sm:text-lg lg:text-2xl font-bold text-[#26A0FE]">{totalOrders.toLocaleString()}</div>
             </div>
           </div>
 
+        </div>
+
+        {/* Subscription Statistics Section */}
+        <div className="mt-6 sm:mt-8 lg:mt-10">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Subscription Statistics</h2>
+          
+          {/* Revenue Card */}
+          <div className="bg-gradient-to-br from-green-500 to-green-600 p-3 sm:p-4 lg:p-6 rounded-lg shadow-lg mb-4 sm:mb-6">
+            <h3 className="text-white text-xs sm:text-sm lg:text-base opacity-90 mb-1 sm:mb-2">Total Subscription Revenue</h3>
+            <div className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold">₱{parseFloat(subscriptionRevenue).toLocaleString()}</div>
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
+            
+            {/* Revenue by Plan Chart */}
+            <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow overflow-hidden">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold mb-3 sm:mb-4 text-gray-800">Revenue by Plan</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={200} className="sm:!h-[250px]">
+                  <BarChart data={revenueByPlan}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      className="text-xs sm:text-sm"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      className="text-xs sm:text-sm"
+                    />
+                    <Tooltip 
+                      formatter={(value) => `₱${value.toLocaleString()}`}
+                      contentStyle={{ fontSize: '12px' }}
+                    />
+                    <Bar dataKey="revenue" fill="#10B981" name="Revenue (₱)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Vendor Plan Distribution Chart */}
+            <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow overflow-hidden">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold mb-3 sm:mb-4 text-gray-800">Vendor Plan Distribution</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={200} className="sm:!h-[250px]">
+                  <PieChart>
+                    <Pie
+                      data={vendorPlanDist}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => {
+                        // Shorter labels on mobile
+                        const shortName = window.innerWidth < 640 ? name.substring(0, 4) : name;
+                        return `${shortName}: ${value}`;
+                      }}
+                      outerRadius={window.innerWidth < 640 ? 60 : 80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {vendorPlanDist.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PLAN_COLORS[entry.name.toLowerCase()] || COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize: '12px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Monthly Revenue Trend */}
+            <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow lg:col-span-2 overflow-hidden">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold mb-3 sm:mb-4 text-gray-800">Monthly Revenue Trend</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={200} className="sm:!h-[250px]">
+                  <LineChart data={monthlyRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 11 }}
+                      angle={window.innerWidth < 640 ? -45 : 0}
+                      textAnchor={window.innerWidth < 640 ? "end" : "middle"}
+                      height={window.innerWidth < 640 ? 60 : 30}
+                      className="text-xs sm:text-sm"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 11 }}
+                      className="text-xs sm:text-sm"
+                    />
+                    <Tooltip 
+                      formatter={(value) => `₱${value.toLocaleString()}`}
+                      contentStyle={{ fontSize: '11px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: '11px' }}
+                      iconSize={10}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#10B981" 
+                      strokeWidth={window.innerWidth < 640 ? 2 : 3} 
+                      name="Revenue (₱)" 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+          </div>
         </div>
 
         {/* table */}
-        <div className="bg-[#D4F6FF] p-3 sm:p-4 lg:p-6 rounded-lg sm:rounded-xl shadow-md mt-6 sm:mt-8 lg:mt-10 xl:mt-16 2xl:mt-20">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-3 sm:gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold">Bookings</h2>
+        <div className="bg-[#D4F6FF] p-3 sm:p-4 lg:p-6 rounded-lg sm:rounded-xl shadow-md mt-6 sm:mt-8 lg:mt-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 lg:gap-4 w-full sm:w-auto">
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold">Bookings</h2>
               <span className="text-xs sm:text-sm text-gray-600">
                 {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
                 {searchTerm && ` (filtered from ${orders.length})`}
@@ -203,8 +378,8 @@ export const AdminDashboard = () => {
 
           {/* Debug Info */}
           {!loading && !error && (
-            <div className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-              Found {filteredOrders.length} booking records
+            <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">
+              Found {filteredOrders.length} booking record{filteredOrders.length !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
             </div>
           )}

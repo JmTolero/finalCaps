@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
-  DollarSign, 
   Crown, 
   Star, 
   Gift,
-  CheckCircle,
   Receipt,
-  Calendar,
-  CreditCard
+  CheckCircle,
+  CreditCard,
+  Calendar
 } from 'lucide-react';
 
 const SubscriptionManagement = () => {
   const [vendors, setVendors] = useState([]);
-  const [revenue, setRevenue] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
@@ -23,7 +21,6 @@ const SubscriptionManagement = () => {
 
   useEffect(() => {
     fetchVendorSubscriptions();
-    fetchRevenue();
     fetchTransactions();
   }, []);
 
@@ -37,19 +34,6 @@ const SubscriptionManagement = () => {
       }
     } catch (error) {
       console.error('Error fetching vendor subscriptions:', error);
-    }
-  };
-
-  const fetchRevenue = async () => {
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await fetch(`${apiBase}/api/admin/subscription/revenue`);
-      const data = await response.json();
-      if (data.success) {
-        setRevenue(data.revenue_summary);
-      }
-    } catch (error) {
-      console.error('Error fetching revenue:', error);
     } finally {
       setLoading(false);
     }
@@ -88,8 +72,6 @@ const SubscriptionManagement = () => {
             ? { ...vendor, subscription_plan: newPlan }
             : vendor
         ));
-        // Refresh revenue data
-        fetchRevenue();
       } else {
         alert('Failed to update subscription: ' + data.error);
       }
@@ -140,55 +122,6 @@ const SubscriptionManagement = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mt-6 sm:mt-8 lg:mt-12">Subscription Management</h1>
       </div>
-
-      {/* Revenue Overview */}
-      {revenue && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-          <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
-            <div className="flex items-center">
-              <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600" />
-              <div className="ml-2 sm:ml-3 lg:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">₱{revenue.total_monthly_revenue.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
-            <div className="flex items-center">
-              <Users className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600" />
-              <div className="ml-2 sm:ml-3 lg:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Vendors</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">{revenue.total_vendors}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
-            <div className="flex items-center">
-              <Star className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-yellow-600" />
-              <div className="ml-2 sm:ml-3 lg:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Professional</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">
-                  {revenue.plans.find(p => p.subscription_plan === 'professional')?.vendor_count || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-sky-100 rounded-lg shadow p-3 sm:p-4 lg:p-6">
-            <div className="flex items-center">
-              <Crown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-purple-600" />
-              <div className="ml-2 sm:ml-3 lg:ml-4">
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Premium</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold">
-                  {revenue.plans.find(p => p.subscription_plan === 'premium')?.vendor_count || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="space-y-3 sm:space-y-4">
@@ -583,7 +516,7 @@ const SubscriptionManagement = () => {
                     </tbody>
                   </table>
                 </div>
-                );
+                )
               })()}
             </div>
           </div>

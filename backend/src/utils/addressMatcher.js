@@ -355,6 +355,76 @@ function levenshteinDistance(str1, str2) {
 }
 
 /**
+ * Get vendor's location (city and province) from their primary address
+ */
+async function getVendorLocation(vendorId) {
+  try {
+    const [vendorLocation] = await pool.query(`
+      SELECT 
+        a.cityVillage as city,
+        a.province
+      FROM vendors v
+      LEFT JOIN addresses a ON v.primary_address_id = a.address_id
+      WHERE v.vendor_id = ?
+    `, [vendorId]);
+    
+    if (vendorLocation.length > 0 && vendorLocation[0].city && vendorLocation[0].province) {
+      return {
+        city: vendorLocation[0].city,
+        province: vendorLocation[0].province
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error fetching vendor location:', error);
+    return null;
+  }
+}
+
+/**
+ * Compare customer location with vendor location and determine pricing tier
+ */
+function compareLocationsAndGetTier(customerCity, customerProvince, vendorCity, vendorProvince) {
+  // Normalize and match cities
+  const customerCityMatched = findCityMatch(customerCity);
+  const vendorCityMatched = findCityMatch(vendorCity);
+  
+  // Normalize and match provinces
+  const customerProvinceMatched = findProvinceMatch(customerProvince);
+  const vendorProvinceMatched = findProvinceMatch(vendorProvince);
+  
+  // Check if same city (both must match)
+  if (customerCityMatched && vendorCityMatched && 
+      customerCityMatched === vendorCityMatched &&
+      customerProvinceMatched && vendorProvinceMatched &&
+      customerProvinceMatched === vendorProvinceMatched) {
+    return {
+      tier: 'same_city',
+      price: 50,
+      match_type: 'default_same_city'
+    };
+  }
+  
+  // Check if same province (different city)
+  if (customerProvinceMatched && vendorProvinceMatched &&
+      customerProvinceMatched === vendorProvinceMatched) {
+    return {
+      tier: 'same_province',
+      price: 100,
+      match_type: 'default_same_province'
+    };
+  }
+  
+  // Different province
+  return {
+    tier: 'different_province',
+    price: 200,
+    match_type: 'default_different_province'
+  };
+}
+
+/**
  * Get delivery price with fuzzy matching for vendor and location
  */
 async function getDeliveryPriceWithFuzzyMatching(vendorId, inputCity, inputProvince) {
@@ -420,33 +490,66 @@ async function getDeliveryPriceWithFuzzyMatching(vendorId, inputCity, inputProvi
       }
     }
     
-    // No match found - return suggestions
-    const suggestions = [];
-    if (!matchedCity) {
-      suggestions.push(`City "${inputCity}" not recognized. Did you mean: ${getCitySuggestions(inputCity)}`);
-    }
-    if (!matchedProvince) {
-      suggestions.push(`Province "${inputProvince}" not recognized. Did you mean: ${getProvinceSuggestions(inputProvince)}`);
+    // No configured zone found - try default pricing based on vendor location
+    const vendorLocation = await getVendorLocation(vendorId);
+    
+    if (vendorLocation && vendorLocation.city && vendorLocation.province) {
+      const pricingTier = compareLocationsAndGetTier(
+        inputCity,
+        inputProvince,
+        vendorLocation.city,
+        vendorLocation.province
+      );
+      
+      return {
+        success: true,
+        delivery_price: pricingTier.price,
+        match_type: pricingTier.match_type,
+        matched_location: {
+          city: inputCity,
+          province: inputProvince
+        },
+        vendor_location: {
+          city: vendorLocation.city,
+          province: vendorLocation.province
+        },
+        pricing_tier: pricingTier.tier,
+        original_input: {
+          city: inputCity,
+          province: inputProvince
+        },
+        message: `Using default delivery pricing (${pricingTier.tier.replace('_', ' ')})`
+      };
     }
     
+    // Fallback: vendor has no location data - use system default
     return {
-      success: false,
-      delivery_price: 0,
-      match_type: 'none',
+      success: true,
+      delivery_price: 150,
+      match_type: 'default_system',
+      matched_location: {
+        city: inputCity,
+        province: inputProvince
+      },
       original_input: {
         city: inputCity,
         province: inputProvince
       },
-      suggestions: suggestions,
-      message: 'Delivery not available to this location'
+      message: 'Using system default delivery pricing'
     };
     
   } catch (error) {
     console.error('Error in fuzzy delivery matching:', error);
+    // On error, return system default instead of failing
     return {
-      success: false,
-      delivery_price: 0,
-      error: 'Failed to check delivery availability'
+      success: true,
+      delivery_price: 150,
+      match_type: 'default_system',
+      original_input: {
+        city: inputCity,
+        province: inputProvince
+      },
+      error: 'Failed to check delivery availability, using default pricing'
     };
   }
 }

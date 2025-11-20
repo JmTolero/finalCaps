@@ -254,7 +254,11 @@ const getDeliveryPriceForLocation = async (req, res) => {
         match_type: result.match_type,
         location: result.matched_location,
         original_input: result.original_input,
-        suggestions: result.suggestions || null
+        suggestions: result.suggestions || null,
+        // Include default pricing info if applicable
+        pricing_tier: result.pricing_tier || null,
+        vendor_location: result.vendor_location || null,
+        message: result.message || null
       });
     } else {
       res.json({

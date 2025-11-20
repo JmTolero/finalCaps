@@ -3107,23 +3107,46 @@ export const Vendor = () => {
     setEditingAddress(address);
     setNewAddress(address);
     setShowAddressForm(true);
+    // Auto-scroll to the form after a short delay to ensure it's rendered
+    setTimeout(() => {
+      const formElement = document.getElementById('add-store-address-form');
+      if (formElement) {
+        formElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
-  const deleteAddress = async (addressId) => {
-    if (!window.confirm("Are you sure you want to delete this address?"))
-      return;
+  const deleteAddress = (addressId) => {
+    // Find the address to show in the confirmation message
+    const addressToDelete = addresses.find(addr => addr.address_id === addressId);
+    const addressLabel = addressToDelete?.address_label || 'this address';
     
-    try {
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      await axios.delete(`${apiBase}/api/addresses/address/${addressId}`);
-      updateStatus("success", "Address deleted successfully!");
-      fetchAddresses();
-    } catch (error) {
-      updateStatus(
-        "error",
-        error.response?.data?.error || "Failed to delete address"
-      );
-    }
+    showConfirmModalDialog(
+      'Delete Store Address',
+      `Are you sure you want to delete ${addressLabel}? This action cannot be undone.`,
+      async () => {
+        try {
+          const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+          await axios.delete(`${apiBase}/api/addresses/address/${addressId}`);
+          updateStatus("success", "Address deleted successfully!");
+          fetchAddresses();
+          setShowConfirmModal(false);
+        } catch (error) {
+          updateStatus(
+            "error",
+            error.response?.data?.error || "Failed to delete address"
+          );
+          setShowConfirmModal(false);
+        }
+      },
+      'Delete',
+      'Cancel',
+      'danger'
+    );
   };
 
   // Handle setting exact location
@@ -4502,6 +4525,65 @@ export const Vendor = () => {
           currentCoordinates={selectedAddressForLocation}
           onLocationSaved={handleLocationSaved}
         />
+
+        {/* Confirmation Modal */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4">
+            <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto relative z-[10000]">
+              <div className="text-center">
+                <div className={`mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full mb-3 sm:mb-4 ${
+                  confirmModalData.type === 'danger' ? 'bg-red-100' : 
+                  confirmModalData.type === 'info' ? 'bg-blue-100' : 
+                  'bg-yellow-100'
+                }`}>
+                  {confirmModalData.type === 'danger' ? (
+                    <svg className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  ) : confirmModalData.type === 'info' ? (
+                    <svg className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  )}
+                </div>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
+                  {confirmModalData.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 lg:mb-6">
+                  {confirmModalData.message}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setShowConfirmModal(false)}
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm"
+                  >
+                    {confirmModalData.cancelText}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmModalData.onConfirm) {
+                        confirmModalData.onConfirm();
+                      }
+                    }}
+                    className={`flex-1 font-medium py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-xs sm:text-sm ${
+                      confirmModalData.type === 'danger' 
+                        ? 'bg-red-600 hover:bg-red-700 text-white' 
+                        : confirmModalData.type === 'info'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                    }`}
+                  >
+                    {confirmModalData.confirmText}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -9725,8 +9807,8 @@ export const Vendor = () => {
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-5 lg:p-6 max-w-md w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto relative z-[10000]">
             <div className="text-center">
               <div className={`mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full mb-3 sm:mb-4 ${
                 confirmModalData.type === 'danger' ? 'bg-red-100' : 

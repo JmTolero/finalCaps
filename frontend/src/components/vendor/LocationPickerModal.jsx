@@ -91,9 +91,9 @@ const LocationPickerModal = ({
 
   const modalContent = (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-[9999]" 
+      onClick={handleClose}
       style={{ 
-        zIndex: 999999, 
         position: 'fixed',
         top: 0,
         left: 0,
@@ -103,21 +103,25 @@ const LocationPickerModal = ({
         height: '100vh'
       }}
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      <div 
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto relative z-[10000]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-white">Set Exact Location</h2>
-              <p className="text-blue-100 text-sm mt-1">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 sticky top-0 z-10">
+          <div className="flex justify-between items-start sm:items-center gap-2 sm:gap-0">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold text-white">Set Exact Location</h2>
+              <p className="text-blue-100 text-xs sm:text-sm mt-1">
                 Pin your exact store location on the map for accurate delivery tracking
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="text-white hover:text-blue-200 transition-colors"
+              className="text-white hover:text-blue-200 transition-colors flex-shrink-0 p-1"
+              aria-label="Close"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -125,18 +129,18 @@ const LocationPickerModal = ({
         </div>
 
         {/* Content */}
-        <div className="p-4">
+        <div className="p-3 sm:p-4 lg:p-6">
           {/* Instructions */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
             <div className="flex items-start space-x-2">
               <div className="flex-shrink-0">
-                <svg className="w-4 h-4 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div>
-                <h3 className="text-xs font-semibold text-blue-800 mb-1">How to set your exact location:</h3>
-                <ul className="text-xs text-blue-700 space-y-0.5">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs sm:text-sm font-semibold text-blue-800 mb-1">How to set your exact location:</h3>
+                <ul className="text-xs sm:text-sm text-blue-700 space-y-0.5">
                   <li>• Click on the map to place a pin</li>
                   <li>• Drag the pin to adjust position</li>
                   <li>• Pin should be on your actual store building</li>
@@ -146,7 +150,7 @@ const LocationPickerModal = ({
           </div>
 
           {/* Map */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden mb-4" style={{ height: '300px' }}>
+          <div className="bg-gray-100 rounded-lg overflow-hidden mb-3 sm:mb-4 h-48 sm:h-64 md:h-80 lg:h-96">
             <GoogleMapFree
               center={selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : [14.5995, 120.9842]}
               zoom={selectedLocation ? 18 : 15}
@@ -181,19 +185,19 @@ const LocationPickerModal = ({
 
           {/* Location Info */}
           {selectedLocation && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
               <div className="flex items-center space-x-2 mb-2">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <h3 className="font-semibold text-green-800">Location Selected</h3>
+                <h3 className="font-semibold text-green-800 text-sm sm:text-base">Location Selected</h3>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                <div className="break-all">
                   <span className="text-green-700 font-medium">Latitude:</span>
                   <span className="ml-2 text-green-600">{selectedLocation.lat.toFixed(6)}</span>
                 </div>
-                <div>
+                <div className="break-all">
                   <span className="text-green-700 font-medium">Longitude:</span>
                   <span className="ml-2 text-green-600">{selectedLocation.lng.toFixed(6)}</span>
                 </div>
@@ -203,42 +207,46 @@ const LocationPickerModal = ({
 
           {/* Status Messages */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center space-x-2">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex items-start space-x-2">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-red-800 font-medium">Error:</span>
-                <span className="text-red-700">{error}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-red-800 font-medium text-xs sm:text-sm">Error: </span>
+                  <span className="text-red-700 text-xs sm:text-sm break-words">{error}</span>
+                </div>
               </div>
             </div>
           )}
 
           {success && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center space-x-2">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex items-start space-x-2">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-green-800 font-medium">Success:</span>
-                <span className="text-green-700">{success}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-green-800 font-medium text-xs sm:text-sm">Success: </span>
+                  <span className="text-green-700 text-xs sm:text-sm break-words">{success}</span>
+                </div>
               </div>
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex justify-end space-x-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 sm:space-x-0">
             <button
               onClick={handleClose}
               disabled={loading}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm sm:text-base font-medium"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveLocation}
               disabled={loading || !selectedLocation}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base font-medium"
             >
               {loading ? (
                 <>
