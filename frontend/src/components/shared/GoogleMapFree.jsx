@@ -154,11 +154,15 @@ const GoogleMapFree = ({
         addMarkersToMap();
         
         // Add click listener for map
-        mapInstanceRef.current.addListener('click', (event) => {
-          const lat = event.latLng.lat();
-          const lng = event.latLng.lng();
-          console.log('Map clicked at:', { lat, lng });
-        });
+        if (onLocationChange) {
+          mapInstanceRef.current.addListener('click', (event) => {
+            const lat = event.latLng.lat();
+            const lng = event.latLng.lng();
+            const clickedLocation = { lat, lng };
+            console.log('Map clicked at:', clickedLocation);
+            onLocationChange(clickedLocation);
+          });
+        }
 
         // setMapLoaded(true); // Removed unused variable
         setIsLoading(false);
@@ -282,7 +286,37 @@ const GoogleMapFree = ({
       `;
       mapBackground.style.backgroundSize = '20px 20px, 20px 20px, 200px 200px, 200px 200px';
       mapBackground.style.borderRadius = '8px';
-      mapBackground.style.cursor = 'grab';
+      mapBackground.style.cursor = 'pointer';
+      
+      // Add click handler to fallback map background
+      if (onLocationChange) {
+        mapBackground.addEventListener('click', (e) => {
+          const rect = mapBackground.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          // Convert click position to approximate coordinates
+          // This is a simplified conversion - for accurate mapping, you'd need proper projection
+          const width = rect.width;
+          const height = rect.height;
+          
+          // Calculate offset from center (in percentage)
+          const xPercent = (x / width - 0.5) * 2; // -1 to 1
+          const yPercent = (y / height - 0.5) * 2; // -1 to 1
+          
+          // Approximate coordinate conversion (rough estimate)
+          // 1 degree latitude ≈ 111 km, 1 degree longitude ≈ 111 km * cos(latitude)
+          const latOffset = (yPercent * 0.1); // Roughly 0.1 degrees per full screen
+          const lngOffset = (xPercent * 0.1) / Math.cos(mapCenter[0] * Math.PI / 180);
+          
+          const clickedLat = mapCenter[0] - latOffset;
+          const clickedLng = mapCenter[1] + lngOffset;
+          
+          const clickedLocation = { lat: clickedLat, lng: clickedLng };
+          console.log('Fallback map clicked at:', clickedLocation);
+          onLocationChange(clickedLocation);
+        });
+      }
       
       // Add zoom controls to fallback map
       const zoomControls = document.createElement('div');
@@ -449,7 +483,7 @@ const GoogleMapFree = ({
         mapContainer.innerHTML = '';
       }
     };
-  }, [center, zoom, apiKey, locationPermissionGranted, userLocation, markers, onMarkerClick]);
+  }, [center, zoom, apiKey, locationPermissionGranted, userLocation, markers, onMarkerClick, onLocationChange]);
 
   // Get user's current location
   const getCurrentLocation = () => {

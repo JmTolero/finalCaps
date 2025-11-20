@@ -141,8 +141,8 @@ const LocationPickerModal = ({
               <div className="flex-1 min-w-0">
                 <h3 className="text-xs sm:text-sm font-semibold text-blue-800 mb-1">How to set your exact location:</h3>
                 <ul className="text-xs sm:text-sm text-blue-700 space-y-0.5">
-                  <li>• Click on the map to place a pin</li>
-                  <li>• Drag the pin to adjust position</li>
+                  <li>• Click anywhere on the map to place a pin</li>
+                  <li>• Click another location to move the pin</li>
                   <li>• Pin should be on your actual store building</li>
                 </ul>
               </div>
