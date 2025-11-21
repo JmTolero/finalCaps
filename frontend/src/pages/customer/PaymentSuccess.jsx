@@ -108,17 +108,21 @@ const PaymentSuccess = () => {
       
       // Payment details
       const paymentDetails = [];
+      const paymentMethod = order.payment_method === 'gcash_integrated' ? 'GCash Integrated' : 
+                           order.payment_method === 'gcash' ? 'GCash' :
+                           order.payment_method ? order.payment_method : 'GCash Integrated';
+      
       if (order.payment_status === 'partial' && order.payment_amount) {
         paymentDetails.push(
           'Payment Status: Partial (50% Paid)',
           `Amount Paid: ₱${parseFloat(order.payment_amount).toFixed(2)}`,
           `Remaining Balance: ₱${parseFloat(order.remaining_balance || (order.total_amount - order.payment_amount)).toFixed(2)}`,
-          'Payment Method: GCash QR'
+          `Payment Method: ${paymentMethod}`
         );
       } else {
         paymentDetails.push(
           'Payment Status: Paid',
-          'Payment Method: GCash QR'
+          `Payment Method: ${paymentMethod}`
         );
       }
       

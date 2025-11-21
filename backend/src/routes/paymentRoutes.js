@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { 
-  createPaymentIntent, 
+  createPaymentIntent,
+  createIntegratedGCashPayment,
   getPaymentIntentStatus, 
   handleWebhook, 
   getPaymentHistory,
@@ -10,6 +11,9 @@ const {
 
 // Create payment intent for GCash payment
 router.post('/create-payment-intent', createPaymentIntent);
+
+// Create integrated GCash payment with automatic split payment
+router.post('/create-integrated-gcash-payment', createIntegratedGCashPayment);
 
 // Get payment intent status
 router.get('/intent/:payment_intent_id', getPaymentIntentStatus);

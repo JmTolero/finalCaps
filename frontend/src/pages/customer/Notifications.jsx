@@ -625,11 +625,11 @@ export const Notifications = () => {
                                 order.remaining_balance > 0 && 
                                 order.remaining_payment_method?.toLowerCase() === 'gcash';
     
-    // Navigate to GCash payment page with remaining=true if paying remaining balance
+    // Navigate to integrated GCash payment page with remaining=true if paying remaining balance
     if (isRemainingPayment) {
-      navigate(`/customer/gcash-account/${order.order_id}?remaining=true`);
+      navigate(`/customer/integrated-gcash-payment/${order.order_id}?remaining=true`);
     } else {
-      navigate(`/customer/gcash-account/${order.order_id}`);
+      navigate(`/customer/integrated-gcash-payment/${order.order_id}`);
     }
   };
 
@@ -1532,7 +1532,7 @@ export const Notifications = () => {
                       className="w-full bg-green-600 text-white px-3 py-3 sm:px-4 sm:py-4 rounded-lg hover:bg-green-700 transition-all hover:shadow-lg text-center"
                     >
                       <div className="text-xs sm:text-sm font-bold mb-0.5">💳 Pay Remaining Balance via GCash</div>
-                      <div className="text-[9px] sm:text-xs opacity-90">₱{(parseFloat(selectedOrder.total_amount) / 2).toFixed(2)}</div>
+                      <div className="text-[9px] sm:text-xs opacity-90">₱{parseFloat(selectedOrder.remaining_balance || (selectedOrder.total_amount - selectedOrder.payment_amount)).toFixed(2)}</div>
                     </button>
                   </div>
                 )}

@@ -33,7 +33,7 @@ class XenditService {
       });
 
       // Calculate split payment amounts
-      const commissionRate = paymentData.commission_rate || 5.00; // Default 5%
+      const commissionRate = paymentData.commission_rate || 3.00; // Default 3%
       const platformCommission = (paymentData.amount * commissionRate) / 100;
       const vendorAmount = paymentData.amount - platformCommission;
 

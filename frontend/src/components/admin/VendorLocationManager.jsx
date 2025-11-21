@@ -204,8 +204,7 @@ const VendorLocationManager = () => {
     <div className="space-y-3 sm:space-y-4 lg:space-y-6 h-full overflow-hidden flex flex-col">
       {/* Header */}
       <div className="bg-sky-100 rounded-lg shadow-sm p-2 sm:p-3 lg:p-4 xl:p-6 flex-shrink-0">
-        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Vendor Location Management</h2>
-        <p className="text-sm sm:text-base text-gray-600">Manage and update all vendor store locations</p>
+        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Vendor Location</h2>
       </div>
 
       {/* Status Messages */}

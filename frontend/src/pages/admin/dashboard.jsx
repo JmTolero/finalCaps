@@ -312,7 +312,7 @@ export const AdminDashboard = () => {
         <div className="bg-[#D4F6FF] p-3 sm:p-4 lg:p-6 rounded-lg sm:rounded-xl shadow-md mt-6 sm:mt-8 lg:mt-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 lg:gap-4 w-full sm:w-auto">
-              <h2 className="text-base sm:text-lg lg:text-xl font-bold">Bookings</h2>
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold">Orders</h2>
               <span className="text-xs sm:text-sm text-gray-600">
                 {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'}
                 {searchTerm && ` (filtered from ${orders.length})`}
@@ -359,7 +359,7 @@ export const AdminDashboard = () => {
           {/* Loading State */}
           {loading && (
             <div className="text-center py-6 sm:py-8">
-              <div className="text-base sm:text-lg text-gray-500">Loading bookings...</div>
+              <div className="text-base sm:text-lg text-gray-500">Loading orders...</div>
             </div>
           )}
 
@@ -379,7 +379,7 @@ export const AdminDashboard = () => {
           {/* Debug Info */}
           {!loading && !error && (
             <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">
-              Found {filteredOrders.length} booking record{filteredOrders.length !== 1 ? 's' : ''}
+              Found {filteredOrders.length} order record{filteredOrders.length !== 1 ? 's' : ''}
               {searchTerm && ` matching "${searchTerm}"`}
             </div>
           )}
@@ -476,7 +476,7 @@ export const AdminDashboard = () => {
                 <div className="flex justify-between items-start mb-3 sm:mb-4">
                   <div>
                     <h3 className="font-semibold text-base sm:text-lg text-blue-600">Order #{order.order_id}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Booking Details</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Order Details</p>
                   </div>
                   <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     ₱{parseFloat(order.total_amount || 0).toFixed(2)}
@@ -566,7 +566,7 @@ export const AdminDashboard = () => {
           {!loading && !error && filteredOrders.length === 0 && (
             <div className="text-center py-6 sm:py-8 text-gray-500">
               <div className="text-sm sm:text-base">
-                {searchTerm ? `No bookings found matching "${searchTerm}".` : 'No bookings found.'}
+                {searchTerm ? `No orders found matching "${searchTerm}".` : 'No orders found.'}
               </div>
             </div>
           )}

@@ -364,7 +364,10 @@ const createOrder = async (req, res) => {
             payment_status,
             payment_method,
             initial_payment_method || null,
-            remaining_payment_method || null,
+            // Normalize remaining_payment_method: convert "Cash on Delivery" to "cod"
+            remaining_payment_method && remaining_payment_method.toLowerCase() === 'cash on delivery' 
+              ? 'cod' 
+              : (remaining_payment_method?.toLowerCase() || null),
             paymentDeadline,
             paymentDeadline
         ]);
@@ -2093,19 +2096,23 @@ const getVendorTransactions = async (req, res) => {
                 o.vendor_id,
                 o.total_amount,
                 o.payment_status,
+                o.payment_amount,
+                o.remaining_balance,
                 o.status as order_status,
                 o.created_at as order_date,
                 u.fname as customer_fname,
                 u.lname as customer_lname,
                 u.contact_no as customer_contact,
                 v.store_name as vendor_name,
-                MAX(qpt.payment_method) as payment_method,
+                COALESCE(MAX(qpt.payment_method), o.payment_method, MAX(pi.payment_method)) as payment_method,
                 MAX(qpt.payment_amount) as qr_payment_amount,
                 MAX(qpt.customer_notes) as customer_notes,
                 MAX(qpt.payment_confirmation_image) as payment_confirmation_image,
                 MAX(qpt.created_at) as payment_date,
                 CASE 
+                    WHEN o.payment_method = 'gcash_integrated' OR MAX(pi.payment_method) = 'gcash_integrated' THEN 'GCash Integrated'
                     WHEN MAX(qpt.payment_method) IS NOT NULL THEN 'GCash QR'
+                    WHEN o.payment_method = 'gcash' OR MAX(pi.payment_method) = 'gcash' THEN 'GCash'
                     ELSE 'Cash'
                 END as transaction_type,
                 CASE 
@@ -2117,8 +2124,9 @@ const getVendorTransactions = async (req, res) => {
             LEFT JOIN users u ON o.customer_id = u.user_id
             LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
             LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+            LEFT JOIN payment_intents pi ON o.order_id = pi.order_id AND pi.payment_method = 'gcash_integrated'
             WHERE ${whereClause}
-            GROUP BY o.order_id, o.customer_id, o.vendor_id, o.total_amount, o.payment_status, o.status, o.created_at, u.fname, u.lname, u.contact_no, v.store_name
+            GROUP BY o.order_id, o.customer_id, o.vendor_id, o.total_amount, o.payment_status, o.payment_amount, o.remaining_balance, o.status, o.created_at, o.payment_method, u.fname, u.lname, u.contact_no, v.store_name
             ORDER BY o.created_at DESC
             LIMIT ? OFFSET ?
         `, [...queryParams, parseInt(limit), parseInt(offset)]);
@@ -2128,6 +2136,7 @@ const getVendorTransactions = async (req, res) => {
             SELECT COUNT(DISTINCT o.order_id) as total
             FROM orders o
             LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+            LEFT JOIN payment_intents pi ON o.order_id = pi.order_id AND pi.payment_method = 'gcash_integrated'
             WHERE ${whereClause}
         `, queryParams);
         
@@ -2144,9 +2153,14 @@ const getVendorTransactions = async (req, res) => {
                     o.order_id,
                     o.payment_status,
                     o.total_amount,
-                    CASE WHEN qpt.payment_method IS NOT NULL THEN 1 ELSE 0 END as has_qr_payment
+                    CASE 
+                        WHEN o.payment_method = 'gcash_integrated' OR pi.payment_method = 'gcash_integrated' THEN 1
+                        WHEN qpt.payment_method IS NOT NULL THEN 1 
+                        ELSE 0 
+                    END as has_qr_payment
                 FROM orders o
                 LEFT JOIN qr_payment_transactions qpt ON o.order_id = qpt.order_id
+                LEFT JOIN payment_intents pi ON o.order_id = pi.order_id AND pi.payment_method = 'gcash_integrated'
                 WHERE o.vendor_id = ?
             ) as unique_orders
         `, [vendor_id]);
@@ -2483,8 +2497,11 @@ const confirmCODPayment = async (req, res) => {
             });
         }
 
-        // Check if payment method is COD
-        if (order.remaining_payment_method !== 'cod') {
+        // Check if payment method is COD (handle both 'cod' and 'Cash on Delivery')
+        const paymentMethod = (order.remaining_payment_method || '').toLowerCase();
+        const isCOD = paymentMethod === 'cod' || paymentMethod === 'cash on delivery';
+        
+        if (!isCOD) {
             return res.status(400).json({
                 success: false,
                 error: 'Payment method for remaining balance is not COD'

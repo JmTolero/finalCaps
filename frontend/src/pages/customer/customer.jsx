@@ -863,8 +863,8 @@ export const Customer = () => {
   const handlePayment = (order) => {
     console.log('💳 Payment button clicked for order:', order.order_id);
     
-    // Navigate to GCash payment page
-    navigateOptimized(`/customer/gcash-account/${order.order_id}`);
+    // Navigate directly to integrated GCash payment
+    navigateOptimized(`/customer/integrated-gcash-payment/${order.order_id}`);
   };
 
   const handlePaymentDeadlineExpired = useCallback(async (order) => {
@@ -935,9 +935,9 @@ export const Customer = () => {
         
         // If GCash selected, navigate to payment page
         if (paymentMethod === 'gcash') {
-          // Close modal and navigate to GCash payment for remaining balance
+          // Close modal and navigate directly to integrated GCash payment for remaining balance
           setShowOrderModal(false);
-          navigateOptimized(`/customer/gcash-account/${orderId}?remaining=true`);
+          navigateOptimized(`/customer/integrated-gcash-payment/${orderId}?remaining=true`);
         } else {
           // Show custom modal for COD
           setCodAmount(response.data.remaining_balance);
@@ -960,9 +960,15 @@ export const Customer = () => {
     }
   };
 
-  // Handle paying remaining balance via GCash
+  // Handle paying remaining balance - navigate directly if payment method already selected, otherwise show selection
   const handlePayRemainingBalance = (order) => {
-    navigateOptimized(`/customer/gcash-account/${order.order_id}?remaining=true`);
+    // If payment method is already selected (GCash), navigate directly to payment page
+    if (order.remaining_payment_method?.toLowerCase() === 'gcash') {
+      navigateOptimized(`/customer/integrated-gcash-payment/${order.order_id}?remaining=true`);
+    } else {
+      // Otherwise, show payment method selection page
+      navigateOptimized(`/customer/remaining-balance-payment/${order.order_id}`);
+    }
   };
 
   // Handle cancel order button click - show confirmation modal

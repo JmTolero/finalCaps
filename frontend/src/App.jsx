@@ -28,8 +28,10 @@ import { OrderConfirmation } from "./pages/customer/OrderConfirmation.jsx";
     import { Notifications } from "./pages/customer/Notifications.jsx";
 import { MyFeedback } from "./pages/customer/MyFeedback.jsx";
 import CustomerPayment from "./pages/customer/CustomerPayment.jsx";
-import CustomerGCashAccount from "./pages/customer/CustomerGCashAccount.jsx";
+import IntegratedGCashPaymentPage from "./pages/customer/IntegratedGCashPayment.jsx";
 import PaymentSuccess from "./pages/customer/PaymentSuccess.jsx";
+import RemainingBalancePayment from "./pages/customer/RemainingBalancePayment.jsx";
+import PaymentTest from "./pages/test/PaymentTest.jsx";
 import VendorGCashAccount from "./pages/vendor/VendorGCashAccount.jsx";
 import SubscriptionSuccess from "./pages/vendor/SubscriptionSuccess.jsx";
 import SubscriptionFailed from "./pages/vendor/SubscriptionFailed.jsx";
@@ -208,8 +210,14 @@ import { GoogleCallback } from "./pages/shared/googleCallback.jsx";
           <Route path="/customer/notifications" element={requireRole('customer', <Notifications />)} />
           <Route path="/customer/my-feedback" element={<MyFeedback />} />
           <Route path="/customer/payment/:orderId" element={requireRole('customer', <CustomerPayment />)} />
-          <Route path="/customer/gcash-account/:orderId" element={requireRole('customer', <CustomerGCashAccount />)} />
+          <Route path="/customer/integrated-gcash-payment/:orderId" element={requireRole('customer', <IntegratedGCashPaymentPage />)} />
+          <Route path="/customer/remaining-balance-payment/:orderId" element={requireRole('customer', <RemainingBalancePayment />)} />
           <Route path="/customer/payment/success/:orderId" element={requireRole('customer', <PaymentSuccess />)} />
+          
+          {/* Test page - development only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Route path="/test/payment" element={<PaymentTest />} />
+          )}
           <Route path="/vendor/gcash-account" element={requireRole('vendor', <VendorGCashAccount />)} />
           <Route path="/vendor/subscription/success" element={requireRole('vendor', <SubscriptionSuccess />)} />
           <Route path="/vendor/subscription/failed" element={requireRole('vendor', <SubscriptionFailed />)} />

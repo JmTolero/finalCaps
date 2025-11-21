@@ -1309,7 +1309,12 @@ export const Vendor = () => {
     const isPartial = order.payment_status === 'partial';
     const isConfirmed = Boolean(order.remaining_payment_confirmed_at);
 
-    return isPartial && remainingMethod === targetMethod && !isConfirmed;
+    // Normalize payment method values
+    // Handle both 'cod' and 'Cash on Delivery' (case-insensitive)
+    const normalizedRemainingMethod = remainingMethod === 'cash on delivery' ? 'cod' : remainingMethod;
+    const normalizedTargetMethod = targetMethod === 'cash on delivery' ? 'cod' : targetMethod;
+
+    return isPartial && normalizedRemainingMethod === normalizedTargetMethod && !isConfirmed;
   };
 
   // Handle mark as delivered
@@ -4279,7 +4284,7 @@ export const Vendor = () => {
                             <div className="bg-white rounded-lg p-4 border border-green-200">
                               <h4 className="font-medium text-gray-900 mb-2">💡 How direct payments work:</h4>
                               <ul className="text-sm text-gray-600 space-y-1">
-                                <li>• You receive 100% of payment - no platform fees</li>
+                                <li>• You receive 97% of payment (3% platform fee)</li>
                                 <li>• Customers scan your QR code and pay directly</li>
                                 <li>• Money goes straight to your GCash account</li>
                                 <li>• Build direct relationship with customers</li>
@@ -6630,11 +6635,12 @@ export const Vendor = () => {
               <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Earnings</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Your Earnings (97%)</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">₱{(parseFloat(transactionStats.total_earnings || 0) * 0.97).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Platform fee: ₱{(parseFloat(transactionStats.total_earnings || 0) * 0.03).toFixed(2)} (3%)</p>
                   </div>
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm sm:text-lg lg:text-2xl font-bold text-blue-600">₱</span>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm sm:text-lg lg:text-2xl font-bold text-green-600">₱</span>
                   </div>
                 </div>
               </div>
@@ -6670,8 +6676,9 @@ export const Vendor = () => {
               <div className="bg-sky-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">GCash Transactions</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{transactionStats.gcash_transactions || 0}</p>
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Sales</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Gross revenue</p>
                   </div>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-blue-100 rounded-full flex items-center justify-center">
                     <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -6679,6 +6686,33 @@ export const Vendor = () => {
                     </svg>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Earnings Breakdown */}
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">💰 Earnings Breakdown</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">Total Sales</h4>
+                  <p className="text-2xl font-bold text-blue-600">₱{parseFloat(transactionStats.total_earnings || 0).toFixed(2)}</p>
+                  <p className="text-xs text-gray-600">Gross revenue from orders</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-red-900 mb-2">Platform Fee (3%)</h4>
+                  <p className="text-2xl font-bold text-red-600">-₱{(parseFloat(transactionStats.total_earnings || 0) * 0.03).toFixed(2)}</p>
+                  <p className="text-xs text-gray-600">Technology & payment processing</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-green-900 mb-2">Your Earnings (97%)</h4>
+                  <p className="text-2xl font-bold text-green-600">₱{(parseFloat(transactionStats.total_earnings || 0) * 0.97).toFixed(2)}</p>
+                  <p className="text-xs text-gray-600">Money in your GCash</p>
+                </div>
+              </div>
+              <div className="mt-4 bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 text-center">
+                  💡 Our 3% platform fee covers payment processing, technology platform, customer acquisition, and business support
+                </p>
               </div>
             </div>
 
@@ -6838,7 +6872,14 @@ export const Vendor = () => {
                           </div>
                         </div>
                         <div className="flex items-center justify-between sm:flex-col sm:items-end sm:space-y-2">
+                          <div className="text-right">
                           <p className="text-base sm:text-lg font-bold text-gray-900">₱{parseFloat(transaction.total_amount || 0).toFixed(2)}</p>
+                            {transaction.transaction_type === 'GCash QR' && transaction.payment_method === 'gcash_integrated' && (
+                              <p className="text-xs text-green-600 font-medium">
+                                You received: ₱{(parseFloat(transaction.total_amount || 0) * 0.97).toFixed(2)} (97%)
+                              </p>
+                            )}
+                          </div>
                           <button
                             onClick={() => {
                               setSelectedTransaction(transaction);
@@ -6902,7 +6943,7 @@ export const Vendor = () => {
                             </div>
                             <div>
                               <span className="font-medium text-gray-700">Payment Method:</span>
-                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
+                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type || selectedTransaction.payment_method || 'Cash'}</span>
                             </div>
                             <div className="sm:col-span-2">
                               <span className="font-medium text-gray-700">Amount Paid (50%):</span>
@@ -6912,19 +6953,118 @@ export const Vendor = () => {
                               <span className="font-medium text-gray-700">Remaining Balance:</span>
                               <span className="ml-2 text-orange-600">₱{parseFloat(selectedTransaction.remaining_balance || (selectedTransaction.total_amount - selectedTransaction.payment_amount)).toFixed(2)}</span>
                             </div>
+                            
+                            {/* Show commission breakdown for partial GCash payments */}
+                            {(selectedTransaction.transaction_type === 'GCash Integrated' ||
+                              selectedTransaction.transaction_type === 'GCash QR' || 
+                              selectedTransaction.payment_method === 'gcash_integrated' ||
+                              selectedTransaction.payment_method === 'gcash' ||
+                              (selectedTransaction.payment_method && selectedTransaction.payment_method.includes('gcash'))) && (
+                              <div className="sm:col-span-2 mt-3">
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 shadow-sm">
+                                  <div className="flex items-center mb-3">
+                                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <h5 className="font-semibold text-green-900 text-sm">💰 Partial Payment Breakdown</h5>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center py-1">
+                                      <span className="text-sm text-gray-700">Amount Paid:</span>
+                                      <span className="text-sm font-semibold text-gray-900">₱{parseFloat(selectedTransaction.payment_amount || 0).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-t border-green-200">
+                                      <span className="text-sm text-gray-700">Platform Fee (3%):</span>
+                                      <span className="text-sm font-semibold text-red-600">-₱{(parseFloat(selectedTransaction.payment_amount || 0) * 0.03).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-t-2 border-green-300 mt-2">
+                                      <span className="text-base font-bold text-green-800">You Received:</span>
+                                      <span className="text-lg font-bold text-green-700">₱{(parseFloat(selectedTransaction.payment_amount || 0) * 0.97).toFixed(2)}</span>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-green-200">
+                                      <p className="text-xs text-gray-600 italic">
+                                        💡 This amount was automatically sent to your GCash account
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
                             <div>
-                              <span className="font-medium text-gray-700">Amount:</span>
+                              <span className="font-medium text-gray-700">Total Amount:</span>
                               <span className="ml-2 text-gray-900 font-semibold">
                                 ₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}
                               </span>
                             </div>
                             <div>
                               <span className="font-medium text-gray-700">Payment Method:</span>
-                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type}</span>
+                              <span className="ml-2 text-gray-900">{selectedTransaction.transaction_type || selectedTransaction.payment_method || 'Cash'}</span>
                             </div>
+                            
+                            {/* Show commission breakdown for integrated GCash payments */}
+                            {(selectedTransaction.transaction_type === 'GCash Integrated' ||
+                              selectedTransaction.transaction_type === 'GCash QR' || 
+                              selectedTransaction.payment_method === 'gcash_integrated' ||
+                              selectedTransaction.payment_method === 'gcash' ||
+                              (selectedTransaction.payment_method && selectedTransaction.payment_method.includes('gcash'))) && (
+                              <div className="sm:col-span-2 mt-3">
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200 shadow-sm">
+                                  <div className="flex items-center mb-3">
+                                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <h5 className="font-semibold text-green-900 text-sm">💰 Earnings Breakdown</h5>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center py-1">
+                                      <span className="text-sm text-gray-700">Customer Paid:</span>
+                                      <span className="text-sm font-semibold text-gray-900">₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1 border-t border-green-200">
+                                      <span className="text-sm text-gray-700">Platform Fee (3%):</span>
+                                      <span className="text-sm font-semibold text-red-600">-₱{(parseFloat(selectedTransaction.total_amount || 0) * 0.03).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-t-2 border-green-300 mt-2">
+                                      <span className="text-base font-bold text-green-800">You Received:</span>
+                                      <span className="text-lg font-bold text-green-700">₱{(parseFloat(selectedTransaction.total_amount || 0) * 0.97).toFixed(2)}</span>
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-green-200">
+                                      <p className="text-xs text-gray-600 italic">
+                                        💡 This amount was automatically sent to your GCash account
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Show full amount for Cash/COD payments (no commission) - only if NOT GCash */}
+                            {(selectedTransaction.transaction_type === 'Cash' &&
+                              selectedTransaction.transaction_type !== 'GCash Integrated' &&
+                              selectedTransaction.transaction_type !== 'GCash QR' &&
+                              selectedTransaction.payment_method !== 'gcash_integrated' &&
+                              selectedTransaction.payment_method !== 'gcash') && (
+                              <div className="sm:col-span-2 mt-3">
+                                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                  <div className="flex items-center mb-2">
+                                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <h5 className="font-semibold text-blue-900 text-sm">💵 Cash Payment</h5>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-700">You Received:</span>
+                                    <span className="text-base font-bold text-blue-700">₱{parseFloat(selectedTransaction.total_amount || 0).toFixed(2)}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 mt-2 italic">
+                                    💡 Cash on Delivery - No platform fee
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                         <div>
@@ -6973,20 +7113,6 @@ export const Vendor = () => {
                       </div>
                     )}
 
-                    {/* Payment Proof Screenshot */}
-                    {selectedTransaction.payment_confirmation_image && (
-                      <div className="bg-green-50 rounded-lg p-4 mb-4">
-                        <h4 className="font-medium text-green-900 mb-3">Payment Confirmation Screenshot</h4>
-                        <div className="text-center">
-                          <img 
-                            src={selectedTransaction.payment_confirmation_image} 
-                            alt="Payment Proof" 
-                            className="w-full max-w-md mx-auto border border-gray-200 rounded-lg shadow-sm"
-                          />
-                        </div>
-                      </div>
-                    )}
-
                     {/* Order Status Information */}
                     <div className="bg-purple-50 rounded-lg p-4 mb-4">
                       <h4 className="font-medium text-purple-900 mb-2">Order Status</h4>
@@ -6995,14 +7121,6 @@ export const Vendor = () => {
                         <p><span className="font-medium">Payment Status:</span> {selectedTransaction.payment_status}</p>
                       </div>
                     </div>
-
-                    {/* No Payment Proof Message */}
-                    {!selectedTransaction.payment_confirmation_image && (
-                      <div className="bg-gray-50 rounded-lg p-4 text-center">
-                        <div className="text-gray-400 text-4xl mb-2">📱</div>
-                        <p className="text-gray-600 text-sm">No payment proof available for this transaction.</p>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Modal Footer */}
@@ -8480,15 +8598,43 @@ export const Vendor = () => {
                                         Walk-in order: Collect remaining balance upon delivery
                                       </p>
                                     )}
-                                    {order.remaining_payment_method === 'cod' && (
+                                    {/* Debug: Show payment method for troubleshooting */}
+                                    {process.env.NODE_ENV === 'development' && (
+                                      <p className="text-xs text-gray-500 mb-1">
+                                        Debug: payment_method={order.remaining_payment_method || 'null'}, 
+                                        hasPending={hasPendingRemainingBalance(order, 'cod') ? 'true' : 'false'}
+                                      </p>
+                                    )}
+                                    {((order.remaining_payment_method?.toLowerCase() === 'cod') || 
+                                      (order.remaining_payment_method?.toLowerCase() === 'cash on delivery')) && (
                                       <>
                                         <p className="text-orange-700 text-xs mb-1.5 sm:mb-2">Customer selected: Cash on Delivery</p>
-                                        <button
-                                          onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
-                                          className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
-                                        >
-                                          💰 Mark Remaining Balance as Paid (COD)
-                                        </button>
+                                        {hasPendingRemainingBalance(order, 'cod') ? (
+                                          <button
+                                            onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
+                                            className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
+                                          >
+                                            💰 Mark Remaining Balance as Paid (COD)
+                                          </button>
+                                        ) : (
+                                          <p className="text-green-700 text-xs font-medium">
+                                            ✅ COD payment already confirmed
+                                          </p>
+                                        )}
+                                      </>
+                                    )}
+                                    {/* Show button even if payment method is not set but order is out for delivery (fallback for COD) */}
+                                    {!order.remaining_payment_method && (order.status === 'out_for_delivery' || order.status === 'delivered') && (
+                                      <>
+                                        <p className="text-orange-700 text-xs mb-1.5 sm:mb-2">Payment method not specified. If collecting as COD, confirm below:</p>
+                                        {hasPendingRemainingBalance(order, 'cod') || (order.payment_status === 'partial' && order.remaining_balance > 0) ? (
+                                          <button
+                                            onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
+                                            className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
+                                          >
+                                            💰 Mark Remaining Balance as Paid (COD)
+                                          </button>
+                                        ) : null}
                                       </>
                                     )}
                                     {order.remaining_payment_method === 'gcash' && (

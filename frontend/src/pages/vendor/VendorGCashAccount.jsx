@@ -426,7 +426,7 @@ const VendorGCashAccount = () => {
                 <div className="bg-green-50 rounded-lg p-3 sm:p-4">
                   <h4 className="font-medium text-green-900 mb-2 text-sm sm:text-base">✅ Benefits of Direct QR Payments:</h4>
                   <ul className="text-xs sm:text-sm text-green-800 space-y-1">
-                    <li>• You receive 100% of payment - no platform fees</li>
+                    <li>• You receive 97% of payment (3% platform fee)</li>
                     <li>• Customers pay directly to your GCash</li>
                     <li>• Faster payment processing</li>
                     <li>• Build direct relationship with customers</li>

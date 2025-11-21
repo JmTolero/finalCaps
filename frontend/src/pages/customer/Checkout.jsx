@@ -538,8 +538,8 @@ export const Checkout = () => {
         return;
       }
       
-      // Navigate to GCash payment page
-      navigate(`/customer/gcash-account/${firstOrderId}`);
+      // Navigate directly to integrated GCash payment
+      navigate(`/customer/integrated-gcash-payment/${firstOrderId}`);
     } catch (error) {
       console.error('Error saving order:', error);
       setShowReceipt(false);
@@ -636,7 +636,7 @@ export const Checkout = () => {
             // 'partial' status will be set when payment is received
             payment_status: 'unpaid',
             initial_payment_method: paymentOption === '50' ? 'GCash' : null,
-            remaining_payment_method: paymentOption === '50' ? remainingPaymentMethod : null,
+            remaining_payment_method: paymentOption === '50' ? (remainingPaymentMethod === 'Cash on Delivery' ? 'cod' : remainingPaymentMethod?.toLowerCase() || null) : null,
             items: vendorItems
           };
           
@@ -691,7 +691,7 @@ export const Checkout = () => {
           // 'partial' status will be set when payment is received
           payment_status: 'unpaid',
           initial_payment_method: paymentOption === '50' ? 'GCash' : null,
-          remaining_payment_method: paymentOption === '50' ? remainingPaymentMethod : null,
+          remaining_payment_method: paymentOption === '50' ? (remainingPaymentMethod === 'Cash on Delivery' ? 'cod' : remainingPaymentMethod?.toLowerCase() || null) : null,
           items: orderData.items || []
         };
 
