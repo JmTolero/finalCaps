@@ -17,7 +17,33 @@ const PaymentSuccess = () => {
       const response = await axios.get(`${apiBase}/api/orders/${orderId}`);
       
       if (response.data.success) {
-        setOrder(response.data.order);
+          const orderData = response.data.order;
+        setOrder(orderData);
+        
+        // If payment is still unpaid, try to sync payment status by checking payment_intent
+        if (orderData.payment_status === 'unpaid' && orderData.payment_intent_id) {
+          console.log('🔄 Payment status is unpaid, attempting to sync...');
+          try {
+            // Call payment status endpoint to trigger sync mechanism
+            await axios.get(`${apiBase}/api/payment/status/${orderData.payment_intent_id}`);
+            
+            // Wait a moment for sync to complete, then refetch order
+            setTimeout(async () => {
+              try {
+                const refreshResponse = await axios.get(`${apiBase}/api/orders/${orderId}`);
+                if (refreshResponse.data.success) {
+                  setOrder(refreshResponse.data.order);
+                  console.log('✅ Order status refreshed after sync');
+                }
+              } catch (refreshErr) {
+                console.error('Error refreshing order after sync:', refreshErr);
+              }
+            }, 1000);
+          } catch (syncErr) {
+            console.error('Error syncing payment status:', syncErr);
+            // Continue anyway - order will be shown as is
+          }
+        }
       } else {
         setError('Failed to fetch order details');
       }
