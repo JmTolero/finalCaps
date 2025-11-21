@@ -23,6 +23,7 @@ import storeIcon from "../../assets/images/vendordashboardicon/shop.png";
 import bellNotificationIcon from "../../assets/images/bellNotification.png";
 import feedbackIcon from "../../assets/images/feedback.png";
 import VendorSubscription from "./VendorSubscription";
+import VendorStatistics from "../../components/vendor/VendorStatistics";
 
 export const Vendor = () => {
   const navigate = useNavigate();
@@ -3369,7 +3370,7 @@ export const Vendor = () => {
     return (
       <>
         {/* Custom Navbar */}
-        <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible">
+        <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible shadow-md">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -4604,7 +4605,7 @@ export const Vendor = () => {
   return (
     <>
       {/* Custom Navbar */}
-      <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible">
+      <header className="w-full h-16 bg-sky-100 flex items-center justify-between px-3 sm:px-6 lg:px-8 fixed top-0 left-0 z-20 overflow-visible shadow-md">
         <div className="flex items-center space-x-2 sm:space-x-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -5053,6 +5054,11 @@ export const Vendor = () => {
                       </div>
                     </div>
                   </div>
+
+                {/* Vendor Statistics Charts - Simple Dashboard Graphs */}
+                {currentVendor?.vendor_id && (
+                  <VendorStatistics vendorId={currentVendor.vendor_id} />
+                )}
                   
                 {/* Other Details and Upcoming Deliveries */}
                 <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">

@@ -127,6 +127,7 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/vendor/flavors', flavorRoutes);
 app.use('/api/vendor/drums', drumRoutes);
 app.use('/api/vendor/delivery', deliveryRoutes);
+app.use('/api/vendor/statistics', require('./routes/vendor/vendorStatsRoutes'));
 app.use('/api/flavors', sharedFlavorRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/notifications', notificationRoutes);
