@@ -364,61 +364,104 @@ const handleWebhook = async (req, res) => {
 
       // If payment succeeded, update order status
       if (processedEvent.status === 'PAID') {
-        let orderId = processedEvent.metadata?.order_id;
+        let orderId = null;
         
-        // Fallback 1: Extract order_id from external_id if it follows our format (icecream_order_{order_id}_{timestamp})
+        console.log('🔍 Looking for order_id:', {
+          invoice_id: processedEvent.invoice_id,
+          external_id: processedEvent.external_id,
+          metadata: processedEvent.metadata,
+          has_metadata: !!processedEvent.metadata,
+          metadata_keys: processedEvent.metadata ? Object.keys(processedEvent.metadata) : []
+        });
+        
+        // Method 1: Get from metadata
+        if (processedEvent.metadata?.order_id) {
+          orderId = processedEvent.metadata.order_id;
+          console.log(`✅ Found order_id from metadata: ${orderId}`);
+        }
+        
+        // Method 2: Extract order_id from external_id if it follows our format (icecream_order_{order_id}_{timestamp})
         if (!orderId && processedEvent.external_id) {
+          console.log(`🔍 Trying to extract order_id from external_id: ${processedEvent.external_id}`);
           const externalIdMatch = processedEvent.external_id.match(/icecream_order_(\d+)_/);
-          if (externalIdMatch) {
+          if (externalIdMatch && externalIdMatch[1]) {
             orderId = externalIdMatch[1];
             console.log(`✅ Extracted order_id from external_id: ${orderId}`);
+          } else {
+            console.log(`⚠️ Could not extract order_id from external_id pattern`);
           }
         }
         
-        // Fallback 2: If order_id still not found, look it up from payment_intents table
+        // Method 3: Look it up from payment_intents table using invoice_id
         if (!orderId && processedEvent.invoice_id) {
-          console.log('⚠️ Order ID not found in metadata or external_id, looking up from payment_intents...');
-          const [paymentIntent] = await pool.execute(
-            `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
-            [processedEvent.invoice_id]
+          console.log(`🔍 Looking up order_id from payment_intents table for invoice: ${processedEvent.invoice_id}`);
+          try {
+            const [paymentIntent] = await pool.execute(
+              `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
+              [processedEvent.invoice_id]
+            );
+            
+            if (paymentIntent.length > 0 && paymentIntent[0].order_id) {
+              orderId = paymentIntent[0].order_id;
+              console.log(`✅ Found order_id from payment_intents: ${orderId}`);
+            } else {
+              console.log(`⚠️ No payment_intent found with invoice_id: ${processedEvent.invoice_id}`);
+            }
+          } catch (dbError) {
+            console.error(`❌ Database error looking up payment_intent:`, dbError.message);
+          }
+        }
+        
+        // Method 4: Try to find by external_id in payment_intents metadata
+        if (!orderId && processedEvent.external_id) {
+          console.log(`🔍 Looking up order_id from payment_intents by external_id: ${processedEvent.external_id}`);
+          try {
+            const [paymentIntent] = await pool.execute(
+              `SELECT order_id, payment_intent_id FROM payment_intents 
+               WHERE JSON_EXTRACT(metadata, '$.external_id') = ? 
+               ORDER BY created_at DESC LIMIT 1`,
+              [processedEvent.external_id]
+            );
+            
+            if (paymentIntent.length > 0 && paymentIntent[0].order_id) {
+              orderId = paymentIntent[0].order_id;
+              // Also update the invoice_id if we found it
+              if (!processedEvent.invoice_id && paymentIntent[0].payment_intent_id) {
+                processedEvent.invoice_id = paymentIntent[0].payment_intent_id;
+                console.log(`✅ Also found invoice_id: ${processedEvent.invoice_id}`);
+              }
+              console.log(`✅ Found order_id from payment_intents metadata: ${orderId}`);
+            }
+          } catch (dbError) {
+            console.error(`❌ Database error looking up by external_id:`, dbError.message);
+          }
+        }
+        
+        if (!orderId) {
+          console.error(`❌ Could not find order_id after all attempts:`, {
+            invoice_id: processedEvent.invoice_id,
+            external_id: processedEvent.external_id,
+            metadata: processedEvent.metadata,
+            status: processedEvent.status
+          });
+          // Don't return error - still update payment_intents status
+          // The sync mechanism in getPaymentIntentStatus will handle it
+          console.warn('⚠️ Continuing without order_id - will rely on sync mechanism');
+        }
+        
+        // Only process order update if we found orderId
+        if (orderId) {
+          console.log(`🔄 Processing payment for order ${orderId}, invoice ${processedEvent.invoice_id}`);
+          
+          // Get order details to check if it's a partial payment (50%)
+          const [orderDetails] = await pool.execute(
+            `SELECT total_amount, payment_amount, payment_status, status 
+             FROM orders 
+             WHERE order_id = ?`,
+            [orderId]
           );
           
-          if (paymentIntent.length > 0) {
-            orderId = paymentIntent[0].order_id;
-            console.log(`✅ Found order_id from payment_intents: ${orderId}`);
-          }
-        }
-        
-        if (!orderId) {
-          console.error(`❌ Could not find order_id for invoice ${processedEvent.invoice_id}`, {
-            external_id: processedEvent.external_id,
-            metadata: processedEvent.metadata
-          });
-          return res.status(400).json({
-            success: false,
-            error: 'Order ID not found'
-          });
-        }
-        
-        if (!orderId) {
-          console.error('❌ Order ID is required but not found in webhook data');
-          return res.status(400).json({
-            success: false,
-            error: 'Order ID is required'
-          });
-        }
-        
-        console.log(`🔄 Processing payment for order ${orderId}, invoice ${processedEvent.invoice_id}`);
-        
-        // Get order details to check if it's a partial payment (50%)
-        const [orderDetails] = await pool.execute(
-          `SELECT total_amount, payment_amount, payment_status, status 
-           FROM orders 
-           WHERE order_id = ?`,
-          [orderId]
-        );
-        
-        if (orderDetails.length > 0) {
+          if (orderDetails.length > 0) {
           const order = orderDetails[0];
           const totalAmount = parseFloat(order.total_amount);
           const existingPaymentAmount = parseFloat(order.payment_amount || 0);
@@ -582,23 +625,10 @@ const handleWebhook = async (req, res) => {
               }
             }
           }
-        } else {
-          // Fallback: if order not found, just update payment status
-          await pool.execute(
-            `UPDATE orders 
-             SET payment_status = 'paid', 
-                 status = CASE 
-                   WHEN status = 'pending' THEN 'confirmed'
-                   ELSE status
-                 END,
-                 payment_method = 'gcash',
-                 payment_intent_id = ?,
-                 updated_at = NOW() 
-             WHERE order_id = ?`,
-            [processedEvent.invoice_id, orderId]
-          );
-          
-          console.log(`✅ Payment succeeded for order ${orderId} (order details not found, using fallback)`);
+          } else {
+            // Order not found in database - log warning but don't fail
+            console.warn(`⚠️ Order ${orderId} not found in database, but payment was successful`);
+          }
         }
       } else if (processedEvent.status === 'EXPIRED') {
         let expiredOrderId = processedEvent.metadata?.order_id;
