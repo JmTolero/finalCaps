@@ -217,8 +217,7 @@ const getPaymentIntentStatus = async (req, res) => {
                        ELSE status
                      END,
                      payment_method = 'gcash_integrated',
-                     payment_intent_id = ?,
-                     updated_at = NOW() 
+                     payment_intent_id = ?
                  WHERE order_id = ?`,
                 [newPaymentStatus, finalPaymentAmount, finalRemainingBalance, payment_intent_id, orderId]
               );
@@ -522,8 +521,7 @@ const handleWebhook = async (req, res) => {
                    ELSE status
                  END,
                  payment_method = 'gcash_integrated',
-                 payment_intent_id = ?,
-                 updated_at = NOW() 
+                 payment_intent_id = ?
              WHERE order_id = ?`,
             [newPaymentStatus, finalPaymentAmount, finalRemainingBalance, processedEvent.invoice_id, orderId]
           );
@@ -648,8 +646,7 @@ const handleWebhook = async (req, res) => {
         if (expiredOrderId) {
           await pool.execute(
             `UPDATE orders 
-             SET payment_status = 'failed', 
-                 updated_at = NOW() 
+             SET payment_status = 'failed'
              WHERE order_id = ?`,
             [expiredOrderId]
           );
