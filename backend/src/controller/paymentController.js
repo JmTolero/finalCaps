@@ -299,6 +299,60 @@ const handleWebhook = async (req, res) => {
     const webhookData = req.body;
     const processedEvent = xenditService.handleWebhook(webhookData);
 
+    // Validate processed event
+    if (!processedEvent.invoice_id) {
+      console.error('❌ Invoice ID is missing from webhook data:', {
+        webhook_id: processedEvent.webhook_id,
+        status: processedEvent.status,
+        external_id: processedEvent.external_id
+      });
+      
+      // Try to find invoice by external_id as fallback
+      if (processedEvent.external_id) {
+        console.log(`🔍 Looking up invoice by external_id: ${processedEvent.external_id}`);
+        
+        // Try to extract order_id from external_id first (format: icecream_order_{order_id}_{timestamp})
+        const externalIdMatch = processedEvent.external_id.match(/icecream_order_(\d+)_/);
+        if (externalIdMatch) {
+          const orderIdFromExternal = externalIdMatch[1];
+          console.log(`📦 Extracted order_id from external_id: ${orderIdFromExternal}`);
+          
+          // Find payment_intent by order_id
+          const [paymentIntent] = await pool.execute(
+            `SELECT payment_intent_id FROM payment_intents WHERE order_id = ? ORDER BY created_at DESC LIMIT 1`,
+            [orderIdFromExternal]
+          );
+          
+          if (paymentIntent.length > 0) {
+            processedEvent.invoice_id = paymentIntent[0].payment_intent_id;
+            console.log(`✅ Found invoice_id from order_id: ${processedEvent.invoice_id}`);
+          }
+        }
+        
+        // If still not found, try searching by external_id in metadata
+        if (!processedEvent.invoice_id) {
+          const [paymentIntent] = await pool.execute(
+            `SELECT payment_intent_id FROM payment_intents 
+             WHERE JSON_EXTRACT(metadata, '$.external_id') = ? 
+             LIMIT 1`,
+            [processedEvent.external_id]
+          );
+          
+          if (paymentIntent.length > 0) {
+            processedEvent.invoice_id = paymentIntent[0].payment_intent_id;
+            console.log(`✅ Found invoice_id from metadata external_id: ${processedEvent.invoice_id}`);
+          }
+        }
+      }
+      
+      if (!processedEvent.invoice_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invoice ID not found in webhook data'
+        });
+      }
+    }
+
     // Update invoice status in database
     try {
       await pool.execute(
@@ -312,9 +366,18 @@ const handleWebhook = async (req, res) => {
       if (processedEvent.status === 'PAID') {
         let orderId = processedEvent.metadata?.order_id;
         
-        // Fallback: If order_id not in metadata, look it up from payment_intents table
+        // Fallback 1: Extract order_id from external_id if it follows our format (icecream_order_{order_id}_{timestamp})
+        if (!orderId && processedEvent.external_id) {
+          const externalIdMatch = processedEvent.external_id.match(/icecream_order_(\d+)_/);
+          if (externalIdMatch) {
+            orderId = externalIdMatch[1];
+            console.log(`✅ Extracted order_id from external_id: ${orderId}`);
+          }
+        }
+        
+        // Fallback 2: If order_id still not found, look it up from payment_intents table
         if (!orderId && processedEvent.invoice_id) {
-          console.log('⚠️ Order ID not found in metadata, looking up from payment_intents...');
+          console.log('⚠️ Order ID not found in metadata or external_id, looking up from payment_intents...');
           const [paymentIntent] = await pool.execute(
             `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
             [processedEvent.invoice_id]
@@ -323,13 +386,18 @@ const handleWebhook = async (req, res) => {
           if (paymentIntent.length > 0) {
             orderId = paymentIntent[0].order_id;
             console.log(`✅ Found order_id from payment_intents: ${orderId}`);
-          } else {
-            console.error(`❌ Could not find order_id for invoice ${processedEvent.invoice_id}`);
-            return res.status(400).json({
-              success: false,
-              error: 'Order ID not found'
-            });
           }
+        }
+        
+        if (!orderId) {
+          console.error(`❌ Could not find order_id for invoice ${processedEvent.invoice_id}`, {
+            external_id: processedEvent.external_id,
+            metadata: processedEvent.metadata
+          });
+          return res.status(400).json({
+            success: false,
+            error: 'Order ID not found'
+          });
         }
         
         if (!orderId) {

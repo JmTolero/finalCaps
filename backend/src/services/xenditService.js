@@ -277,6 +277,11 @@ class XenditService {
         return true; // Allow in development
       }
 
+      if (!signature) {
+        console.warn('⚠️ Webhook signature is missing');
+        return false; // Reject if signature is required but missing
+      }
+
       const expectedSignature = crypto
         .createHmac('sha256', this.webhookSecret)
         .update(payload)
@@ -305,22 +310,43 @@ class XenditService {
    */
   handleWebhook(webhookData) {
     try {
-      console.log('🔄 Processing Xendit webhook:', webhookData.id);
+      // Xendit webhooks can come in two formats:
+      // 1. With data wrapper: { id: 'webhook_id', data: { id: 'invoice_id', ... }, created: '...' }
+      // 2. Direct format: { id: 'invoice_id', status: '...', amount: ..., ... }
+      
+      const isWrappedFormat = webhookData.data !== undefined;
+      const invoiceData = isWrappedFormat ? webhookData.data : webhookData;
+      
+      console.log('🔄 Processing Xendit webhook:', {
+        webhook_id: webhookData.id,
+        format: isWrappedFormat ? 'wrapped' : 'direct',
+        invoice_id: invoiceData?.id || webhookData.id,
+        status: invoiceData?.status || webhookData.status
+      });
 
+      // For direct format webhooks, the 'id' field is the invoice ID
+      // For wrapped format, invoice ID is in data.id
+      // Always use webhookData.id as fallback since it's always present
+      const invoiceId = invoiceData?.id || webhookData.id;
+      
       const processedData = {
         webhook_id: webhookData.id,
-        invoice_id: webhookData.data?.id,
-        external_id: webhookData.data?.external_id,
-        status: webhookData.data?.status,
-        amount: webhookData.data?.amount,
-        currency: webhookData.data?.currency,
-        payment_method: webhookData.data?.payment_method,
-        paid_at: webhookData.data?.paid_at,
-        created: webhookData.created,
-        metadata: webhookData.data?.metadata || {}
+        invoice_id: invoiceId, // Invoice ID from webhook
+        external_id: invoiceData?.external_id || webhookData.external_id,
+        status: invoiceData?.status || webhookData.status,
+        amount: invoiceData?.amount || webhookData.amount,
+        currency: invoiceData?.currency || webhookData.currency || 'PHP',
+        payment_method: invoiceData?.payment_method || webhookData.payment_method,
+        paid_at: invoiceData?.paid_at || webhookData.paid_at,
+        created: webhookData.created || invoiceData?.created || new Date().toISOString(),
+        metadata: invoiceData?.metadata || webhookData.metadata || {}
       };
 
-      console.log('✅ Webhook processed successfully:', processedData.status);
+      console.log('✅ Webhook processed successfully:', {
+        invoice_id: processedData.invoice_id,
+        status: processedData.status,
+        amount: processedData.amount
+      });
       return processedData;
 
     } catch (error) {
