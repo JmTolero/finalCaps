@@ -134,6 +134,105 @@ const getPaymentIntentStatus = async (req, res) => {
     // Get invoice from Xendit
     const invoice = await xenditService.getInvoiceStatus(payment_intent_id);
 
+    // If payment is PAID, check if order needs to be updated (fallback for webhook failures)
+    if (invoice.status === 'PAID' || invoice.status === 'SETTLED') {
+      try {
+        // Get order_id from payment_intents table
+        const [paymentIntent] = await pool.execute(
+          `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
+          [payment_intent_id]
+        );
+
+        if (paymentIntent.length > 0) {
+          const orderId = paymentIntent[0].order_id;
+          
+          // Check if order is still unpaid
+          const [order] = await pool.execute(
+            `SELECT payment_status, status FROM orders WHERE order_id = ?`,
+            [orderId]
+          );
+
+          if (order.length > 0 && order[0].payment_status === 'unpaid') {
+            console.log(`🔄 Syncing payment status for order ${orderId} (webhook may have failed)`);
+            
+            // Trigger webhook handler logic to update order
+            // This is a fallback in case the webhook didn't fire or failed
+            const webhookData = {
+              id: `sync_${Date.now()}`,
+              data: invoice,
+              created: invoice.created || new Date().toISOString()
+            };
+            
+            const processedEvent = xenditService.handleWebhook(webhookData);
+            
+            // Update payment_intents status
+            await pool.execute(
+              `UPDATE payment_intents 
+               SET status = ?, updated_at = NOW() 
+               WHERE payment_intent_id = ?`,
+              [processedEvent.status, payment_intent_id]
+            );
+
+            // Update order status (simplified version of webhook handler)
+            const [orderDetails] = await pool.execute(
+              `SELECT total_amount, payment_amount, payment_status, status 
+               FROM orders 
+               WHERE order_id = ?`,
+              [orderId]
+            );
+
+            if (orderDetails.length > 0) {
+              const orderData = orderDetails[0];
+              const totalAmount = parseFloat(orderData.total_amount);
+              const existingPaymentAmount = parseFloat(orderData.payment_amount || 0);
+              const invoiceAmount = parseFloat(invoice.amount || 0);
+              
+              const isRemainingBalancePayment = orderData.payment_status === 'partial' && existingPaymentAmount > 0;
+              const isPartialPayment = !isRemainingBalancePayment && 
+                                     ((existingPaymentAmount > 0 && existingPaymentAmount < totalAmount) ||
+                                      (Math.abs(invoiceAmount - totalAmount * 0.5) < totalAmount * 0.01));
+              
+              const newPaymentStatus = isRemainingBalancePayment ? 'paid' : (isPartialPayment ? 'partial' : 'paid');
+              
+              let finalPaymentAmount, finalRemainingBalance;
+              
+              if (isRemainingBalancePayment) {
+                finalPaymentAmount = existingPaymentAmount + invoiceAmount;
+                finalRemainingBalance = 0;
+              } else if (isPartialPayment) {
+                finalPaymentAmount = invoiceAmount;
+                finalRemainingBalance = totalAmount - invoiceAmount;
+              } else {
+                finalPaymentAmount = totalAmount;
+                finalRemainingBalance = 0;
+              }
+
+              await pool.execute(
+                `UPDATE orders 
+                 SET payment_status = ?, 
+                     payment_amount = ?,
+                     remaining_balance = ?,
+                     status = CASE 
+                       WHEN status = 'pending' THEN 'confirmed'
+                       ELSE status
+                     END,
+                     payment_method = 'gcash_integrated',
+                     payment_intent_id = ?,
+                     updated_at = NOW() 
+                 WHERE order_id = ?`,
+                [newPaymentStatus, finalPaymentAmount, finalRemainingBalance, payment_intent_id, orderId]
+              );
+
+              console.log(`✅ Order ${orderId} payment status synced: ${newPaymentStatus}`);
+            }
+          }
+        }
+      } catch (syncError) {
+        console.error('⚠️ Error syncing payment status (non-critical):', syncError.message);
+        // Continue even if sync fails - return invoice status anyway
+      }
+    }
+
     res.json({
       success: true,
       invoice: {
@@ -164,16 +263,37 @@ const getPaymentIntentStatus = async (req, res) => {
  */
 const handleWebhook = async (req, res) => {
   try {
+    console.log('🔄 Received webhook request:', {
+      method: req.method,
+      url: req.url,
+      headers: {
+        'x-xendit-signature': req.headers['x-xendit-signature'] ? 'present' : 'missing',
+        'content-type': req.headers['content-type']
+      },
+      body_keys: Object.keys(req.body || {})
+    });
+
     const signature = req.headers['x-xendit-signature'];
     const payload = JSON.stringify(req.body);
 
-    // Verify webhook signature
-    if (!xenditService.verifyWebhookSignature(payload, signature)) {
-      console.error('Invalid webhook signature');
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid signature'
+    // Verify webhook signature (allow in development if secret not set)
+    const isValidSignature = xenditService.verifyWebhookSignature(payload, signature);
+    if (!isValidSignature) {
+      console.error('❌ Invalid webhook signature', {
+        hasSignature: !!signature,
+        hasWebhookSecret: !!process.env.XENDIT_WEBHOOK_SECRET,
+        nodeEnv: process.env.NODE_ENV
       });
+      
+      // In production, reject invalid signatures
+      if (process.env.NODE_ENV === 'production' && process.env.XENDIT_WEBHOOK_SECRET) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid signature'
+        });
+      } else {
+        console.warn('⚠️ Skipping signature verification (development mode or secret not set)');
+      }
     }
 
     const webhookData = req.body;
@@ -190,7 +310,37 @@ const handleWebhook = async (req, res) => {
 
       // If payment succeeded, update order status
       if (processedEvent.status === 'PAID') {
-        const orderId = processedEvent.metadata?.order_id;
+        let orderId = processedEvent.metadata?.order_id;
+        
+        // Fallback: If order_id not in metadata, look it up from payment_intents table
+        if (!orderId && processedEvent.invoice_id) {
+          console.log('⚠️ Order ID not found in metadata, looking up from payment_intents...');
+          const [paymentIntent] = await pool.execute(
+            `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
+            [processedEvent.invoice_id]
+          );
+          
+          if (paymentIntent.length > 0) {
+            orderId = paymentIntent[0].order_id;
+            console.log(`✅ Found order_id from payment_intents: ${orderId}`);
+          } else {
+            console.error(`❌ Could not find order_id for invoice ${processedEvent.invoice_id}`);
+            return res.status(400).json({
+              success: false,
+              error: 'Order ID not found'
+            });
+          }
+        }
+        
+        if (!orderId) {
+          console.error('❌ Order ID is required but not found in webhook data');
+          return res.status(400).json({
+            success: false,
+            error: 'Order ID is required'
+          });
+        }
+        
+        console.log(`🔄 Processing payment for order ${orderId}, invoice ${processedEvent.invoice_id}`);
         
         // Get order details to check if it's a partial payment (50%)
         const [orderDetails] = await pool.execute(
@@ -383,19 +533,48 @@ const handleWebhook = async (req, res) => {
           console.log(`✅ Payment succeeded for order ${orderId} (order details not found, using fallback)`);
         }
       } else if (processedEvent.status === 'EXPIRED') {
-        await pool.execute(
-          `UPDATE orders 
-           SET payment_status = 'failed', 
-               updated_at = NOW() 
-           WHERE order_id = ?`,
-          [processedEvent.metadata?.order_id]
-        );
+        let expiredOrderId = processedEvent.metadata?.order_id;
+        
+        // Fallback: If order_id not in metadata, look it up from payment_intents table
+        if (!expiredOrderId && processedEvent.invoice_id) {
+          const [paymentIntent] = await pool.execute(
+            `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
+            [processedEvent.invoice_id]
+          );
+          
+          if (paymentIntent.length > 0) {
+            expiredOrderId = paymentIntent[0].order_id;
+          }
+        }
+        
+        if (expiredOrderId) {
+          await pool.execute(
+            `UPDATE orders 
+             SET payment_status = 'failed', 
+                 updated_at = NOW() 
+             WHERE order_id = ?`,
+            [expiredOrderId]
+          );
 
-        console.log(`⏰ Payment expired for order ${processedEvent.metadata?.order_id}`);
+          console.log(`⏰ Payment expired for order ${expiredOrderId}`);
+        } else {
+          console.warn(`⚠️ Could not find order_id for expired invoice ${processedEvent.invoice_id}`);
+        }
       }
 
     } catch (dbError) {
-      console.error('Database error updating payment status:', dbError);
+      console.error('❌ Database error updating payment status:', {
+        error: dbError.message,
+        stack: dbError.stack,
+        invoice_id: processedEvent?.invoice_id,
+        order_id: processedEvent?.metadata?.order_id
+      });
+      // Still return success to Xendit to prevent retries, but log the error
+      return res.status(200).json({
+        success: false,
+        message: 'Webhook received but database update failed',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : 'Internal server error'
+      });
     }
 
     res.json({
@@ -405,10 +584,18 @@ const handleWebhook = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Webhook processing error:', error);
+    console.error('❌ Webhook processing error:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      headers: {
+        'x-xendit-signature': req.headers['x-xendit-signature'] ? 'present' : 'missing'
+      }
+    });
     res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };

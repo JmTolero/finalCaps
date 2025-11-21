@@ -310,7 +310,7 @@ class XenditService {
       const processedData = {
         webhook_id: webhookData.id,
         invoice_id: webhookData.data?.id,
-        external_id: webhookitData.data?.external_id,
+        external_id: webhookData.data?.external_id,
         status: webhookData.data?.status,
         amount: webhookData.data?.amount,
         currency: webhookData.data?.currency,
