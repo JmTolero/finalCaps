@@ -5,6 +5,7 @@ const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 
 // Configure multer for memory storage (for Cloudinary upload)
+// QR code image is now optional, so we use .single() but allow it to be optional
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -13,6 +14,10 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
+    if (!file) {
+      // No file is acceptable now
+      return cb(null, true);
+    }
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
@@ -76,14 +81,9 @@ const uploadQRCode = async (req, res) => {
       });
     }
 
-    // Check if QR code file was uploaded
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'QR code image is required'
-      });
-    }
-
+    // QR code image is optional - only upload if provided
+    let qrCodeUrl = null;
+    if (req.file) {
     // Upload to Cloudinary
     const cloudinaryResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
@@ -103,7 +103,8 @@ const uploadQRCode = async (req, res) => {
       ).end(req.file.buffer);
     });
 
-    const qrCodeUrl = cloudinaryResult.secure_url;
+      qrCodeUrl = cloudinaryResult.secure_url;
+    }
 
     // Check if vendor already has a QR code
     const [existingQR] = await pool.query(
@@ -112,8 +113,8 @@ const uploadQRCode = async (req, res) => {
     );
 
     if (existingQR.length > 0) {
-      // Delete old QR code from Cloudinary
-      if (existingQR[0].qr_code_image) {
+      // Delete old QR code from Cloudinary only if a new one is being uploaded
+      if (qrCodeUrl && existingQR[0].qr_code_image) {
         try {
           const publicId = existingQR[0].qr_code_image.split('/').pop().split('.')[0];
           await cloudinary.uploader.destroy(`vendor-qr-codes/${publicId}`);
@@ -122,11 +123,20 @@ const uploadQRCode = async (req, res) => {
         }
       }
 
-      // Update existing QR code
-      const [result] = await pool.query(
+      // Update existing record - only update qr_code_image if a new one was provided
+      if (qrCodeUrl) {
+        await pool.query(
         'UPDATE vendor_gcash_qr SET qr_code_image = ?, gcash_number = ?, business_name = ?, updated_at = CURRENT_TIMESTAMP WHERE vendor_id = ?',
         [qrCodeUrl, validatedNumber, business_name, vendor_id]
       );
+      } else {
+        await pool.query(
+          'UPDATE vendor_gcash_qr SET gcash_number = ?, business_name = ?, updated_at = CURRENT_TIMESTAMP WHERE vendor_id = ?',
+          [validatedNumber, business_name, vendor_id]
+        );
+        // Use existing QR code URL if not updating
+        qrCodeUrl = existingQR[0].qr_code_image;
+      }
 
       // Mark QR setup as completed
       await pool.query(
@@ -136,7 +146,7 @@ const uploadQRCode = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: 'QR code updated successfully',
+        message: 'GCash number updated successfully',
         qrCode: {
           qr_id: existingQR[0].qr_id,
           vendor_id: vendor_id,
@@ -144,11 +154,12 @@ const uploadQRCode = async (req, res) => {
           gcash_number: validatedNumber,
           business_name: business_name,
           is_active: true,
+          created_at: existingQR[0].created_at ? new Date(existingQR[0].created_at).toISOString() : null,
           updated_at: new Date().toISOString()
         }
       });
     } else {
-      // Create new QR code
+      // Create new record - qr_code_image can be NULL
       const [result] = await pool.query(
         'INSERT INTO vendor_gcash_qr (vendor_id, qr_code_image, gcash_number, business_name, is_active) VALUES (?, ?, ?, ?, ?)',
         [vendor_id, qrCodeUrl, validatedNumber, business_name, true]
@@ -162,7 +173,7 @@ const uploadQRCode = async (req, res) => {
 
       return res.status(201).json({
         success: true,
-        message: 'QR code uploaded successfully',
+        message: 'GCash number saved successfully',
         qrCode: {
           qr_id: result.insertId,
           vendor_id: vendor_id,
@@ -176,11 +187,11 @@ const uploadQRCode = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Error uploading QR code:', error);
+    console.error('Error saving GCash number:', error);
 
     return res.status(500).json({
       success: false,
-      error: 'Failed to upload QR code'
+      error: 'Failed to save GCash number. Please try again.'
     });
   }
 };
@@ -203,6 +214,14 @@ const getQRCode = async (req, res) => {
     }
 
     const qrCode = qrCodes[0];
+
+    // Format dates to ISO string for consistent frontend parsing
+    if (qrCode.created_at) {
+      qrCode.created_at = new Date(qrCode.created_at).toISOString();
+    }
+    if (qrCode.updated_at) {
+      qrCode.updated_at = new Date(qrCode.updated_at).toISOString();
+    }
 
     return res.status(200).json({
       success: true,
@@ -258,6 +277,14 @@ const getMyQRCode = async (req, res) => {
     // If business_name is not set in QR code, use store_name from vendor
     if (!qrCode.business_name && store_name) {
       qrCode.business_name = store_name;
+    }
+
+    // Format dates to ISO string for consistent frontend parsing
+    if (qrCode.created_at) {
+      qrCode.created_at = new Date(qrCode.created_at).toISOString();
+    }
+    if (qrCode.updated_at) {
+      qrCode.updated_at = new Date(qrCode.updated_at).toISOString();
     }
 
     return res.status(200).json({

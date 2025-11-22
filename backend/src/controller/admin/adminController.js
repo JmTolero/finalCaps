@@ -319,7 +319,7 @@ const updateVendorStatus = async (req, res) => {
                 title: 'Vendor Application Approved! 🎉',
                 message: `Congratulations ${vendor.fname}! Your vendor application has been approved. You can now set up your store and start selling your delicious ice cream! 
 
-Important: To start receiving payments, please complete your GCash QR code setup in Settings → QR Code Setup. This is required before you can manage products and receive customer payments.`,
+Important: To start receiving payments, please complete your GCash number setup in Settings → GCash Number Setup. Enter your GCash mobile number to enable integrated payment processing. This is required before you can manage products and receive customer payments.`,
                 notification_type: 'system_announcement',
                 related_vendor_id: vendor_id
             });

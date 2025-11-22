@@ -1299,7 +1299,7 @@ export const Customer = () => {
   const settingsTabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'addresses', label: 'Delivery Addresses', icon: '📍' },
-    { id: 'gcash', label: 'QR Payments', icon: '📱' }
+    { id: 'gcash', label: 'GCash Payments', icon: '📱' }
   ];
 
   const addressLabels = ['Home', 'Work', 'Office', 'Other'];
@@ -3046,11 +3046,11 @@ export const Customer = () => {
                     </div>
                   )}
 
-                  {/* QR Payments Tab */}
+                  {/* GCash Payments Tab */}
                   {activeTab === 'gcash' && (
                     <div>
                       <div className="mb-4 sm:mb-6">
-                        <h2 className="text-xl sm:text-2xl font-semibold">QR Payment System</h2>
+                        <h2 className="text-xl sm:text-2xl font-semibold">GCash Payment System</h2>
                       </div>
 
                       <div className="bg-green-50 rounded-lg p-4 sm:p-6">
@@ -3059,8 +3059,8 @@ export const Customer = () => {
                             <span className="text-xl sm:text-2xl">📱</span>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Direct QR Payments</h3>
-                            <p className="text-xs sm:text-sm text-gray-600">Pay vendors directly using GCash QR codes</p>
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Integrated GCash Payments</h3>
+                            <p className="text-xs sm:text-sm text-gray-600">Fast, secure, and automatic payment processing via Xendit</p>
                           </div>
                         </div>
 
@@ -3068,10 +3068,11 @@ export const Customer = () => {
                           <div className="bg-white rounded-lg p-3 sm:p-4 border border-green-200">
                             <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">💡 How it works:</h4>
                             <ul className="text-xs sm:text-sm text-gray-600 space-y-1">
-                              <li>• Scan vendor's GCash QR code during checkout</li>
-                              <li>• Pay directly to vendor - no platform fees</li>
-                              <li>• Vendor receives 100% of payment</li>
-                              <li>• Faster and more secure payment process</li>
+                              <li>• Choose GCash payment during checkout</li>
+                              <li>• Payment is processed automatically via Xendit</li>
+                              <li>• Instant order confirmation - no waiting</li>
+                              <li>• Secure and reliable payment gateway</li>
+                              <li>• No manual payment verification needed</li>
                             </ul>
                           </div>
 
@@ -3079,17 +3080,28 @@ export const Customer = () => {
                             <h4 className="font-medium text-blue-900 mb-2 text-sm sm:text-base">📱 Payment Process:</h4>
                             <ol className="text-xs sm:text-sm text-blue-800 space-y-1">
                               <li>1. Place your order and proceed to checkout</li>
-                              <li>2. Scan the vendor's GCash QR code</li>
-                              <li>3. Pay the exact amount in your GCash app</li>
-                              <li>4. Upload payment confirmation screenshot</li>
-                              <li>5. Order is confirmed and vendor is notified</li>
+                              <li>2. Select GCash as your payment method</li>
+                              <li>3. Complete payment through the integrated GCash gateway</li>
+                              <li>4. Order is confirmed instantly</li>
+                              <li>5. Vendor is notified automatically</li>
                             </ol>
+                          </div>
+
+                          <div className="bg-yellow-50 rounded-lg p-3 sm:p-4 border border-yellow-200">
+                            <h4 className="font-medium text-yellow-900 mb-2 text-sm sm:text-base">✨ Benefits:</h4>
+                            <ul className="text-xs sm:text-sm text-yellow-800 space-y-1">
+                              <li>• Opens GCash app automatically on mobile</li>
+                              <li>• Instant order confirmation</li>
+                              <li>• No screenshot upload needed</li>
+                              <li>• Secure payment via Xendit</li>
+                              <li>• Supports 50% downpayment option</li>
+                            </ul>
                           </div>
 
                           <div className="flex justify-center">
                             <div className="text-center">
-                              <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Ready to pay with QR codes?</p>
-                              <p className="text-xs text-gray-500">QR payment option will appear during checkout</p>
+                              <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Ready to pay with GCash?</p>
+                              <p className="text-xs text-gray-500">GCash payment option will appear during checkout</p>
                             </div>
                           </div>
                         </div>

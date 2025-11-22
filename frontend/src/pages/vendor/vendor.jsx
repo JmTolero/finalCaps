@@ -3348,7 +3348,7 @@ export const Vendor = () => {
     { id: "profile", label: "Profile" },
     { id: "addresses", label: "Store Addresses" },
     { id: "documents", label: "Documents" },
-    { id: "gcash", label: "QR Code Setup" },
+    { id: "gcash", label: "GCash Number Setup" },
   ];
 
   const sidebarItems = [
@@ -4259,13 +4259,13 @@ export const Vendor = () => {
                       <div>
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
                           <h2 className="text-xl sm:text-2xl font-semibold">
-                            GCash QR Code Setup
+                            GCash Number Setup
                           </h2>
                           <button
                             onClick={() => navigate('/vendor/gcash-account')}
                             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                           >
-                            Manage QR Code
+                            Manage GCash Number
                           </button>
                         </div>
 
@@ -4275,29 +4275,30 @@ export const Vendor = () => {
                               <span className="text-2xl">📱</span>
                             </div>
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900">Direct QR Payments</h3>
-                              <p className="text-sm text-gray-600">Set up your GCash QR code for direct customer payments</p>
+                              <h3 className="text-lg font-semibold text-gray-900">Integrated GCash Payments</h3>
+                              <p className="text-sm text-gray-600">Set up your GCash number for automated payment processing</p>
                             </div>
                           </div>
 
                           <div className="space-y-4">
                             <div className="bg-white rounded-lg p-4 border border-green-200">
-                              <h4 className="font-medium text-gray-900 mb-2">💡 How direct payments work:</h4>
+                              <h4 className="font-medium text-gray-900 mb-2">💡 How integrated payments work:</h4>
                               <ul className="text-sm text-gray-600 space-y-1">
-                                <li>• You receive 97% of payment (3% platform fee)</li>
-                                <li>• Customers scan your QR code and pay directly</li>
-                                <li>• Money goes straight to your GCash account</li>
-                                <li>• Build direct relationship with customers</li>
+                                <li>• Automatic payment processing via Xendit</li>
+                                <li>• Instant order confirmation</li>
+                                <li>• Secure and reliable payment gateway</li>
+                                <li>• No manual payment verification needed</li>
+                                <li>• Customers pay through integrated GCash</li>
                               </ul>
                             </div>
 
                             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                               <h4 className="font-medium text-blue-900 mb-2">📱 Setup Process:</h4>
                               <ol className="text-sm text-blue-800 space-y-1">
-                                <li>1. Get your GCash QR code from the app</li>
-                                <li>2. Upload it to your vendor profile</li>
-                                <li>3. Customers will scan it during checkout</li>
-                                <li>4. Receive payments directly to your GCash</li>
+                                <li>1. Enter your GCash mobile number</li>
+                                <li>2. Customers choose GCash payment at checkout</li>
+                                <li>3. Payment is processed automatically</li>
+                                <li>4. Order is confirmed instantly</li>
                               </ol>
                             </div>
 
@@ -4306,7 +4307,7 @@ export const Vendor = () => {
                                 onClick={() => navigate('/vendor/gcash-account')}
                                 className="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg transition-colors duration-200"
                               >
-                                Set Up QR Code
+                                Set Up GCash Number
                               </button>
                             </div>
                           </div>
@@ -4944,12 +4945,12 @@ export const Vendor = () => {
                       </div>
                       <div className="ml-2 sm:ml-3">
                         <h3 className="text-xs sm:text-sm font-medium text-blue-800">
-                          QR Code Setup Required
+                          GCash Number Setup Required
                         </h3>
                         <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-blue-700">
                           <p>
-                            Complete your GCash QR code setup to start managing products and receiving payments. 
-                            Go to Settings → QR Code Setup to upload your QR code.
+                            Complete your GCash number setup to start managing products and receiving payments. 
+                            Go to Settings → GCash Number Setup to enter your GCash number.
                           </p>
                           <button
                             onClick={() => {
@@ -8610,12 +8611,12 @@ export const Vendor = () => {
                                       <>
                                         <p className="text-orange-700 text-xs mb-1.5 sm:mb-2">Customer selected: Cash on Delivery</p>
                                         {hasPendingRemainingBalance(order, 'cod') ? (
-                                          <button
-                                            onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
-                                            className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
-                                          >
-                                            💰 Mark Remaining Balance as Paid (COD)
-                                          </button>
+                                        <button
+                                          onClick={() => handleConfirmCODPaymentClick(order.order_id, order.remaining_balance)}
+                                          className="bg-orange-600 hover:bg-orange-700 text-white py-1.5 sm:py-2 lg:py-2.5 px-3 sm:px-4 rounded-lg font-medium transition-colors text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                          💰 Mark Remaining Balance as Paid (COD)
+                                        </button>
                                         ) : (
                                           <p className="text-green-700 text-xs font-medium">
                                             ✅ COD payment already confirmed

@@ -26,6 +26,7 @@ const getOrderRecord = async (req, res) => {
 const getOrderById = async (req, res) => {
     try {
         const { order_id } = req.params;
+        const user = req.user; // From authentication middleware
         
         if (!order_id) {
             return res.status(400).json({
@@ -41,7 +42,8 @@ const getOrderById = async (req, res) => {
                 u.lname as customer_lname,
                 u.contact_no as customer_contact,
                 v.store_name as business_name,
-                vu.contact_no as vendor_contact
+                vu.contact_no as vendor_contact,
+                v.user_id as vendor_user_id
             FROM orders o
             LEFT JOIN users u ON o.customer_id = u.user_id
             LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
@@ -55,6 +57,33 @@ const getOrderById = async (req, res) => {
                 error: 'Order not found'
             });
         }
+
+        const order = rows[0];
+
+        // Authorization check: Verify user has access to this order
+        // Allow access if:
+        // 1. User is the customer who placed the order
+        // 2. User is the vendor who received the order
+        // 3. User is an admin (user_type = 'admin')
+        // 4. No authentication required for payment success pages (public access for payment verification)
+        if (user) {
+            const userId = user.user_id || user.id;
+            const userType = user.user_type || user.role;
+            
+            const isCustomer = order.customer_id === userId;
+            const isVendor = order.vendor_user_id === userId;
+            const isAdmin = userType === 'admin';
+            
+            if (!isCustomer && !isVendor && !isAdmin) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Access denied. You do not have permission to view this order.'
+                });
+            }
+        }
+        // If no user is authenticated, allow access (for payment success pages)
+        // This is acceptable because payment success pages need to display order info
+        // but sensitive information should be limited
 
         // Get order items
         const [items] = await pool.query(`
@@ -73,7 +102,6 @@ const getOrderById = async (req, res) => {
             WHERE oi.order_id = ?
         `, [order_id]);
 
-        const order = rows[0];
         order.items = items;
 
         res.json({

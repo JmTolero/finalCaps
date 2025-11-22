@@ -41,6 +41,7 @@ export const VendorSetup = () => {
   // Profile dropdown state
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef(null);
+  const statusMessageRef = useRef(null);
 
   // Handle clicks outside profile dropdown
   useEffect(() => {
@@ -158,12 +159,55 @@ export const VendorSetup = () => {
     }
   }, [searchParams, navigate, fetchVendorData]);
 
+  // Auto-scroll to status message when it appears
+  useEffect(() => {
+    if (status.type && statusMessageRef.current) {
+      // Small delay to ensure the message is rendered
+      setTimeout(() => {
+        const headerOffset = 100; // Offset for header
+        const elementPosition = statusMessageRef.current.offsetTop;
+        const offsetPosition = elementPosition - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [status.type, status.message]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    // Prevent spaces in contact_no and email fields
+    const filteredValue = (name === 'contact_no' || name === 'email') 
+      ? value.replace(/\s/g, '') 
+      : value;
     setShopForm(prev => ({
       ...prev,
-      [name]: value
+      [name]: filteredValue
     }));
+  };
+
+  const handleKeyDown = (e) => {
+    // Prevent space key in contact_no and email fields
+    if (e.target.name === 'contact_no' || e.target.name === 'email') {
+      if (e.key === ' ') {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handleBlur = (e) => {
+    // Trim whitespace from shop name field on blur
+    if (e.target.name === 'store_name') {
+      const trimmedValue = e.target.value.trim();
+      if (trimmedValue !== e.target.value) {
+        setShopForm(prev => ({
+          ...prev,
+          [e.target.name]: trimmedValue
+        }));
+      }
+    }
   };
 
   const handleFileChange = (e) => {
@@ -186,9 +230,18 @@ export const VendorSetup = () => {
     if (currentStep === 1) {
       // Validate shop information
       const missingFields = [];
-      if (!shopForm.store_name) missingFields.push('Shop Name');
-      if (!shopForm.contact_no) missingFields.push('Contact Number');
-      if (!shopForm.email) missingFields.push('Email Address');
+      const trimmedShopName = shopForm.store_name?.trim();
+      if (!trimmedShopName || trimmedShopName.length === 0) {
+        missingFields.push('Shop Name');
+      } else if (trimmedShopName.length < 4) {
+        setStatus({ 
+          type: 'error', 
+          message: 'Shop Name must be at least 4 characters long.' 
+        });
+        return;
+      }
+      if (!shopForm.contact_no?.trim()) missingFields.push('Contact Number');
+      if (!shopForm.email?.trim()) missingFields.push('Email Address');
       
       if (missingFields.length > 0) {
         setStatus({ 
@@ -413,10 +466,12 @@ export const VendorSetup = () => {
 
               {/* Status Messages */}
               {status.type && (
-                <div className={`p-4 sm:p-5 rounded-xl mb-4 sm:mb-6 text-base sm:text-lg font-semibold shadow-lg border-2 ${
-                  status.type === 'success' ? 'bg-green-100 text-green-800 border-green-300' : 
-                  'bg-red-100 text-red-800 border-red-300'
-                }`}>
+                <div 
+                  ref={statusMessageRef}
+                  className={`p-4 sm:p-5 rounded-xl mb-4 sm:mb-6 text-base sm:text-lg font-semibold shadow-lg border-2 ${
+                    status.type === 'success' ? 'bg-green-100 text-green-800 border-green-300' : 
+                    'bg-red-100 text-red-800 border-red-300'
+                  }`}>
                   <div className="flex items-center">
                     {status.type === 'success' ? (
                       <svg className="w-6 h-6 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,17 +500,23 @@ export const VendorSetup = () => {
                     <div>
                       <label className="block text-base sm:text-lg font-bold text-gray-800 mb-3">
                         Name of the shop/vendor <span className="text-red-600 text-lg">*</span>
-                        {!shopForm.store_name && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
+                        {!shopForm.store_name?.trim() && <span className="text-red-600 text-sm ml-2 font-semibold">(Required)</span>}
+                        {shopForm.store_name?.trim() && shopForm.store_name.trim().length > 0 && shopForm.store_name.trim().length < 4 && (
+                          <span className="text-red-600 text-sm ml-2 font-semibold">(At least 4 characters)</span>
+                        )}
                       </label>
                       <input
                         type="text"
                         name="store_name"
                         value={shopForm.store_name}
                         onChange={handleInputChange}
+                        onBlur={handleBlur}
                         className={`w-full px-4 sm:px-5 py-4 sm:py-5 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 text-base sm:text-lg font-medium shadow-sm transition-all duration-200 ${
-                          !shopForm.store_name ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
+                          !shopForm.store_name?.trim() || (shopForm.store_name?.trim() && shopForm.store_name.trim().length < 4) 
+                            ? 'border-red-400 bg-red-50' 
+                            : 'border-gray-400 hover:border-gray-500'
                         }`}
-                        placeholder="Enter your shop name"
+                        placeholder="Enter your shop name (min. 4 characters)"
                         required
                       />
                     </div>
@@ -501,6 +562,7 @@ export const VendorSetup = () => {
                           name="email"
                           value={shopForm.email}
                           onChange={handleInputChange}
+                          onKeyDown={handleKeyDown}
                           className={`w-full px-4 sm:px-5 py-4 sm:py-5 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 text-base sm:text-lg font-medium shadow-sm transition-all duration-200 ${
                             !shopForm.email ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
                           }`}
@@ -517,6 +579,7 @@ export const VendorSetup = () => {
                           name="contact_no"
                           value={shopForm.contact_no}
                           onChange={handleInputChange}
+                          onKeyDown={handleKeyDown}
                           className={`w-full px-4 sm:px-5 py-4 sm:py-5 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 text-base sm:text-lg font-medium shadow-sm transition-all duration-200 ${
                             !shopForm.contact_no ? 'border-red-400 bg-red-50' : 'border-gray-400 hover:border-gray-500'
                           }`}

@@ -14,10 +14,14 @@ const PaymentSuccess = () => {
     try {
       setLoading(true);
       const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/orders/${orderId}`);
       
-      if (response.data.success) {
-          const orderData = response.data.order;
+      // Include authentication token if available
+      const token = sessionStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const response = await axios.get(`${apiBase}/api/orders/${orderId}`, { headers });
+      
+      if (response.data.success        const orderData = response.data.order;
         setOrder(orderData);
         
         // If payment is still unpaid, try to sync payment status by checking payment_intent
@@ -25,12 +29,16 @@ const PaymentSuccess = () => {
           console.log('🔄 Payment status is unpaid, attempting to sync...');
           try {
             // Call payment status endpoint to trigger sync mechanism
-            await axios.get(`${apiBase}/api/payment/status/${orderData.payment_intent_id}`);
+            const token = sessionStorage.getItem('token');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            await axios.get(`${apiBase}/api/payment/status/${orderData.payment_intent_id}`, { headers });
             
             // Wait a moment for sync to complete, then refetch order
             setTimeout(async () => {
               try {
-                const refreshResponse = await axios.get(`${apiBase}/api/orders/${orderId}`);
+                const token = sessionStorage.getItem('token');
+                const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                const refreshResponse = await axios.get(`${apiBase}/api/orders/${orderId}`, { headers });
                 if (refreshResponse.data.success) {
                   setOrder(refreshResponse.data.order);
                   console.log('✅ Order status refreshed after sync');

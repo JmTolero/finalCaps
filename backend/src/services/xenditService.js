@@ -274,7 +274,13 @@ class XenditService {
     try {
       if (!this.webhookSecret) {
         console.warn('⚠️ Xendit webhook secret not configured');
-        return true; // Allow in development
+        // In production, always require webhook secret
+        if (process.env.NODE_ENV === 'production') {
+          console.error('❌ Webhook secret is required in production');
+          return false;
+        }
+        // Only allow in development if explicitly configured to do so
+        return process.env.ALLOW_UNVERIFIED_WEBHOOKS === 'true';
       }
 
       if (!signature) {

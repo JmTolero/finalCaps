@@ -123,12 +123,49 @@ const createPaymentIntent = async (req, res) => {
 const getPaymentIntentStatus = async (req, res) => {
   try {
     const { payment_intent_id } = req.params;
+    const user = req.user; // From authentication middleware (optional)
 
     if (!payment_intent_id) {
       return res.status(400).json({
         success: false,
         error: 'Invoice ID is required'
       });
+    }
+
+    // If user is authenticated, verify they have access to this payment intent
+    if (user) {
+      const [paymentIntent] = await pool.execute(
+        `SELECT order_id FROM payment_intents WHERE payment_intent_id = ?`,
+        [payment_intent_id]
+      );
+
+      if (paymentIntent.length > 0) {
+        const orderId = paymentIntent[0].order_id;
+        const [order] = await pool.execute(
+          `SELECT customer_id, vendor_id, v.user_id as vendor_user_id 
+           FROM orders o
+           LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+           WHERE o.order_id = ?`,
+          [orderId]
+        );
+
+        if (order.length > 0) {
+          const userId = user.user_id || user.id;
+          const userType = user.user_type || user.role;
+          const orderData = order[0];
+          
+          const isCustomer = orderData.customer_id === userId;
+          const isVendor = orderData.vendor_user_id === userId;
+          const isAdmin = userType === 'admin';
+          
+          if (!isCustomer && !isVendor && !isAdmin) {
+            return res.status(403).json({
+              success: false,
+              error: 'Access denied. You do not have permission to view this payment.'
+            });
+          }
+        }
+      }
     }
 
     // Get invoice from Xendit

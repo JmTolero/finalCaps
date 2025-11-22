@@ -86,7 +86,7 @@ const emailTemplates = {
             <p>Hi <strong>${vendorData.fname}</strong>,</p>
             
             <p>Great news! Your ChillNet vendor application has been approved by our admin team.</p>
-            <p><strong>Important:</strong> To start receiving payments, please complete your GCash QR code setup in your vendor dashboard under Settings → QR Code Setup. This is required before you can manage products and receive customer payments.</p>
+            <p><strong>Important:</strong> To start receiving payments, please complete your GCash number setup in your vendor dashboard under Settings → GCash Number Setup. Enter your GCash mobile number to enable integrated payment processing. This is required before you can manage products and receive customer payments.</p>
             
             <div class="highlight">
               <h3>✅ What's Next?</h3>
@@ -128,7 +128,7 @@ const emailTemplates = {
       
       Great news! Your ChillNet vendor application has been approved by our admin team.
       
-      IMPORTANT: To start receiving payments, please complete your GCash QR code setup in your vendor dashboard under Settings → QR Code Setup. This is required before you can manage products and receive customer payments.
+      IMPORTANT: To start receiving payments, please complete your GCash number setup in your vendor dashboard under Settings → GCash Number Setup. Enter your GCash mobile number to enable integrated payment processing. This is required before you can manage products and receive customer payments.
       
       What's Next?
       ✅ Log in to your vendor dashboard

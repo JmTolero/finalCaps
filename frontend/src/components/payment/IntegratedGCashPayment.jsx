@@ -18,7 +18,7 @@ const IntegratedGCashPayment = ({
   const [isMobile, setIsMobile] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState('pending');
-  const [pollingInterval, setPollingInterval] = useState(null);
+  const pollingIntervalRef = React.useRef(null);
 
   // Detect if user is on mobile device
   useEffect(() => {
@@ -113,8 +113,9 @@ const IntegratedGCashPayment = ({
           console.log('✅ Payment successful!');
           setPaymentStatus('success');
           
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
           }
           
           if (onPaymentSuccess) {
@@ -125,15 +126,16 @@ const IntegratedGCashPayment = ({
           setPaymentStatus('expired');
           setError('Payment link has expired. Please try again.');
           
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
           }
         }
       }
     } catch (err) {
       console.error('Error checking payment status:', err);
     }
-  }, [paymentData, pollingInterval, onPaymentSuccess]);
+  }, [paymentData, onPaymentSuccess]);
 
   // Initialize payment
   useEffect(() => {
@@ -149,9 +151,14 @@ const IntegratedGCashPayment = ({
         checkPaymentStatus();
       }, 5000); // Check every 5 seconds
       
-      setPollingInterval(interval);
+      pollingIntervalRef.current = interval;
       
-      return () => clearInterval(interval);
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      };
     }
   }, [paymentData, paymentStatus, checkPaymentStatus]);
 
@@ -162,9 +169,13 @@ const IntegratedGCashPayment = ({
   };
 
   const handleCancel = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
+    // Clear polling interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
+    
+    // Call cancel callback
     if (onCancel) {
       onCancel();
     }
@@ -378,8 +389,9 @@ const IntegratedGCashPayment = ({
                   setPaymentStatus('success');
                   
                   // Clear polling interval
-                  if (pollingInterval) {
-                    clearInterval(pollingInterval);
+                  if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                    pollingIntervalRef.current = null;
                   }
                   
                   if (onPaymentSuccess) {

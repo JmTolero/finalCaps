@@ -45,6 +45,12 @@ export const FlavorDetail = () => {
   const [newRating, setNewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   
+  // Vendor rating state
+  const [vendorRating, setVendorRating] = useState({
+    average_rating: 0,
+    total_reviews: 0
+  });
+  
   // Notification state
   const [unreadCount, setUnreadCount] = useState(0);
   
@@ -139,6 +145,25 @@ export const FlavorDetail = () => {
       console.error('Error fetching ratings:', error);
     }
   }, [flavorId]);
+
+  const fetchVendorRating = useCallback(async (vendorId) => {
+    try {
+      if (!vendorId) return;
+      
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/reviews/vendor/${vendorId}`);
+      
+      if (response.data.success && response.data.summary) {
+        setVendorRating({
+          average_rating: parseFloat(response.data.summary.average_rating) || 0,
+          total_reviews: response.data.summary.total_reviews || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching vendor rating:', error);
+      setVendorRating({ average_rating: 0, total_reviews: 0 });
+    }
+  }, []);
 
   const fetchUserRating = useCallback(async () => {
     try {
@@ -1220,10 +1245,27 @@ export const FlavorDetail = () => {
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800 truncate">{flavor.store_name}</h3>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-yellow-500 text-sm sm:text-base">★★★★★</span>
-                    <span className="text-gray-600 text-sm sm:text-base">5.0</span>
-                  </div>
+                  {vendorRating.total_reviews > 0 ? (
+                    <div className="flex items-center space-x-1">
+                      <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`text-sm ${
+                              star <= Math.round(vendorRating.average_rating)
+                                ? 'text-yellow-500'
+                                : 'text-gray-300'
+                            }`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-gray-600 text-sm sm:text-base">
+                        {vendorRating.average_rating.toFixed(1)}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div className="flex space-x-2 sm:space-x-3 w-full sm:w-auto">
