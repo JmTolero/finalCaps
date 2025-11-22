@@ -31,6 +31,45 @@ export const BecomeVendor = () => {
       console.log('User data from session:', user);
     setUserData(user);
     
+    // Check for vendor rejection status
+    const checkRejectionStatus = async () => {
+      try {
+        const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+        const token = sessionStorage.getItem('token');
+        
+        const rejectionCheck = await fetch(`${apiBase}/api/vendor/check-rejection-status`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+        });
+        
+        if (rejectionCheck.ok) {
+          const rejectionData = await rejectionCheck.json();
+          if (rejectionData.hasRejection && !rejectionData.canReapply) {
+            // Show error message with auto return date
+            const autoReturnDate = new Date(rejectionData.autoReturnAt);
+            const formattedDate = autoReturnDate.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            setStatus({
+              type: 'error',
+              message: `Your previous vendor application was rejected.\n\nYou can reapply on ${formattedDate}.\n\nPlease check back after this date to submit a new application.`
+            });
+          }
+        }
+      } catch (err) {
+        console.log('Rejection check failed:', err);
+      }
+    };
+    
+    checkRejectionStatus();
+    
     // Pre-fill form with existing user data
     setForm(prev => ({
       ...prev,
@@ -309,7 +348,7 @@ export const BecomeVendor = () => {
 
               {/* Status Message */}
               {status.message && (
-                <div className={`p-3 sm:p-4 rounded-lg text-sm sm:text-base ${
+                <div className={`p-3 sm:p-4 rounded-lg text-sm sm:text-base whitespace-pre-line ${
                   status.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
                   status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
                   'bg-blue-50 text-blue-700 border border-blue-200'

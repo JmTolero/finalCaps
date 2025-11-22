@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChillNet Database ERD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .search-box {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        .search-box input:focus {
+            border-color: #667eea;
+        }
+        
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .table-card {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .table-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 1.2em;
+            text-align: center;
+        }
+        
+        .table-body {
+            padding: 0;
+        }
+        
+        .attribute-row {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .attribute-row:last-child {
+            border-bottom: none;
+        }
+        
+        .attribute-row:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .attribute-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+        
+        .attribute-name.pk {
+            color: #e74c3c;
+        }
+        
+        .attribute-name.fk {
+            color: #3498db;
+        }
+        
+        .data-type {
+            color: #666;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        
+        .legend {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        
+        .legend h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .stats {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .relationships-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .relationships-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .relationship-item {
+            background: white;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .relationship-item strong {
+            color: #667eea;
+        }
+        
+        .relationship-badge {
+            display: inline-block;
+            background: #e8f4f8;
+            color: #3498db;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin: 5px 5px 5px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .relationship-badge:hover {
+            background: #3498db;
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .table-relationships {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .table-relationships-title {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .view-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .view-toggle button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .view-toggle button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        
+        .view-toggle button.active {
+            background: #764ba2;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .relationships-view {
+            display: none;
+        }
+        
+        .relationships-view.active {
+            display: block;
+        }
+        
+        .tables-view.active {
+            display: block;
+        }
+        
+        .tables-view {
+            display: none;
+        }
+        
+        .diagram-view {
+            display: none;
+            position: relative;
+            min-height: 800px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: auto;
+        }
+        
+        .diagram-view.active {
+            display: block;
+        }
+        
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            min-height: 800px;
+            background: 
+                linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+                linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .diagram-table {
+            position: absolute;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 200px;
+            cursor: move;
+            z-index: 10;
+        }
+        
+        .diagram-table:hover {
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            border-color: #764ba2;
+        }
+        
+        .diagram-table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 6px 6px 0 0;
+            cursor: move;
+        }
+        
+        .diagram-table-body {
+            padding: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .diagram-attribute {
+            padding: 4px 8px;
+            font-size: 0.85em;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .diagram-attribute:last-child {
+            border-bottom: none;
+        }
+        
+        .diagram-attribute-name {
+            font-weight: 600;
+        }
+        
+        .diagram-attribute-name.pk {
+            color: #e74c3c;
+        }
+        
+        .diagram-attribute-name.fk {
+            color: #3498db;
+        }
+        
+        .diagram-attribute-type {
+            font-size: 0.75em;
+            color: #666;
+            font-family: monospace;
+        }
+        
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .connection-line path {
+            stroke: #3498db;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+        
+        .connection-line:hover path {
+            stroke: #e74c3c;
+            stroke-width: 3;
+        }
+        
+        .connection-label {
+            position: absolute;
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            color: #666;
+            pointer-events: none;
+            border: 1px solid #ddd;
+        }
+        
+        .diagram-controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .diagram-controls button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .diagram-controls button:hover {
+            background: #764ba2;
+        }
+        
+        .diagram-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍦 ChillNet Database ERD</h1>
+        <p class="subtitle">Entity Relationship Diagram - All Used Tables</p>
+        
+        <div class="stats">
+            <strong id="table-count">30</strong> Tables | 
+            <strong id="visible-count">30</strong> Visible | 
+            <strong id="relationship-count">0</strong> Relationships
+        </div>
+        
+        <div class="view-toggle">
+            <button id="tables-btn" class="active">📊 Tables View</button>
+            <button id="relationships-btn">🔗 Relationships View</button>
+            <button id="diagram-btn">📐 Diagram View</button>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="🔍 Search tables or attributes...">
+        </div>
+        
+        <div class="tables-view active" id="tables-view">
+            <div class="tables-grid" id="tables-container">
+                <!-- Tables will be inserted here -->
+            </div>
+        </div>
+        
+        <div class="relationships-view" id="relationships-view">
+            <div class="relationships-section" id="relationships-container">
+                <!-- Relationships will be inserted here -->
+            </div>
+        </div>
+        
+        <div class="diagram-view" id="diagram-view">
+            <div class="diagram-controls">
+                <button onclick="autoLayout()">🔄 Auto Layout</button>
+                <button onclick="resetLayout()">↺ Reset Position</button>
+                <button onclick="zoomIn()">➕ Zoom In</button>
+                <button onclick="zoomOut()">➖ Zoom Out</button>
+                <button onclick="fitToScreen()">📐 Fit to Screen</button>
+                <div class="diagram-info">
+                    <span id="diagram-info-text">Click and drag tables to reposition | Scroll to zoom</span>
+                </div>
+            </div>
+            <div class="diagram-container" id="diagram-container">
+                <svg id="connection-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#3498db" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <h3>Legend</h3>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #e74c3c;"></span>
+                <strong>PK</strong> - Primary Key
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #3498db;"></span>
+                <strong>FK</strong> - Foreign Key
+            </div>
+            <div class="legend-item">
+                <span class="legend-color" style="background: #f0f0f0;"></span>
+                <strong>Data Type</strong> - Column data type
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const tables = [
+            {
+                name: 'users',
+                attributes: [
+                    { name: 'user_id', type: 'INT(11)', pk: true },
+                    { name: 'fname', type: 'VARCHAR(45)' },
+                    { name: 'lname', type: 'VARCHAR(45)' },
+                    { name: 'gender', type: 'VARCHAR(45)' },
+                    { name: 'birth_date', type: 'DATE' },
+                    { name: 'username', type: 'VARCHAR(45)' },
+                    { name: 'password', type: 'VARCHAR(45)' },
+                    { name: 'contact_no', type: 'VARCHAR(45)' },
+                    { name: 'email', type: 'VARCHAR(100)' },
+                    { name: 'primary_address_id', type: 'INT(11)', fk: true },
+                    { name: 'role', type: 'VARCHAR(50)' },
+                    { name: 'status', type: 'ENUM' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendors',
+                attributes: [
+                    { name: 'vendor_id', type: 'INT(11)', pk: true },
+                    { name: 'user_id', type: 'INT(11)', fk: true },
+                    { name: 'store_name', type: 'VARCHAR(50)' },
+                    { name: 'valid_id_url', type: 'VARCHAR(100)' },
+                    { name: 'business_permit_url', type: 'VARCHAR(100)' },
+                    { name: 'proof_image_url', type: 'VARCHAR(100)' },
+                    { name: 'profile_image_url', type: 'VARCHAR(100)' },
+                    { name: 'status', type: 'VARCHAR(45)' },
+                    { name: 'primary_address_id', type: 'INT(11)', fk: true },
+                    { name: 'exact_latitude', type: 'DECIMAL(10,8)' },
+                    { name: 'exact_longitude', type: 'DECIMAL(11,8)' },
+                    { name: 'location_accuracy', type: 'VARCHAR(20)' },
+                    { name: 'location_set_at', type: 'TIMESTAMP' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'addresses',
+                attributes: [
+                    { name: 'address_id', type: 'INT(11)', pk: true },
+                    { name: 'unit_number', type: 'VARCHAR(50)' },
+                    { name: 'street_name', type: 'VARCHAR(100)' },
+                    { name: 'barangay', type: 'VARCHAR(100)' },
+                    { name: 'cityVillage', type: 'VARCHAR(100)' },
+                    { name: 'province', type: 'VARCHAR(100)' },
+                    { name: 'region', type: 'VARCHAR(100)' },
+                    { name: 'postal_code', type: 'VARCHAR(10)' },
+                    { name: 'landmark', type: 'VARCHAR(200)' },
+                    { name: 'address_type', type: 'ENUM' },
+                    { name: 'is_active', type: 'TINYINT(1)' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'user_addresses',
+                attributes: [
+                    { name: 'user_address_id', type: 'INT(11)', pk: true },
+                    { name: 'user_id', type: 'INT(11)', fk: true },
+                    { name: 'address_id', type: 'INT(11)', fk: true },
+                    { name: 'address_label', type: 'VARCHAR(50)' },
+                    { name: 'is_default', type: 'TINYINT(1)' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'container_drum',
+                attributes: [
+                    { name: 'drum_id', type: 'INT(11)', pk: true },
+                    { name: 'size', type: 'ENUM' },
+                    { name: 'gallons', type: 'INT(11)' },
+                    { name: 'stock', type: 'INT(11)' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'drum_stats',
+                attributes: [
+                    { name: 'drum_status_id', type: 'INT(11)', pk: true },
+                    { name: 'status_name', type: 'ENUM' }
+                ]
+            },
+            {
+                name: 'flavors',
+                attributes: [
+                    { name: 'flavor_id', type: 'INT(11)', pk: true },
+                    { name: 'flavor_name', type: 'VARCHAR(100)' },
+                    { name: 'flavor_description', type: 'VARCHAR(500)' },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'sold_count', type: 'INT(11)' },
+                    { name: 'store_status', type: 'ENUM' },
+                    { name: 'average_rating', type: 'DECIMAL(3,2)' },
+                    { name: 'total_ratings', type: 'INT(11)' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'products',
+                attributes: [
+                    { name: 'product_id', type: 'INT(11)', pk: true },
+                    { name: 'name', type: 'VARCHAR(100)' },
+                    { name: 'description', type: 'VARCHAR(200)' },
+                    { name: 'flavor_id', type: 'INT(11)', fk: true },
+                    { name: 'drum_id', type: 'INT(11)', fk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'product_url_image', type: 'VARCHAR(100)' },
+                    { name: 'review_id', type: 'INT(11)' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'orders',
+                attributes: [
+                    { name: 'order_id', type: 'INT(11)', pk: true },
+                    { name: 'customer_id', type: 'INT(11)', fk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'delivery_datetime', type: 'DATETIME' },
+                    { name: 'delivery_address', type: 'VARCHAR(100)' },
+                    { name: 'total_amount', type: 'VARCHAR(45)' },
+                    { name: 'status', type: 'ENUM' },
+                    { name: 'payment_status', type: 'ENUM' },
+                    { name: 'payment_method', type: 'VARCHAR(50)' },
+                    { name: 'payment_intent_id', type: 'VARCHAR(255)' },
+                    { name: 'payment_reference', type: 'VARCHAR(255)' },
+                    { name: 'payment_deadline', type: 'DATETIME' },
+                    { name: 'reservation_expires_at', type: 'DATETIME' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'order_items',
+                attributes: [
+                    { name: 'orderItemsID', type: 'INT(11)', pk: true },
+                    { name: 'order_id', type: 'INT(11)', fk: true },
+                    { name: 'product_id', type: 'INT(11)', fk: true },
+                    { name: 'containerDrum_id', type: 'INT(11)', fk: true },
+                    { name: 'quantity', type: 'INT(11)' },
+                    { name: 'price', type: 'DECIMAL(10,2)' },
+                    { name: 'drum_status_id', type: 'INT(11)', fk: true }
+                ]
+            },
+            {
+                name: 'notifications',
+                attributes: [
+                    { name: 'notification_id', type: 'INT', pk: true },
+                    { name: 'user_id', type: 'INT', fk: true },
+                    { name: 'user_type', type: 'ENUM' },
+                    { name: 'title', type: 'VARCHAR(255)' },
+                    { name: 'message', type: 'TEXT' },
+                    { name: 'notification_type', type: 'ENUM' },
+                    { name: 'related_order_id', type: 'INT' },
+                    { name: 'related_vendor_id', type: 'INT' },
+                    { name: 'related_customer_id', type: 'INT' },
+                    { name: 'is_read', type: 'BOOLEAN' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_reviews',
+                attributes: [
+                    { name: 'review_id', type: 'INT', pk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'customer_id', type: 'INT', fk: true },
+                    { name: 'order_id', type: 'INT', fk: true },
+                    { name: 'rating', type: 'INT' },
+                    { name: 'comment', type: 'TEXT' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'cart_items',
+                attributes: [
+                    { name: 'cart_item_id', type: 'INT(11)', pk: true },
+                    { name: 'user_id', type: 'INT(11)', fk: true },
+                    { name: 'flavor_id', type: 'INT(11)', fk: true },
+                    { name: 'size', type: 'ENUM' },
+                    { name: 'quantity', type: 'INT(11)' },
+                    { name: 'price', type: 'DECIMAL(10,2)' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'subscription_plans',
+                attributes: [
+                    { name: 'plan_id', type: 'INT(11)', pk: true },
+                    { name: 'plan_name', type: 'VARCHAR(100)' },
+                    { name: 'plan_type', type: 'ENUM' },
+                    { name: 'price', type: 'DECIMAL(10,2)' },
+                    { name: 'billing_cycle', type: 'ENUM' },
+                    { name: 'max_flavors', type: 'INT(11)' },
+                    { name: 'max_orders_per_month', type: 'INT(11)' },
+                    { name: 'features', type: 'JSON' },
+                    { name: 'is_active', type: 'BOOLEAN' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_subscriptions',
+                attributes: [
+                    { name: 'subscription_id', type: 'INT(11)', pk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'plan_id', type: 'INT(11)', fk: true },
+                    { name: 'status', type: 'ENUM' },
+                    { name: 'start_date', type: 'DATE' },
+                    { name: 'end_date', type: 'DATE' },
+                    { name: 'next_billing_date', type: 'DATE' },
+                    { name: 'auto_renew', type: 'BOOLEAN' },
+                    { name: 'payment_method', type: 'VARCHAR(100)' },
+                    { name: 'stripe_subscription_id', type: 'VARCHAR(255)' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'subscription_usage',
+                attributes: [
+                    { name: 'usage_id', type: 'INT(11)', pk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'subscription_id', type: 'INT(11)', fk: true },
+                    { name: 'month_year', type: 'VARCHAR(7)' },
+                    { name: 'flavors_used', type: 'INT(11)' },
+                    { name: 'orders_processed', type: 'INT(11)' },
+                    { name: 'features_used', type: 'JSON' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'payment_history',
+                attributes: [
+                    { name: 'payment_id', type: 'INT(11)', pk: true },
+                    { name: 'subscription_id', type: 'INT(11)', fk: true },
+                    { name: 'amount', type: 'DECIMAL(10,2)' },
+                    { name: 'currency', type: 'VARCHAR(3)' },
+                    { name: 'payment_method', type: 'VARCHAR(100)' },
+                    { name: 'payment_status', type: 'ENUM' },
+                    { name: 'stripe_payment_intent_id', type: 'VARCHAR(255)' },
+                    { name: 'transaction_id', type: 'VARCHAR(255)' },
+                    { name: 'payment_date', type: 'TIMESTAMP' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'payment_intents',
+                attributes: [
+                    { name: 'id', type: 'INT(11)', pk: true },
+                    { name: 'payment_intent_id', type: 'VARCHAR(255)' },
+                    { name: 'order_id', type: 'VARCHAR(100)' },
+                    { name: 'customer_id', type: 'INT(11)', fk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'amount', type: 'DECIMAL(10,2)' },
+                    { name: 'currency', type: 'VARCHAR(3)' },
+                    { name: 'status', type: 'ENUM' },
+                    { name: 'payment_method', type: 'VARCHAR(50)' },
+                    { name: 'metadata', type: 'JSON' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'payment_transactions',
+                attributes: [
+                    { name: 'id', type: 'INT(11)', pk: true },
+                    { name: 'payment_intent_id', type: 'VARCHAR(255)', fk: true },
+                    { name: 'transaction_type', type: 'ENUM' },
+                    { name: 'amount', type: 'DECIMAL(10,2)' },
+                    { name: 'currency', type: 'VARCHAR(3)' },
+                    { name: 'status', type: 'VARCHAR(50)' },
+                    { name: 'metadata', type: 'JSON' },
+                    { name: 'webhook_data', type: 'JSON' },
+                    { name: 'created_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'system_settings',
+                attributes: [
+                    { name: 'id', type: 'INT(11)', pk: true },
+                    { name: 'setting_key', type: 'VARCHAR(100)' },
+                    { name: 'setting_value', type: 'TEXT' },
+                    { name: 'description', type: 'TEXT' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_gcash_qr',
+                attributes: [
+                    { name: 'qr_id', type: 'INT', pk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'qr_code_image', type: 'VARCHAR(255)' },
+                    { name: 'gcash_number', type: 'VARCHAR(20)' },
+                    { name: 'business_name', type: 'VARCHAR(100)' },
+                    { name: 'is_active', type: 'BOOLEAN' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'qr_payment_transactions',
+                attributes: [
+                    { name: 'transaction_id', type: 'INT', pk: true },
+                    { name: 'order_id', type: 'INT', fk: true },
+                    { name: 'customer_id', type: 'INT', fk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'payment_amount', type: 'DECIMAL(10,2)' },
+                    { name: 'payment_method', type: 'ENUM' },
+                    { name: 'payment_status', type: 'ENUM' },
+                    { name: 'qr_code_used', type: 'VARCHAR(255)' },
+                    { name: 'payment_confirmation_image', type: 'VARCHAR(255)' },
+                    { name: 'customer_notes', type: 'TEXT' },
+                    { name: 'vendor_notes', type: 'TEXT' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'feedback',
+                attributes: [
+                    { name: 'id', type: 'INT', pk: true },
+                    { name: 'user_id', type: 'INT', fk: true },
+                    { name: 'user_role', type: 'VARCHAR(20)' },
+                    { name: 'subject', type: 'VARCHAR(255)' },
+                    { name: 'category', type: 'VARCHAR(50)' },
+                    { name: 'description', type: 'TEXT' },
+                    { name: 'status', type: 'VARCHAR(20)' },
+                    { name: 'priority', type: 'VARCHAR(20)' },
+                    { name: 'admin_response', type: 'TEXT' },
+                    { name: 'admin_id', type: 'INT', fk: true },
+                    { name: 'responded_at', type: 'TIMESTAMP' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'flavor_ratings',
+                attributes: [
+                    { name: 'rating_id', type: 'INT(11)', pk: true },
+                    { name: 'flavor_id', type: 'INT(11)', fk: true },
+                    { name: 'customer_id', type: 'INT(11)', fk: true },
+                    { name: 'rating', type: 'TINYINT(1)' },
+                    { name: 'review_text', type: 'TEXT' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_rejections',
+                attributes: [
+                    { name: 'rejection_id', type: 'INT', pk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'user_id', type: 'INT', fk: true },
+                    { name: 'rejected_at', type: 'TIMESTAMP' },
+                    { name: 'auto_return_at', type: 'DATETIME' },
+                    { name: 'is_returned', type: 'BOOLEAN' },
+                    { name: 'returned_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_delivery_pricing',
+                attributes: [
+                    { name: 'delivery_pricing_id', type: 'INT(11)', pk: true },
+                    { name: 'vendor_id', type: 'INT(11)', fk: true },
+                    { name: 'city', type: 'VARCHAR(100)' },
+                    { name: 'province', type: 'VARCHAR(100)' },
+                    { name: 'delivery_price', type: 'DECIMAL(10,2)' },
+                    { name: 'is_active', type: 'TINYINT(1)' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'daily_drum_availability',
+                attributes: [
+                    { name: 'availability_id', type: 'INT', pk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'delivery_date', type: 'DATE' },
+                    { name: 'drum_size', type: 'ENUM' },
+                    { name: 'total_capacity', type: 'INT' },
+                    { name: 'booked_count', type: 'INT' },
+                    { name: 'available_count', type: 'INT' },
+                    { name: 'reserved_count', type: 'INT' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'pending_payment_orders',
+                attributes: [
+                    { name: 'order_id', type: 'INT', pk: true, fk: true },
+                    { name: 'payment_deadline', type: 'DATETIME' },
+                    { name: 'reminder_sent', type: 'BOOLEAN' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'password_reset_tokens',
+                attributes: [
+                    { name: 'id', type: 'INT', pk: true },
+                    { name: 'user_id', type: 'INT', fk: true },
+                    { name: 'token', type: 'VARCHAR(255)' },
+                    { name: 'email', type: 'VARCHAR(255)' },
+                    { name: 'expires_at', type: 'TIMESTAMP' },
+                    { name: 'used', type: 'BOOLEAN' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            },
+            {
+                name: 'vendor_drum_pricing',
+                attributes: [
+                    { name: 'vendor_id', type: 'INT(11)', pk: true, fk: true },
+                    { name: 'drum_size', type: 'ENUM', pk: true },
+                    { name: 'price', type: 'DECIMAL(10,2)' },
+                    { name: 'stock', type: 'INT(11)' },
+                    { name: 'gallons', type: 'INT(11)' }
+                ]
+            },
+            {
+                name: 'subscription_payments',
+                attributes: [
+                    { name: 'payment_id', type: 'INT', pk: true },
+                    { name: 'vendor_id', type: 'INT', fk: true },
+                    { name: 'plan_name', type: 'ENUM' },
+                    { name: 'amount', type: 'DECIMAL(10,2)' },
+                    { name: 'payment_status', type: 'ENUM' },
+                    { name: 'xendit_invoice_id', type: 'VARCHAR(255)' },
+                    { name: 'xendit_payment_id', type: 'VARCHAR(255)' },
+                    { name: 'payment_method', type: 'VARCHAR(50)' },
+                    { name: 'payment_date', type: 'TIMESTAMP' },
+                    { name: 'created_at', type: 'TIMESTAMP' },
+                    { name: 'updated_at', type: 'TIMESTAMP' }
+                ]
+            }
+        ];
+        
+        function renderTables(filteredTables = tables) {
+            const container = document.getElementById('tables-container');
+            container.innerHTML = '';
+            
+            filteredTables.forEach(table => {
+                const card = document.createElement('div');
+                card.className = 'table-card';
+                card.dataset.tableName = table.name.toLowerCase();
+                
+                const header = document.createElement('div');
+                header.className = 'table-header';
+                header.textContent = table.name;
+                
+                const body = document.createElement('div');
+                body.className = 'table-body';
+                
+                table.attributes.forEach(attr => {
+                    const row = document.createElement('div');
+                    row.className = 'attribute-row';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'attribute-name';
+                    if (attr.pk) nameSpan.classList.add('pk');
+                    if (attr.fk) nameSpan.classList.add('fk');
+                    nameSpan.textContent = attr.name;
+                    if (attr.pk) nameSpan.textContent += ' (PK)';
+                    if (attr.fk && !attr.pk) nameSpan.textContent += ' (FK)';
+                    
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'data-type';
+                    typeSpan.textContent = attr.type;
+                    
+                    row.appendChild(nameSpan);
+                    row.appendChild(typeSpan);
+                    body.appendChild(row);
+                });
+                
+                // Add relationships info
+                const tableRels = getTableRelationships(table.name);
+                if (tableRels.length > 0) {
+                    const relDiv = document.createElement('div');
+                    relDiv.className = 'table-relationships';
+                    const relTitle = document.createElement('div');
+                    relTitle.className = 'table-relationships-title';
+                    relTitle.textContent = '🔗 Related Tables:';
+                    relDiv.appendChild(relTitle);
+                    
+                    const relBadges = document.createElement('div');
+                    relBadges.style.display = 'flex';
+                    relBadges.style.flexWrap = 'wrap';
+                    relBadges.style.gap = '5px';
+                    relBadges.style.marginTop = '8px';
+                    
+                    const relatedTables = new Set();
+                    tableRels.forEach(rel => {
+                        if (rel.from.toLowerCase() === table.name.toLowerCase()) {
+                            relatedTables.add(rel.to);
+                        } else {
+                            relatedTables.add(rel.from);
+                        }
+                    });
+                    
+                    relatedTables.forEach(relatedTable => {
+                        const badge = document.createElement('span');
+                        badge.className = 'relationship-badge';
+                        badge.textContent = relatedTable;
+                        badge.style.fontSize = '0.8em';
+                        badge.onclick = (e) => {
+                            e.stopPropagation();
+                            document.getElementById('search-input').value = relatedTable;
+                            document.getElementById('search-input').dispatchEvent(new Event('input'));
+                        };
+                        relBadges.appendChild(badge);
+                    });
+                    
+                    relDiv.appendChild(relBadges);
+                    body.appendChild(relDiv);
+                }
+                
+                card.appendChild(header);
+                card.appendChild(body);
+                container.appendChild(card);
+            });
+            
+            document.getElementById('visible-count').textContent = filteredTables.length;
+        }
+        
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                renderTables();
+                return;
+            }
+            
+            const filtered = tables.filter(table => {
+                const tableNameMatch = table.name.toLowerCase().includes(searchTerm);
+                const attrMatch = table.attributes.some(attr => 
+                    attr.name.toLowerCase().includes(searchTerm) || 
+                    attr.type.toLowerCase().includes(searchTerm)
+                );
+                return tableNameMatch || attrMatch;
+            });
+            
+            renderTables(filtered);
+        });
+        
+        // Define relationships based on foreign keys
+        const relationships = [
+            { from: 'users', to: 'addresses', via: 'primary_address_id', toKey: 'address_id' },
+            { from: 'vendors', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'vendors', to: 'addresses', via: 'primary_address_id', toKey: 'address_id' },
+            { from: 'user_addresses', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'user_addresses', to: 'addresses', via: 'address_id', toKey: 'address_id' },
+            { from: 'flavors', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'products', to: 'flavors', via: 'flavor_id', toKey: 'flavor_id' },
+            { from: 'products', to: 'container_drum', via: 'drum_id', toKey: 'drum_id' },
+            { from: 'products', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'orders', to: 'users', via: 'customer_id', toKey: 'user_id' },
+            { from: 'orders', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'order_items', to: 'orders', via: 'order_id', toKey: 'order_id' },
+            { from: 'order_items', to: 'products', via: 'product_id', toKey: 'product_id' },
+            { from: 'order_items', to: 'container_drum', via: 'containerDrum_id', toKey: 'drum_id' },
+            { from: 'order_items', to: 'drum_stats', via: 'drum_status_id', toKey: 'drum_status_id' },
+            { from: 'notifications', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'vendor_reviews', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'vendor_reviews', to: 'users', via: 'customer_id', toKey: 'user_id' },
+            { from: 'vendor_reviews', to: 'orders', via: 'order_id', toKey: 'order_id' },
+            { from: 'cart_items', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'cart_items', to: 'flavors', via: 'flavor_id', toKey: 'flavor_id' },
+            { from: 'vendor_subscriptions', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'vendor_subscriptions', to: 'subscription_plans', via: 'plan_id', toKey: 'plan_id' },
+            { from: 'subscription_usage', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'subscription_usage', to: 'vendor_subscriptions', via: 'subscription_id', toKey: 'subscription_id' },
+            { from: 'payment_history', to: 'vendor_subscriptions', via: 'subscription_id', toKey: 'subscription_id' },
+            { from: 'payment_intents', to: 'users', via: 'customer_id', toKey: 'user_id' },
+            { from: 'payment_intents', to: 'users', via: 'vendor_id', toKey: 'user_id' },
+            { from: 'payment_transactions', to: 'payment_intents', via: 'payment_intent_id', toKey: 'payment_intent_id' },
+            { from: 'vendor_gcash_qr', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'qr_payment_transactions', to: 'orders', via: 'order_id', toKey: 'order_id' },
+            { from: 'qr_payment_transactions', to: 'users', via: 'customer_id', toKey: 'user_id' },
+            { from: 'qr_payment_transactions', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'feedback', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'feedback', to: 'users', via: 'admin_id', toKey: 'user_id' },
+            { from: 'flavor_ratings', to: 'flavors', via: 'flavor_id', toKey: 'flavor_id' },
+            { from: 'flavor_ratings', to: 'users', via: 'customer_id', toKey: 'user_id' },
+            { from: 'vendor_rejections', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'vendor_rejections', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'vendor_delivery_pricing', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'daily_drum_availability', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'pending_payment_orders', to: 'orders', via: 'order_id', toKey: 'order_id' },
+            { from: 'password_reset_tokens', to: 'users', via: 'user_id', toKey: 'user_id' },
+            { from: 'vendor_drum_pricing', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' },
+            { from: 'subscription_payments', to: 'vendors', via: 'vendor_id', toKey: 'vendor_id' }
+        ];
+        
+        function getTableRelationships(tableName) {
+            return relationships.filter(rel => 
+                rel.from.toLowerCase() === tableName.toLowerCase() || 
+                rel.to.toLowerCase() === tableName.toLowerCase()
+            );
+        }
+        
+        function renderRelationships() {
+            const container = document.getElementById('relationships-container');
+            container.innerHTML = '';
+            
+            // Group relationships by table
+            const tableRelationships = {};
+            
+            relationships.forEach(rel => {
+                if (!tableRelationships[rel.from]) {
+                    tableRelationships[rel.from] = [];
+                }
+                tableRelationships[rel.from].push(rel);
+            });
+            
+            Object.keys(tableRelationships).sort().forEach(tableName => {
+                const rels = tableRelationships[tableName];
+                const relItem = document.createElement('div');
+                relItem.className = 'relationship-item';
+                
+                const title = document.createElement('div');
+                title.style.marginBottom = '10px';
+                title.innerHTML = `<strong>${tableName}</strong> →`;
+                
+                const connections = document.createElement('div');
+                connections.style.display = 'flex';
+                connections.style.flexWrap = 'wrap';
+                connections.style.gap = '5px';
+                
+                rels.forEach(rel => {
+                    const badge = document.createElement('span');
+                    badge.className = 'relationship-badge';
+                    badge.textContent = `${rel.to} (${rel.via})`;
+                    badge.title = `${rel.from}.${rel.via} → ${rel.to}.${rel.toKey}`;
+                    badge.onclick = () => {
+                        document.getElementById('search-input').value = rel.to;
+                        document.getElementById('search-input').dispatchEvent(new Event('input'));
+                        document.getElementById('tables-btn').click();
+                    };
+                    connections.appendChild(badge);
+                });
+                
+                relItem.appendChild(title);
+                relItem.appendChild(connections);
+                container.appendChild(relItem);
+            });
+            
+            document.getElementById('relationship-count').textContent = relationships.length;
+        }
+        
+        // Diagram state
+        let diagramTables = {};
+        let diagramZoom = 1;
+        let isDragging = false;
+        let dragTarget = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        // View toggle functionality
+        document.getElementById('tables-btn').addEventListener('click', () => {
+            document.getElementById('tables-view').classList.add('active');
+            document.getElementById('relationships-view').classList.remove('active');
+            document.getElementById('diagram-view').classList.remove('active');
+            document.getElementById('tables-btn').classList.add('active');
+            document.getElementById('relationships-btn').classList.remove('active');
+            document.getElementById('diagram-btn').classList.remove('active');
+        });
+        
+        document.getElementById('relationships-btn').addEventListener('click', () => {
+            document.getElementById('relationships-view').classList.add('active');
+            document.getElementById('tables-view').classList.remove('active');
+            document.getElementById('diagram-view').classList.remove('active');
+            document.getElementById('relationships-btn').classList.add('active');
+            document.getElementById('tables-btn').classList.remove('active');
+            document.getElementById('diagram-btn').classList.remove('active');
+            renderRelationships();
+        });
+        
+        document.getElementById('diagram-btn').addEventListener('click', () => {
+            document.getElementById('diagram-view').classList.add('active');
+            document.getElementById('tables-view').classList.remove('active');
+            document.getElementById('relationships-view').classList.remove('active');
+            document.getElementById('diagram-btn').classList.add('active');
+            document.getElementById('tables-btn').classList.remove('active');
+            document.getElementById('relationships-btn').classList.remove('active');
+            if (Object.keys(diagramTables).length === 0) {
+                renderDiagram();
+            }
+        });
+        
+        function renderDiagram() {
+            const container = document.getElementById('diagram-container');
+            const svg = document.getElementById('connection-svg');
+            
+            // Clear existing
+            container.querySelectorAll('.diagram-table').forEach(el => el.remove());
+            svg.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" fill="#3498db" /></marker></defs>';
+            diagramTables = {};
+            
+            // Create table elements
+            tables.forEach((table, index) => {
+                const tableEl = document.createElement('div');
+                tableEl.className = 'diagram-table';
+                tableEl.id = `diagram-table-${table.name}`;
+                tableEl.dataset.tableName = table.name;
+                
+                // Set initial position (grid layout)
+                const cols = Math.ceil(Math.sqrt(tables.length));
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+                const x = 50 + col * 280;
+                const y = 50 + row * 250;
+                
+                tableEl.style.left = x + 'px';
+                tableEl.style.top = y + 'px';
+                
+                const header = document.createElement('div');
+                header.className = 'diagram-table-header';
+                header.textContent = table.name;
+                
+                const body = document.createElement('div');
+                body.className = 'diagram-table-body';
+                
+                // Show only key attributes in diagram
+                const keyAttrs = table.attributes.filter(attr => attr.pk || attr.fk);
+                keyAttrs.forEach(attr => {
+                    const attrEl = document.createElement('div');
+                    attrEl.className = 'diagram-attribute';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'diagram-attribute-name';
+                    if (attr.pk) nameSpan.classList.add('pk');
+                    if (attr.fk) nameSpan.classList.add('fk');
+                    nameSpan.textContent = attr.name;
+                    
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'diagram-attribute-type';
+                    typeSpan.textContent = attr.type;
+                    
+                    attrEl.appendChild(nameSpan);
+                    attrEl.appendChild(typeSpan);
+                    body.appendChild(attrEl);
+                });
+                
+                tableEl.appendChild(header);
+                tableEl.appendChild(body);
+                container.appendChild(tableEl);
+                
+                // Store position
+                diagramTables[table.name] = {
+                    element: tableEl,
+                    x: x,
+                    y: y
+                };
+                
+                // Make draggable
+                makeDraggable(tableEl);
+            });
+            
+            // Draw connections
+            setTimeout(() => drawConnections(), 100);
+        }
+        
+        function makeDraggable(element) {
+            const header = element.querySelector('.diagram-table-header');
+            
+            header.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragTarget = element;
+                const rect = element.getBoundingClientRect();
+                const containerRect = document.getElementById('diagram-container').getBoundingClientRect();
+                dragOffset.x = e.clientX - rect.left - containerRect.left;
+                dragOffset.y = e.clientY - rect.top - containerRect.top;
+                element.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && dragTarget) {
+                    const container = document.getElementById('diagram-container');
+                    const containerRect = container.getBoundingClientRect();
+                    const x = e.clientX - containerRect.left - dragOffset.x;
+                    const y = e.clientY - containerRect.top - dragOffset.y;
+                    
+                    dragTarget.style.left = x + 'px';
+                    dragTarget.style.top = y + 'px';
+                    
+                    const tableName = dragTarget.dataset.tableName;
+                    if (diagramTables[tableName]) {
+                        diagramTables[tableName].x = x;
+                        diagramTables[tableName].y = y;
+                    }
+                    
+                    drawConnections();
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (dragTarget) {
+                    dragTarget.style.cursor = 'move';
+                }
+                isDragging = false;
+                dragTarget = null;
+            });
+        }
+        
+        function drawConnections() {
+            const svg = document.getElementById('connection-svg');
+            const container = document.getElementById('diagram-container');
+            const containerRect = container.getBoundingClientRect();
+            
+            // Update SVG size
+            svg.setAttribute('width', container.scrollWidth || containerRect.width);
+            svg.setAttribute('height', container.scrollHeight || containerRect.height);
+            
+            // Clear existing lines and labels
+            svg.querySelectorAll('path').forEach(p => p.remove());
+            container.querySelectorAll('.connection-label').forEach(l => l.remove());
+            
+            relationships.forEach(rel => {
+                const fromTable = diagramTables[rel.from];
+                const toTable = diagramTables[rel.to];
+                
+                if (!fromTable || !toTable) return;
+                
+                const fromEl = fromTable.element;
+                const toEl = toTable.element;
+                
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+                
+                const fromX = fromRect.left - containerRect.left + fromRect.width / 2;
+                const fromY = fromRect.top - containerRect.top + fromRect.height;
+                const toX = toRect.left - containerRect.left + toRect.width / 2;
+                const toY = toRect.top - containerRect.top;
+                
+                // Create curved path
+                const midY = (fromY + toY) / 2;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${fromX} ${fromY} Q ${fromX} ${midY}, ${toX} ${toY}`);
+                path.setAttribute('class', 'connection-line');
+                path.setAttribute('data-from', rel.from);
+                path.setAttribute('data-to', rel.to);
+                
+                svg.appendChild(path);
+                
+                // Add label
+                const label = document.createElement('div');
+                label.className = 'connection-label';
+                label.textContent = rel.via;
+                label.style.left = ((fromX + toX) / 2 - 30) + 'px';
+                label.style.top = (midY - 10) + 'px';
+                container.appendChild(label);
+            });
+        }
+        
+        function autoLayout() {
+            // Simple force-directed layout
+            const iterations = 50;
+            const k = 300; // Optimal distance
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                Object.keys(diagramTables).forEach(tableName => {
+                    const table = diagramTables[tableName];
+                    let fx = 0, fy = 0;
+                    
+                    Object.keys(diagramTables).forEach(otherName => {
+                        if (tableName === otherName) return;
+                        
+                        const other = diagramTables[otherName];
+                        const dx = other.x - table.x;
+                        const dy = other.y - table.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        
+                        // Repulsion
+                        const repulse = k * k / dist;
+                        fx -= (dx / dist) * repulse * 0.01;
+                        fy -= (dy / dist) * repulse * 0.01;
+                        
+                        // Attraction for related tables
+                        const isRelated = relationships.some(r => 
+                            (r.from === tableName && r.to === otherName) ||
+                            (r.to === tableName && r.from === otherName)
+                        );
+                        
+                        if (isRelated) {
+                            const attract = dist * dist / k;
+                            fx += (dx / dist) * attract * 0.01;
+                            fy += (dy / dist) * attract * 0.01;
+                        }
+                    });
+                    
+                    table.x += fx;
+                    table.y += fy;
+                    table.element.style.left = table.x + 'px';
+                    table.element.style.top = table.y + 'px';
+                });
+            }
+            
+            drawConnections();
+        }
+        
+        function resetLayout() {
+            tables.forEach((table, index) => {
+                const cols = Math.ceil(Math.sqrt(tables.length));
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+                const x = 50 + col * 280;
+                const y = 50 + row * 250;
+                
+                if (diagramTables[table.name]) {
+                    diagramTables[table.name].x = x;
+                    diagramTables[table.name].y = y;
+                    diagramTables[table.name].element.style.left = x + 'px';
+                    diagramTables[table.name].element.style.top = y + 'px';
+                }
+            });
+            drawConnections();
+        }
+        
+        function zoomIn() {
+            diagramZoom = Math.min(diagramZoom * 1.2, 3);
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            diagramZoom = Math.max(diagramZoom / 1.2, 0.3);
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const container = document.getElementById('diagram-container');
+            container.style.transform = `scale(${diagramZoom})`;
+            container.style.transformOrigin = 'top left';
+        }
+        
+        function fitToScreen() {
+            const container = document.getElementById('diagram-container');
+            const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+            
+            Object.values(diagramTables).forEach(table => {
+                const rect = table.element.getBoundingClientRect();
+                bounds.minX = Math.min(bounds.minX, table.x);
+                bounds.minY = Math.min(bounds.minY, table.y);
+                bounds.maxX = Math.max(bounds.maxX, table.x + rect.width);
+                bounds.maxY = Math.max(bounds.maxY, table.y + rect.height);
+            });
+            
+            const width = bounds.maxX - bounds.minX;
+            const height = bounds.maxY - bounds.minY;
+            const viewWidth = container.parentElement.clientWidth;
+            const viewHeight = container.parentElement.clientHeight;
+            
+            diagramZoom = Math.min(viewWidth / width, viewHeight / height, 1) * 0.9;
+            applyZoom();
+        }
+        
+        // Handle window resize for diagram
+        window.addEventListener('resize', () => {
+            if (document.getElementById('diagram-view').classList.contains('active')) {
+                drawConnections();
+            }
+        });
+        
+        // Initial render
+        renderTables();
+        document.getElementById('table-count').textContent = tables.length;
+    </script>
+</body>
+</html>

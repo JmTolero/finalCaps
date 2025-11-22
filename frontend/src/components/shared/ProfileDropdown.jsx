@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FeedbackModal from './FeedbackModal';
+import VendorRejectionModal from './VendorRejectionModal';
 
 /**
  * ProfileDropdown Component
@@ -15,6 +16,8 @@ export const ProfileDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionData, setRejectionData] = useState(null);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -386,6 +389,36 @@ export const ProfileDropdown = () => {
                     const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
                     const token = sessionStorage.getItem('token');
                     
+                    // First check if there's a vendor rejection with auto_return_at
+                    const userRaw = sessionStorage.getItem('user');
+                    if (userRaw) {
+                      const userData = JSON.parse(userRaw);
+                      
+                      // Check for vendor rejection status
+                      try {
+                        const rejectionCheck = await fetch(`${apiBase}/api/vendor/check-rejection-status`, {
+                          credentials: 'include',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': token ? `Bearer ${token}` : ''
+                          },
+                        });
+                        
+                        if (rejectionCheck.ok) {
+                          const rejectionData = await rejectionCheck.json();
+                          if (rejectionData.hasRejection && !rejectionData.canReapply) {
+                            // Show modal with rejection information
+                            setRejectionData(rejectionData);
+                            setShowRejectionModal(true);
+                            setIsOpen(false);
+                            return;
+                          }
+                        }
+                      } catch (err) {
+                        console.log('Rejection check failed, continuing...', err);
+                      }
+                    }
+                    
                     const response = await fetch(`${apiBase}/api/auth/verify-vendor`, {
                       credentials: 'include',
                       headers: {
@@ -398,7 +431,6 @@ export const ProfileDropdown = () => {
                       navigate('/vendor');
                     } else {
                       // Check if user is already a vendor
-                      const userRaw = sessionStorage.getItem('user');
                       if (userRaw) {
                         const userData = JSON.parse(userRaw);
                         if (userData.role === 'vendor') {
@@ -455,6 +487,15 @@ export const ProfileDropdown = () => {
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
         userRole={user?.role?.toLowerCase() || 'customer'}
+      />
+      
+      <VendorRejectionModal
+        isOpen={showRejectionModal}
+        onClose={() => {
+          setShowRejectionModal(false);
+          setRejectionData(null);
+        }}
+        autoReturnDate={rejectionData?.autoReturnAt}
       />
     </div>
   );

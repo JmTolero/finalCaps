@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const vendorController = require('../../controller/vendor/vendorController');
+const { authenticateToken } = require('../../middleware/auth');
 
 // Vendor registration route
 router.post('/register', vendorController.upload.fields([
@@ -48,5 +49,8 @@ router.get('/with-locations', vendorController.getVendorsWithLocations);
 
 // Get all approved vendors for customer store listing
 router.get('/all-approved', vendorController.getAllApprovedVendors);
+
+// Check vendor rejection status (for customers who want to become vendors)
+router.get('/check-rejection-status', authenticateToken, vendorController.checkVendorRejectionStatus);
 
 module.exports = router;

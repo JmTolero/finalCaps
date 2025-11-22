@@ -622,6 +622,32 @@ const registerExistingUserAsVendor = async (req, res) => {
         );
         
         if (existingVendor.length > 0) {
+            // Check if there's a rejection with auto_return_at date
+            const [rejection] = await pool.query(
+                `SELECT vr.auto_return_at, vr.is_returned 
+                 FROM vendor_rejections vr 
+                 WHERE vr.user_id = ? AND vr.is_returned = FALSE AND vr.auto_return_at > NOW()
+                 ORDER BY vr.auto_return_at DESC 
+                 LIMIT 1`,
+                [user.user_id]
+            );
+            
+            if (rejection.length > 0) {
+                const autoReturnDate = new Date(rejection[0].auto_return_at);
+                const formattedDate = autoReturnDate.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return res.status(400).json({ 
+                    error: 'Vendor application already exists for this user',
+                    autoReturnAt: rejection[0].auto_return_at,
+                    message: `Your previous vendor application was rejected. You can reapply on ${formattedDate}. Please check back after this date to submit a new application.`
+                });
+            }
+            
             return res.status(400).json({ error: 'Vendor application already exists for this user' });
         }
 
@@ -851,4 +877,62 @@ const getAllApprovedVendors = async (req, res) => {
     }
 };
 
-module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, setVendorPrimaryAddress, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors };
+// Check vendor rejection status for a user
+const checkVendorRejectionStatus = async (req, res) => {
+    try {
+        // Get user ID from JWT token (authenticated request)
+        const userId = req.user?.user_id || req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        console.log('Checking vendor rejection status for user:', userId);
+        
+        // Check if there's a vendor record
+        const [existingVendor] = await pool.query(
+            'SELECT vendor_id FROM vendors WHERE user_id = ?',
+            [userId]
+        );
+        
+        if (existingVendor.length === 0) {
+            return res.json({
+                hasRejection: false,
+                canReapply: true
+            });
+        }
+        
+        // Check for active rejection (not returned yet, with future auto_return_at)
+        const [rejection] = await pool.query(
+            `SELECT vr.auto_return_at, vr.is_returned 
+             FROM vendor_rejections vr 
+             WHERE vr.user_id = ? AND vr.is_returned = FALSE AND vr.auto_return_at > NOW()
+             ORDER BY vr.auto_return_at DESC 
+             LIMIT 1`,
+            [userId]
+        );
+        
+        if (rejection.length > 0) {
+            return res.json({
+                hasRejection: true,
+                canReapply: false,
+                autoReturnAt: rejection[0].auto_return_at
+            });
+        }
+        
+        // No active rejection, can reapply
+        return res.json({
+            hasRejection: false,
+            canReapply: true
+        });
+        
+    } catch (err) {
+        console.error('Error checking vendor rejection status:', err);
+        res.status(500).json({
+            error: 'Failed to check rejection status',
+            message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+        });
+    }
+};
+
+module.exports = { registerVendor, upload, getCurrentVendor, getVendorForSetup, updateVendorProfile, setVendorPrimaryAddress, checkVendorSetupComplete, getVendorDashboardData, registerExistingUserAsVendor, getVendorProducts, getAllProducts, getVendorsWithLocations, getAllApprovedVendors, checkVendorRejectionStatus };
