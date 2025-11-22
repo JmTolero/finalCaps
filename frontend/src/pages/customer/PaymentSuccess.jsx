@@ -21,7 +21,8 @@ const PaymentSuccess = () => {
       
       const response = await axios.get(`${apiBase}/api/orders/${orderId}`, { headers });
       
-      if (response.data.success        const orderData = response.data.order;
+      if (response.data.success) {
+        const orderData = response.data.order;
         setOrder(orderData);
         
         // If payment is still unpaid, try to sync payment status by checking payment_intent

@@ -100,6 +100,25 @@ export const FlavorDetail = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFeedbackDropdown]);
 
+  const fetchVendorRating = useCallback(async (vendorId) => {
+    try {
+      if (!vendorId) return;
+      
+      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
+      const response = await axios.get(`${apiBase}/api/reviews/vendor/${vendorId}`);
+      
+      if (response.data.success && response.data.summary) {
+        setVendorRating({
+          average_rating: parseFloat(response.data.summary.average_rating) || 0,
+          total_reviews: response.data.summary.total_reviews || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching vendor rating:', error);
+      setVendorRating({ average_rating: 0, total_reviews: 0 });
+    }
+  }, []);
+
   const fetchFlavorDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -109,6 +128,11 @@ export const FlavorDetail = () => {
       if (response.data.success) {
         const flavorData = response.data.flavor;
         setFlavor(flavorData);
+        
+        // Fetch vendor rating when flavor data is loaded
+        if (flavorData?.vendor_id) {
+          fetchVendorRating(flavorData.vendor_id);
+        }
         
         if (flavorData?.images?.length) {
           setSelectedImages(flavorData.images);
@@ -131,7 +155,7 @@ export const FlavorDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [flavorId]);
+  }, [flavorId, fetchVendorRating]);
 
   const fetchRatings = useCallback(async () => {
     try {
@@ -145,25 +169,6 @@ export const FlavorDetail = () => {
       console.error('Error fetching ratings:', error);
     }
   }, [flavorId]);
-
-  const fetchVendorRating = useCallback(async (vendorId) => {
-    try {
-      if (!vendorId) return;
-      
-      const apiBase = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const response = await axios.get(`${apiBase}/api/reviews/vendor/${vendorId}`);
-      
-      if (response.data.success && response.data.summary) {
-        setVendorRating({
-          average_rating: parseFloat(response.data.summary.average_rating) || 0,
-          total_reviews: response.data.summary.total_reviews || 0
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching vendor rating:', error);
-      setVendorRating({ average_rating: 0, total_reviews: 0 });
-    }
-  }, []);
 
   const fetchUserRating = useCallback(async () => {
     try {
