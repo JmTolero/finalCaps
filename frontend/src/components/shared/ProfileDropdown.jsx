@@ -392,8 +392,6 @@ export const ProfileDropdown = () => {
                     // First check if there's a vendor rejection with auto_return_at
                     const userRaw = sessionStorage.getItem('user');
                     if (userRaw) {
-                      const userData = JSON.parse(userRaw);
-                      
                       // Check for vendor rejection status
                       try {
                         const rejectionCheck = await fetch(`${apiBase}/api/vendor/check-rejection-status`, {
